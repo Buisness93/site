@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800;900&family=Saira:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
+<style>
+ *{box-sizing:border-box}
+ html,body{margin:0;padding:0;background:#08090b;color:#eef1f5;font-family:'Saira',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+ a{color:#c7ccd2;text-decoration:none;transition:color .2s}
+ a:hover{color:#ffffff}
+ button{font-family:inherit;transition:transform .12s cubic-bezier(.2,.7,.2,1),box-shadow .2s,background .2s,border-color .2s}
+ button:active{transform:translateY(1px) scale(.97)!important}
+ a{-webkit-tap-highlight-color:transparent}
+ ::selection{background:#1fc8d8;color:#fff}
+ canvas{display:block}
+ @keyframes floaty{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,8px)}}
+ @keyframes spin{to{transform:rotate(360deg)}}
+ @keyframes shimmer{0%{background-position:0% center}100%{background-position:-220% center}}
+ @keyframes glowline{0%,100%{opacity:.55}50%{opacity:1}}
+ @keyframes hintpulse{0%,100%{opacity:.35;transform:translateX(-50%) scale(1)}50%{opacity:.9;transform:translateX(-50%) scale(1.06)}}
+ @keyframes heroUp{from{opacity:0;transform:translateY(34px);filter:blur(7px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
+ @media (max-width:860px){ nav{padding:12px 16px!important} nav > div:last-child{gap:3px!important} nav > div:last-child a{padding:7px 10px!important;font-size:11px!important;letter-spacing:.06em!important} }
+ @media (max-width:680px){
+  #heroText{left:6vw!important;right:6vw!important;max-width:none!important;text-align:left!important;bottom:12%!important}
+  #heroText > div:first-child{justify-content:flex-start!important}
+  #heroText p{margin-left:0!important}
+  #heroText > div:last-child{justify-content:flex-start!important}
+  #porsche,#lamborghini,#bugatti,#jeu{padding-left:5vw!important;padding-right:5vw!important;padding-top:80px!important;padding-bottom:80px!important}
+  #gameBox{height:min(72vh,540px)!important}
+  #hud{transform:scale(.82);transform-origin:top left}
+ }
+ @media (max-width:520px){
+  nav > div:first-child > div:last-child{font-size:17px!important}
+  #heroText h1{font-size:42px!important}
+  #heroText p{font-size:14px!important}
+ }
+</style>
+</helmet>
+<div style="min-height:100vh;background:#08090b;overflow-x:hidden;position:relative">
+
+  <nav style="position:fixed;top:0;left:0;right:0;z-index:60;display:flex;align-items:center;justify-content:space-between;padding:15px 34px;backdrop-filter:blur(16px);background:linear-gradient(#08090be0,#08090b00);border-bottom:1px solid rgba(255,255,255,.06)">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:26px;height:26px;transform:rotate(45deg);border:2px solid #fff;border-radius:5px;position:relative"><div style="position:absolute;inset:5px;background:#1fc8d8;border-radius:2px"></div></div>
+      <div style="font-family:'Saira Condensed';font-weight:900;font-size:22px;letter-spacing:.16em">DEYLO<span style="color:#1fc8d8">·</span>GARAGE</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;font-size:12.5px;letter-spacing:.16em;text-transform:uppercase">
+      <a href="#porsche" style="padding:8px 14px;border-radius:8px" style-hover="background:rgba(255,255,255,.06)">Porsche</a>
+      <a href="#lamborghini" style="padding:8px 14px;border-radius:8px" style-hover="background:rgba(255,255,255,.06)">Lamborghini</a>
+      <a href="#bugatti" style="padding:8px 14px;border-radius:8px" style-hover="background:rgba(255,255,255,.06)">Bugatti</a>
+      <a href="#jeu" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px;padding:10px 20px;border:1px solid #1fc8d8;border-radius:999px;color:#fff;background:rgba(31,200,216,.12);box-shadow:0 0 24px -8px rgba(31,200,216,.7)" style-hover="background:rgba(31,200,216,.24)">▶ Jouer</a>
+    </div>
+  </nav>
+  <div id="scrollBar" style="position:fixed;top:0;left:0;height:3px;width:0;z-index:61;background:linear-gradient(90deg,#0aa7c2,#1fc8d8);box-shadow:0 0 14px #1fc8d8;pointer-events:none"></div>
+
+  <section style="position:relative;height:100vh;min-height:660px;overflow:hidden">
+    <div ref="{{ heroRef }}" style="position:absolute;inset:0;cursor:pointer"></div>
+    <div style="position:absolute;left:20%;bottom:20%;transform:translateX(-50%);font-family:monospace;font-size:10.5px;letter-spacing:.24em;color:#5fd8e6;text-transform:uppercase;animation:hintpulse 2.6s ease-in-out infinite;pointer-events:none">↻ cliquez la voiture</div>
+    <div style="position:absolute;inset:0;background:radial-gradient(80% 62% at 50% 44%, transparent 28%, #08090b 88%);pointer-events:none"></div>
+
+    <div style="position:absolute;top:96px;right:34px;text-align:right;font-family:monospace;font-size:11px;letter-spacing:.14em;color:#4a5058;pointer-events:none;line-height:1.9">
+      <div>N°001 — 003 · COLLECTION 2026</div>
+      <div>48.8566° N / 2.3522° E</div>
+    </div>
+
+    <div id="heroText" style="position:absolute;right:6vw;left:auto;bottom:13%;max-width:660px;text-align:right;padding:0;pointer-events:none;will-change:transform,opacity">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;justify-content:flex-end;animation:heroUp .7s cubic-bezier(.2,.7,.2,1) both">
+        <span style="width:42px;height:1px;background:#1fc8d8"></span>
+        <span style="font-size:13px;letter-spacing:.42em;text-transform:uppercase;color:#9aa1ab">Showroom 3D · Supercars d'exception</span>
+      </div>
+      <h1 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(42px,7.6vw,120px);line-height:.9;margin:0;text-transform:uppercase;letter-spacing:-.015em;transition:filter .3s,letter-spacing .3s;animation:heroUp .85s .12s cubic-bezier(.2,.7,.2,1) both" style-hover="filter:brightness(1.12);letter-spacing:.005em">L'art de la<br><span style="background:linear-gradient(100deg,#ffffff 8%,#8ff0f7 38%,#ffffff 58%,#1fc8d8 100%);background-size:220% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 7s linear infinite">performance</span></h1>
+      <p style="max-width:520px;margin:26px 0 0 auto;font-size:clamp(15px,1.4vw,19px);color:#b6bcc4;line-height:1.55;font-weight:300;animation:heroUp .9s .26s cubic-bezier(.2,.7,.2,1) both">Trois machines d'exception, modélisées en 3D haute-fidélité. Explorez chaque bolide sous tous les angles, puis prenez le volant dans notre course de réflexes.</p>
+      <div style="display:flex;gap:14px;margin-top:34px;pointer-events:auto;flex-wrap:wrap;justify-content:flex-end;animation:heroUp .95s .4s cubic-bezier(.2,.7,.2,1) both">
+        <a href="#porsche" style="display:inline-flex;align-items:center;gap:10px;padding:16px 32px;border-radius:12px;background:#fff;color:#0a0b0d;font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 14px 40px -14px rgba(255,255,255,.5)" style-hover="transform:translateY(-3px);box-shadow:0 22px 50px -14px rgba(255,255,255,.6)">Découvrir la collection →</a>
+        <a href="#jeu" style="display:inline-flex;align-items:center;gap:10px;padding:16px 30px;border-radius:12px;border:1px solid rgba(255,255,255,.25);color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase" style-hover="border-color:#fff;background:rgba(255,255,255,.12);transform:translateY(-3px)">▶ Lancer le jeu</a>
+      </div>
+    </div>
+
+    <div style="position:absolute;left:8vw;right:8vw;bottom:34px;display:flex;align-items:center;justify-content:space-between;gap:20px;font-family:'Saira Condensed';font-weight:700;font-size:13px;letter-spacing:.28em;color:#5a616b;text-transform:uppercase;pointer-events:none;border-top:1px solid rgba(255,255,255,.06);padding-top:16px">
+      <span>Porsche</span><span style="color:#2a2f36">/</span><span>Lamborghini</span><span style="color:#2a2f36">/</span><span>Bugatti</span><span style="flex:1"></span><span style="color:#4a5058">Glissez pour explorer</span>
+    </div>
+  </section>
+
+  <section id="porsche" style="position:relative;padding:120px 6vw;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:56px;align-items:center;border-top:1px solid rgba(255,255,255,.05)">
+    <div style="position:absolute;top:40px;left:5vw;font-family:'Saira Condensed';font-weight:900;font-size:clamp(120px,20vw,300px);line-height:.8;color:rgba(255,255,255,.03);pointer-events:none;z-index:0" data-para="-1">01</div>
+    <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 30% 15%, rgba(213,0,28,.18), transparent 60%), linear-gradient(180deg,#0e1013,#08090b);border:1px solid rgba(255,255,255,.08);min-height:520px;box-shadow:0 40px 90px -50px rgba(213,0,28,.5)">
+      <div ref="{{ carRef0 }}" style="position:absolute;inset:0"></div>
+      <div style="position:absolute;top:16px;left:18px;font-family:monospace;font-size:10.5px;letter-spacing:.16em;color:#6a7078">MODÈLE 3D · GLB</div>
+      <div style="position:absolute;top:14px;right:14px;display:flex;gap:8px;z-index:2">
+        <button onClick="{{ rot0 }}" title="Rotation automatique" style="width:38px;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:16px;backdrop-filter:blur(6px)" style-hover="border-color:#d5001c;color:#fff">⟲</button>
+        <button onClick="{{ rst0 }}" title="Réinitialiser la vue" style="width:38px;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:15px;backdrop-filter:blur(6px)" style-hover="border-color:#d5001c;color:#fff">↺</button>
+      </div>
+      <div style="position:absolute;left:18px;bottom:16px;font-family:monospace;font-size:11px;color:#6a7078;letter-spacing:.12em">CLIQUEZ · GLISSEZ POUR PIVOTER · 360°</div>
+    </div>
+    <div data-reveal style="position:relative;z-index:1;opacity:0;transform:translateY(40px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+        <span style="font-family:'Saira Condensed';font-weight:800;font-size:15px;color:#d5001c;letter-spacing:.14em">PORSCHE</span>
+        <span style="height:1px;flex:1;background:linear-gradient(90deg,#d5001c,transparent)"></span>
+      </div>
+      <h2 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(42px,5.5vw,80px);margin:0;line-height:.92;text-transform:uppercase;transition:letter-spacing .3s,text-shadow .3s;cursor:default" style-hover="letter-spacing:.03em;text-shadow:0 0 36px rgba(213,0,28,.7)">911 GT3</h2>
+      <p style="color:#c1c7cf;font-size:18px;margin:16px 0 30px;line-height:1.5;font-weight:300">La précision allemande à l'état pur. Un Flat-6 atmosphérique qui grimpe à 9 000 tr/min, châssis 992 taillé pour le circuit.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+        <sc-for list="{{ specs0 }}" as="s" hint-placeholder-count="6">
+          <div style="background:#0f1216;border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(213,0,28,.55);border-radius:12px;padding:16px 18px;transition:.2s" style-hover="border-color:rgba(213,0,28,.5);transform:translateY(-3px)">
+            <div style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#8a8f98;font-weight:600">{{ s.l }}</div>
+            <div style="font-family:'Saira Condensed';font-weight:800;font-size:30px;line-height:1.05;margin-top:6px;color:#fff">{{ s.v }}<span style="font-size:14px;color:#8a8f98;margin-left:5px;font-family:'Saira';font-weight:400">{{ s.u }}</span></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(213,0,28,.18),rgba(213,0,28,0));border:1px solid rgba(213,0,28,.32)">
+        <span style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#c8ccd2;font-weight:600">Prix indicatif</span>
+        <span style="font-family:'Saira Condensed';font-weight:800;font-size:30px;color:#fff">189 000 €</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="lamborghini" style="position:relative;padding:120px 6vw;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:56px;align-items:center;border-top:1px solid rgba(255,255,255,.05)">
+    <div style="position:absolute;top:40px;right:5vw;font-family:'Saira Condensed';font-weight:900;font-size:clamp(120px,20vw,300px);line-height:.8;color:rgba(255,255,255,.03);pointer-events:none;z-index:0" data-para="1">02</div>
+    <div data-reveal style="position:relative;z-index:1;opacity:0;transform:translateY(40px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1);order:2">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+        <span style="font-family:'Saira Condensed';font-weight:800;font-size:15px;color:#ffcc00;letter-spacing:.14em">LAMBORGHINI</span>
+        <span style="height:1px;flex:1;background:linear-gradient(90deg,#ffcc00,transparent)"></span>
+      </div>
+      <h2 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(42px,5.5vw,80px);margin:0;line-height:.92;text-transform:uppercase;transition:letter-spacing .3s,text-shadow .3s;cursor:default" style-hover="letter-spacing:.03em;text-shadow:0 0 36px rgba(255,204,0,.6)">Aventador SVJ</h2>
+      <p style="color:#c1c7cf;font-size:18px;margin:16px 0 30px;line-height:1.5;font-weight:300">La fureur d'un V12 atmosphérique italien. Des lignes tranchantes, une agressivité brute, un hurlement de 8 500 tr/min.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+        <sc-for list="{{ specs1 }}" as="s" hint-placeholder-count="6">
+          <div style="background:#0f1216;border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(255,204,0,.55);border-radius:12px;padding:16px 18px;transition:.2s" style-hover="border-color:rgba(255,204,0,.5);transform:translateY(-3px)">
+            <div style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#8a8f98;font-weight:600">{{ s.l }}</div>
+            <div style="font-family:'Saira Condensed';font-weight:800;font-size:30px;line-height:1.05;margin-top:6px;color:#fff">{{ s.v }}<span style="font-size:14px;color:#8a8f98;margin-left:5px;font-family:'Saira';font-weight:400">{{ s.u }}</span></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(255,204,0,.18),rgba(255,204,0,0));border:1px solid rgba(255,204,0,.32)">
+        <span style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#c8ccd2;font-weight:600">Prix indicatif</span>
+        <span style="font-family:'Saira Condensed';font-weight:800;font-size:30px;color:#fff">450 000 €</span>
+      </div>
+    </div>
+    <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 70% 15%, rgba(255,204,0,.16), transparent 60%), linear-gradient(180deg,#0e1013,#08090b);border:1px solid rgba(255,255,255,.08);min-height:520px;order:1;box-shadow:0 40px 90px -50px rgba(255,204,0,.4)">
+      <div ref="{{ carRef1 }}" style="position:absolute;inset:0"></div>
+      <div style="position:absolute;top:16px;left:18px;font-family:monospace;font-size:10.5px;letter-spacing:.16em;color:#6a7078">MODÈLE 3D · GLB</div>
+      <div style="position:absolute;top:14px;right:14px;display:flex;gap:8px;z-index:2">
+        <button onClick="{{ rot1 }}" title="Rotation automatique" style="width:38px;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:16px;backdrop-filter:blur(6px)" style-hover="border-color:#ffcc00;color:#fff">⟲</button>
+        <button onClick="{{ rst1 }}" title="Réinitialiser la vue" style="width:38px;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:15px;backdrop-filter:blur(6px)" style-hover="border-color:#ffcc00;color:#fff">↺</button>
+      </div>
+      <div style="position:absolute;left:18px;bottom:16px;font-family:monospace;font-size:11px;color:#6a7078;letter-spacing:.12em">CLIQUEZ · GLISSEZ POUR PIVOTER · 360°</div>
+    </div>
+  </section>
+
+  <section id="bugatti" style="position:relative;padding:120px 6vw;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:56px;align-items:center;border-top:1px solid rgba(255,255,255,.05)">
+    <div style="position:absolute;top:40px;left:5vw;font-family:'Saira Condensed';font-weight:900;font-size:clamp(120px,20vw,300px);line-height:.8;color:rgba(255,255,255,.03);pointer-events:none;z-index:0" data-para="-1">03</div>
+    <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 30% 15%, rgba(31,200,216,.2), transparent 60%), linear-gradient(180deg,#0e1013,#08090b);border:1px solid rgba(255,255,255,.08);min-height:520px;box-shadow:0 40px 90px -50px rgba(31,200,216,.55)">
+      <div ref="{{ carRef2 }}" style="position:absolute;inset:0"></div>
+      <div style="position:absolute;top:16px;left:18px;font-family:monospace;font-size:10.5px;letter-spacing:.16em;color:#6a7078">MODÈLE 3D · GLB</div>
+      <div style="position:absolute;top:14px;right:14px;display:flex;gap:8px;z-index:2">
+        <button onClick="{{ rot2 }}" title="Rotation automatique" style="width:38px;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:16px;backdrop-filter:blur(6px)" style-hover="border-color:#1fc8d8;color:#fff">⟲</button>
+        <button onClick="{{ rst2 }}" title="Réinitialiser la vue" style="width:38px;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:15px;backdrop-filter:blur(6px)" style-hover="border-color:#1fc8d8;color:#fff">↺</button>
+      </div>
+      <div style="position:absolute;left:18px;bottom:16px;font-family:monospace;font-size:11px;color:#6a7078;letter-spacing:.12em">CLIQUEZ · GLISSEZ POUR PIVOTER · 360°</div>
+    </div>
+    <div data-reveal style="position:relative;z-index:1;opacity:0;transform:translateY(40px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+        <span style="font-family:'Saira Condensed';font-weight:800;font-size:15px;color:#1fc8d8;letter-spacing:.14em">BUGATTI</span>
+        <span style="height:1px;flex:1;background:linear-gradient(90deg,#1fc8d8,transparent)"></span>
+      </div>
+      <h2 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(42px,5.5vw,80px);margin:0;line-height:.92;text-transform:uppercase;transition:letter-spacing .3s,text-shadow .3s;cursor:default" style-hover="letter-spacing:.03em;text-shadow:0 0 40px rgba(31,200,216,.75)">Centodieci</h2>
+      <p style="color:#c1c7cf;font-size:18px;margin:16px 0 30px;line-height:1.5;font-weight:300">Une réédition hommage à l'EB110, produite à seulement 10 exemplaires. Le W16 quadri-turbo dans toute sa démesure hyper-exclusive.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+        <sc-for list="{{ specs2 }}" as="s" hint-placeholder-count="6">
+          <div style="background:#0f1216;border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(31,200,216,.55);border-radius:12px;padding:16px 18px;transition:.2s" style-hover="border-color:rgba(31,200,216,.5);transform:translateY(-3px)">
+            <div style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#8a8f98;font-weight:600">{{ s.l }}</div>
+            <div style="font-family:'Saira Condensed';font-weight:800;font-size:30px;line-height:1.05;margin-top:6px;color:#fff">{{ s.v }}<span style="font-size:14px;color:#8a8f98;margin-left:5px;font-family:'Saira';font-weight:400">{{ s.u }}</span></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(31,200,216,.2),rgba(31,200,216,0));border:1px solid rgba(31,200,216,.34)">
+        <span style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#c8ccd2;font-weight:600">Prix indicatif</span>
+        <span style="font-family:'Saira Condensed';font-weight:800;font-size:30px;color:#fff">8 000 000 €</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="jeu" style="padding:120px 6vw 130px;background:linear-gradient(#08090b,#0b0d12);border-top:1px solid rgba(255,255,255,.05)">
+    <div data-reveal style="opacity:0;transform:translateY(40px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1);max-width:760px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="width:36px;height:1px;background:#1fc8d8"></span>
+        <span style="font-size:12px;letter-spacing:.36em;text-transform:uppercase;color:#9aa1ab">Mini-jeu · Time attack</span>
+      </div>
+      <h2 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(38px,6vw,76px);margin:12px 0 0;text-transform:uppercase;line-height:.94">Course de réflexes</h2>
+      <p style="color:#b6bcc4;font-size:17px;margin:16px 0 0;line-height:1.55;font-weight:300">Prenez le volant d'un des trois bolides, changez de voie et évitez les obstacles. La vitesse ne cesse d'augmenter — chaque évitement au ras rapporte un bonus.</p>
+    </div>
+
+    <div style="position:relative;margin-top:34px;border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,.09);background:radial-gradient(135% 78% at 50% 60%, rgba(31,200,216,.24), transparent 52%), linear-gradient(#070812 0%, #100c26 58%, #060509 100%);height:min(76vh,640px);box-shadow:0 50px 120px -60px rgba(31,200,216,.45)" id="gameBox">
+      <div ref="{{ gameRef }}" style="position:absolute;inset:0"></div>
+
+      <sc-if value="{{ isPlaying }}" hint-placeholder-val="{{ true }}">
+        <div id="hud" style="position:absolute;top:18px;left:18px;right:18px;display:flex;gap:12px;justify-content:space-between;pointer-events:none">
+          <div style="display:flex;gap:10px">
+            <div style="background:#0f1216cc;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:9px 16px;backdrop-filter:blur(8px)">
+              <div style="font-size:10px;letter-spacing:.2em;color:#8a8f98;font-weight:600">TEMPS</div>
+              <div style="font-family:'Saira Condensed';font-weight:800;font-size:24px;color:#fff"><span ref="{{ timeRef }}">0.0</span>s</div>
+            </div>
+            <div style="background:#0f1216cc;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:9px 16px;backdrop-filter:blur(8px)">
+              <div style="font-size:10px;letter-spacing:.2em;color:#8a8f98;font-weight:600">SCORE</div>
+              <div style="font-family:'Saira Condensed';font-weight:800;font-size:24px;color:#1fc8d8"><span ref="{{ scoreLiveRef }}">0</span></div>
+            </div>
+            <div style="background:#0f1216cc;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:9px 16px;backdrop-filter:blur(8px)">
+              <div style="font-size:10px;letter-spacing:.2em;color:#8a8f98;font-weight:600">VITESSE</div>
+              <div style="font-family:'Saira Condensed';font-weight:800;font-size:24px;color:#fff"><span ref="{{ speedRef }}">0</span><span style="font-size:12px;color:#8a8f98;margin-left:3px;font-family:'Saira';font-weight:400">km/h</span></div>
+            </div>
+          </div>
+          <div style="background:#0f1216cc;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:9px 16px;backdrop-filter:blur(8px);text-align:right">
+            <div style="font-size:10px;letter-spacing:.2em;color:#8a8f98;font-weight:600">MEILLEUR</div>
+            <div style="font-family:'Saira Condensed';font-weight:800;font-size:24px;color:#ffcc00">{{ best }}</div>
+          </div>
+        </div>
+        <div style="position:absolute;bottom:18px;left:18px;right:18px;display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <button onClick="{{ moveLeft }}" style="width:66px;height:66px;border-radius:16px;border:1px solid rgba(255,255,255,.16);background:#0f1216cc;color:#fff;font-size:26px;cursor:pointer;backdrop-filter:blur(8px)" style-hover="border-color:#1fc8d8;background:rgba(31,200,216,.22);box-shadow:0 0 26px -8px #1fc8d8">◀</button>
+          <div style="font-family:monospace;font-size:12px;color:#8a8f98;letter-spacing:.1em">← →  ·  A / D</div>
+          <button onClick="{{ moveRight }}" style="width:66px;height:66px;border-radius:16px;border:1px solid rgba(255,255,255,.16);background:#0f1216cc;color:#fff;font-size:26px;cursor:pointer;backdrop-filter:blur(8px)" style-hover="border-color:#1fc8d8;background:rgba(31,200,216,.22);box-shadow:0 0 26px -8px #1fc8d8">▶</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isMenu }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;overflow:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:radial-gradient(circle at 50% 34%, #0b0e14e6, #06070af5);text-align:center;padding:34px 24px">
+          <sc-if value="{{ isNaming }}" hint-placeholder-val="{{ true }}">
+            <div style="width:min(420px,92%);background:linear-gradient(180deg,#141326,#0b0b14);border:1px solid rgba(31,200,216,.35);border-radius:20px;padding:30px 28px;box-shadow:0 30px 80px -40px rgba(31,200,216,.7)">
+              <div style="font-size:12px;letter-spacing:.34em;color:#5fd8e6;text-transform:uppercase">Classement</div>
+              <div style="font-family:'Saira Condensed';font-weight:900;font-size:30px;margin:6px 0 4px;text-transform:uppercase">Votre pseudo</div>
+              <div style="font-size:13px;color:#9aa1ab;font-weight:300;margin-bottom:18px">Choisissez un nom pour apparaître au classement.</div>
+              <input ref="{{ nameInputRef }}" onKeyDown="{{ nameKey }}" maxLength="16" placeholder="Ex. SpeedX" style="width:100%;box-sizing:border-box;background:#07080d;border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:14px 16px;color:#fff;font-family:'Saira Condensed';font-weight:700;font-size:20px;letter-spacing:.04em;text-align:center;outline:none" />
+              <button onClick="{{ submitName }}" style="cursor:pointer;margin-top:16px;width:100%;padding:14px;border:0;border-radius:12px;background:#1fc8d8;color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:17px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 12px 34px -12px rgba(31,200,216,.9)" style-hover="transform:translateY(-2px)">Valider →</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ isChoosing }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;gap:12px;background:#0f1016cc;border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:8px 8px 8px 18px">
+            <span style="font-size:11px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Pilote</span>
+            <span style="font-family:'Saira Condensed';font-weight:800;font-size:18px;color:#fff">{{ username }}</span>
+            <button onClick="{{ editName }}" style="cursor:pointer;padding:7px 14px;border-radius:999px;border:1px solid rgba(31,200,216,.5);background:rgba(31,200,216,.14);color:#9ff0f7;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700" style-hover="background:rgba(31,200,216,.28)">Changer</button>
+          </div>
+          <div>
+            <div style="font-size:12px;letter-spacing:.34em;color:#9aa1ab;text-transform:uppercase">Choisissez votre bolide</div>
+            <div style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(28px,4.2vw,48px);margin-top:6px;text-transform:uppercase">Prêt au départ</div>
+          </div>
+          <div style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center">
+            <button onClick="{{ start0 }}" style="cursor:pointer;text-align:left;width:230px;background:linear-gradient(180deg,#13161c,#0b0d11);border:1px solid rgba(213,0,28,.4);border-radius:18px;overflow:hidden;color:#fff;transition:.2s;padding:0" style-hover="transform:translateY(-5px);border-color:#d5001c">
+              <div style="height:4px;background:#d5001c"></div>
+              <div style="padding:18px 20px">
+                <div style="font-size:11px;letter-spacing:.2em;color:#d5001c;text-transform:uppercase;font-weight:700">Porsche</div>
+                <div style="font-family:'Saira Condensed';font-weight:900;font-size:23px;margin:4px 0 12px">911 GT3</div>
+                <div style="display:flex;gap:18px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
+                  <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">0-100</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:18px">3,4s</div></div>
+                  <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">PUISS.</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:18px">510 ch</div></div>
+                </div>
+              </div>
+            </button>
+            <button onClick="{{ start1 }}" style="cursor:pointer;text-align:left;width:230px;background:linear-gradient(180deg,#13161c,#0b0d11);border:1px solid rgba(255,204,0,.4);border-radius:18px;overflow:hidden;color:#fff;transition:.2s;padding:0" style-hover="transform:translateY(-5px);border-color:#ffcc00">
+              <div style="height:4px;background:#ffcc00"></div>
+              <div style="padding:18px 20px">
+                <div style="font-size:11px;letter-spacing:.2em;color:#ffcc00;text-transform:uppercase;font-weight:700">Lamborghini</div>
+                <div style="font-family:'Saira Condensed';font-weight:900;font-size:23px;margin:4px 0 12px">Aventador SVJ</div>
+                <div style="display:flex;gap:18px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
+                  <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">0-100</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:18px">2,8s</div></div>
+                  <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">PUISS.</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:18px">770 ch</div></div>
+                </div>
+              </div>
+            </button>
+            <button onClick="{{ start2 }}" style="cursor:pointer;text-align:left;width:230px;background:linear-gradient(180deg,#13161c,#0b0d11);border:1px solid rgba(31,200,216,.4);border-radius:18px;overflow:hidden;color:#fff;transition:.2s;padding:0" style-hover="transform:translateY(-5px);border-color:#1fc8d8">
+              <div style="height:4px;background:#1fc8d8"></div>
+              <div style="padding:18px 20px">
+                <div style="font-size:11px;letter-spacing:.2em;color:#1fc8d8;text-transform:uppercase;font-weight:700">Bugatti</div>
+                <div style="font-family:'Saira Condensed';font-weight:900;font-size:23px;margin:4px 0 12px">Centodieci</div>
+                <div style="display:flex;gap:18px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
+                  <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">0-100</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:18px">2,4s</div></div>
+                  <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">PUISS.</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:18px">1600 ch</div></div>
+                </div>
+              </div>
+            </button>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#8a8f98;flex-wrap:wrap;justify-content:center">
+            <span style="display:inline-flex;min-width:28px;height:28px;padding:0 6px;align-items:center;justify-content:center;border-radius:7px;border:1px solid rgba(255,255,255,.18);border-bottom-width:3px;background:#12151a;font-family:'Saira Condensed';font-weight:700">◀</span>
+            <span style="display:inline-flex;min-width:28px;height:28px;padding:0 6px;align-items:center;justify-content:center;border-radius:7px;border:1px solid rgba(255,255,255,.18);border-bottom-width:3px;background:#12151a;font-family:'Saira Condensed';font-weight:700">▶</span>
+            <span>ou</span>
+            <span style="display:inline-flex;min-width:28px;height:28px;padding:0 8px;align-items:center;justify-content:center;border-radius:7px;border:1px solid rgba(255,255,255,.18);border-bottom-width:3px;background:#12151a;font-family:'Saira Condensed';font-weight:700">A</span>
+            <span style="display:inline-flex;min-width:28px;height:28px;padding:0 8px;align-items:center;justify-content:center;border-radius:7px;border:1px solid rgba(255,255,255,.18);border-bottom-width:3px;background:#12151a;font-family:'Saira Condensed';font-weight:700">D</span>
+            <span>pour changer de voie</span>
+          </div>
+          <div style="width:min(460px,94%);background:#0c0d14cc;border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:18px 20px;text-align:left">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-family:'Saira Condensed';font-weight:900;font-size:20px;letter-spacing:.04em;text-transform:uppercase">🏆 Classement</div>
+              <button onClick="{{ openBoard }}" style="cursor:pointer;font-size:11px;letter-spacing:.14em;color:#8ff0f7;text-transform:uppercase;background:transparent;border:0;font-weight:700;font-family:inherit" style-hover="color:#fff">Voir tout (25) →</button>
+            </div>
+            <sc-for list="{{ board }}" as="e" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:10px;background:{{ e.bg }};margin-bottom:6px">
+                <span style="font-family:'Saira Condensed';font-weight:900;font-size:16px;width:26px;color:{{ e.rankColor }}">{{ e.rankLabel }}</span>
+                <span style="width:9px;height:9px;border-radius:2px;background:{{ e.carColor }}"></span>
+                <span style="flex:1;font-family:'Saira Condensed';font-weight:700;font-size:16px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.name }}</span>
+                <span style="font-size:11px;color:#8a8f98;font-weight:600;white-space:nowrap">{{ e.carName }}</span>
+                <span style="font-family:'Saira Condensed';font-weight:800;font-size:17px;color:#9ff0f7">{{ e.score }}</span>
+              </div>
+            </sc-for>
+            <sc-if value="{{ boardEmpty }}" hint-placeholder-val="{{ true }}">
+              <div style="text-align:center;color:#8a8f98;font-size:13px;padding:10px">Aucun score encore — soyez le premier !</div>
+            </sc-if>
+          </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isOver }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:radial-gradient(circle at 50% 42%, #0a1022e6, #06070af5);text-align:center;padding:24px">
+          <div style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(36px,6vw,70px);color:#fff;text-transform:uppercase;letter-spacing:.02em">Game Over</div>
+          <sc-if value="{{ isRecord }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:7px 18px;border-radius:999px;background:linear-gradient(90deg,#ffcc00,#ff9500);color:#1a1400;font-family:'Saira Condensed';font-weight:900;font-size:14px;letter-spacing:.14em;text-transform:uppercase">★ Nouveau record</div>
+          </sc-if>
+          <div style="display:flex;gap:44px">
+            <div><div style="font-size:11px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Score</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:56px;color:#1fc8d8;line-height:1">{{ score }}</div></div>
+            <div><div style="font-size:11px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Meilleur</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:56px;color:#ffcc00;line-height:1">{{ best }}</div></div>
+          </div>
+          <div style="width:min(430px,92%);background:#0c0d14cc;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px 18px;text-align:left">
+            <div style="font-family:'Saira Condensed';font-weight:900;font-size:17px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px">🏆 Classement</div>
+            <sc-for list="{{ board }}" as="e" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:12px;padding:7px 10px;border-radius:9px;background:{{ e.bg }};margin-bottom:5px">
+                <span style="font-family:'Saira Condensed';font-weight:900;font-size:15px;width:22px;color:{{ e.rankColor }}">{{ e.rankLabel }}</span>
+                <span style="width:9px;height:9px;border-radius:2px;background:{{ e.carColor }}"></span>
+                <span style="flex:1;font-family:'Saira Condensed';font-weight:700;font-size:15px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.name }}</span>
+                <span style="font-size:10px;color:#8a8f98;font-weight:600;white-space:nowrap">{{ e.carName }}</span>
+                <span style="font-family:'Saira Condensed';font-weight:800;font-size:16px;color:#9ff0f7">{{ e.score }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:14px;margin-top:6px;flex-wrap:wrap;justify-content:center">
+            <button onClick="{{ restart }}" style="cursor:pointer;padding:15px 32px;border-radius:12px;border:0;background:#1fc8d8;color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 12px 34px -12px rgba(31,200,216,.8)" style-hover="transform:translateY(-3px);box-shadow:0 20px 48px -12px rgba(31,200,216,.95)">↻ Rejouer</button>
+            <button onClick="{{ menu }}" style="cursor:pointer;padding:15px 32px;border-radius:12px;border:1px solid rgba(255,255,255,.22);background:transparent;color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase" style-hover="border-color:#fff;background:rgba(255,255,255,.06)">Changer de voiture</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isBoardOpen }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;background:rgba(6,7,10,.96);backdrop-filter:blur(10px);padding:24px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div style="font-family:'Saira Condensed';font-weight:900;font-size:26px;letter-spacing:.04em;text-transform:uppercase">🏆 Classement — Top 25</div>
+            <button onClick="{{ closeBoard }}" style="cursor:pointer;padding:10px 20px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#fff;font-family:'Saira Condensed';font-weight:800;letter-spacing:.06em;text-transform:uppercase" style-hover="border-color:#fff;background:rgba(255,255,255,.06)">✕ Fermer</button>
+          </div>
+          <div style="flex:1;overflow:auto;display:flex;flex-direction:column;gap:6px">
+            <sc-for list="{{ boardFull }}" as="e" hint-placeholder-count="6">
+              <div style="display:flex;align-items:center;gap:14px;padding:11px 16px;border-radius:11px;background:{{ e.bg }};border:1px solid rgba(255,255,255,.06)">
+                <span style="font-family:'Saira Condensed';font-weight:900;font-size:18px;width:32px;color:{{ e.rankColor }}">{{ e.rankLabel }}</span>
+                <span style="width:10px;height:10px;border-radius:2px;background:{{ e.carColor }}"></span>
+                <span style="flex:1;font-family:'Saira Condensed';font-weight:700;font-size:18px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.name }}</span>
+                <span style="font-size:12px;color:#8a8f98;font-weight:600;min-width:120px;text-align:right">{{ e.carName }}</span>
+                <span style="font-family:'Saira Condensed';font-weight:800;font-size:19px;color:#8ff0f7;min-width:70px;text-align:right">{{ e.score }}</span>
+              </div>
+            </sc-for>
+            <sc-if value="{{ boardEmpty }}" hint-placeholder-val="{{ true }}">
+              <div style="text-align:center;color:#8a8f98;font-size:14px;padding:30px">Aucun score encore — soyez le premier !</div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </section>
+
+  <footer style="padding:44px 6vw;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;align-items:center;color:#6a7078;font-size:12.5px;letter-spacing:.08em">
+    <div style="font-family:'Saira Condensed';font-weight:900;letter-spacing:.16em;color:#c7ccd2;font-size:16px">DEYLO<span style="color:#1fc8d8">·</span>GARAGE</div>
+    <div>Showroom 3D · WebGL · Modèles 3D fournis par l'utilisateur · Marques citées à titre illustratif.</div>
+  </footer>
+
+  <sc-if value="{{ loading }}" hint-placeholder-val="{{ true }}">
+    <div style="position:fixed;inset:0;z-index:200;background:#08090b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:30px;height:30px;transform:rotate(45deg);border:2px solid #fff;border-radius:6px;position:relative"><div style="position:absolute;inset:6px;background:#1fc8d8;border-radius:2px"></div></div>
+        <div style="font-family:'Saira Condensed';font-weight:900;font-size:26px;letter-spacing:.18em">DEYLO<span style="color:#1fc8d8">·</span>GARAGE</div>
+      </div>
+      <div style="width:min(340px,70vw);height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:{{ loadPct }}%;background:linear-gradient(90deg,#1fc8d8,#8ff0f7);border-radius:2px;transition:width .3s"></div>
+      </div>
+      <div style="font-family:monospace;font-size:12px;letter-spacing:.18em;color:#6a7078">CHARGEMENT DES MODÈLES 3D · {{ loadPct }}%</div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: {&quot;width&quot;: &quot;100%&quot;, &quot;height&quot;: 900},
+  &quot;autoRotate&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Comportement 3D&quot;},
+  &quot;particles&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Comportement 3D&quot;},
+  &quot;gameSpeed&quot;: {&quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 18, &quot;min&quot;: 12, &quot;max&quot;: 28, &quot;step&quot;: 1, &quot;unit&quot;: &quot; u/s&quot;, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Mini-jeu&quot;}
+}">
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.heroRef = React.createRef();
+    this.carRefs = [React.createRef(), React.createRef(), React.createRef()];
+    this.gameRef = React.createRef();
+    this.timeRef = React.createRef();
+    this.scoreLiveRef = React.createRef();
+    this.speedRef = React.createRef();
+    this.scenes = [];
+    this.carCtrls = [];
+    this.models = [null, null, null];
+    this._last = performance.now();
+    this._heroTarget = {x:0, y:0};
+    let best = 0, username='', board=[];
+    try { best = parseInt(localStorage.getItem('apex_best')||'0',10) || 0; } catch(e){}
+    try { username = (localStorage.getItem('apex_user')||'').slice(0,16); } catch(e){}
+    try { const b=JSON.parse(localStorage.getItem('apex_board_v2')||'[]'); if(Array.isArray(b)) board=b; } catch(e){}
+    this._board = board;
+    this.nameInputRef = React.createRef();
+    this.brandColors = ['#d5001c','#ffcc00','#1fc8d8'];
+    this.state = { gameState:'menu', score:0, best, selectedCar:0, loading:true, loadPct:0, username, naming:!username, isRecord:false, boardOpen:false };
+    this.cars = [
+      { brand:'Porsche', name:'911 GT3', glow:0xd5001c, modelUrl:'uploads/gt3992.glb', rotY:Math.PI,
+        carOpts:{edge:0xd6dade, emissive:0x2a0008, body:0x14161a, wing:true} },
+      { brand:'Lamborghini', name:'Aventador SVJ', glow:0xffcc00, modelUrl:'uploads/AventadorSvj.glb', rotY:Math.PI,
+        carOpts:{edge:0xffcc00, emissive:0x241f00, body:0x0f0f0c, wing:true} },
+      { brand:'Bugatti', name:'Centodieci', glow:0x1fc8d8, modelUrl:'uploads/FV8UHMV5GHZGYVYSTV5NOKD56.glb', rotY:0,
+        carOpts:{edge:0x6fa0ff, emissive:0x00112a, body:0x0c1220, wing:false} },
+    ];
+    this.specs = [
+      [{l:'0-100 km/h',v:'3,4',u:'s'},{l:'V-max',v:'318',u:'km/h'},{l:'Puissance',v:'510',u:'ch'},{l:'Couple',v:'470',u:'Nm'},{l:'Poids',v:'1 435',u:'kg'},{l:'Moteur',v:'Flat-6',u:'4.0L'}],
+      [{l:'0-100 km/h',v:'2,8',u:'s'},{l:'V-max',v:'350',u:'km/h'},{l:'Puissance',v:'770',u:'ch'},{l:'Couple',v:'720',u:'Nm'},{l:'Poids',v:'1 525',u:'kg'},{l:'Moteur',v:'V12',u:'6.5L'}],
+      [{l:'0-100 km/h',v:'2,4',u:'s'},{l:'V-max',v:'380',u:'km/h'},{l:'Puissance',v:'1 600',u:'ch'},{l:'Couple',v:'1 600',u:'Nm'},{l:'Poids',v:'1 976',u:'kg'},{l:'Moteur',v:'W16',u:'8.0L'}],
+    ];
+    this._lanes = [-2.2, 0, 2.2];
+    this._obstacles = [];
+    this._stripes = [];
+    this._playing = false;
+  }
+
+  renderVals(){
+    return {
+      heroRef:this.heroRef, carRef0:this.carRefs[0], carRef1:this.carRefs[1], carRef2:this.carRefs[2],
+      gameRef:this.gameRef, timeRef:this.timeRef, scoreLiveRef:this.scoreLiveRef, speedRef:this.speedRef,
+      specs0:this.specs[0], specs1:this.specs[1], specs2:this.specs[2],
+      gameState:this.state.gameState,
+      isMenu:this.state.gameState==='menu', isPlaying:this.state.gameState==='playing', isOver:this.state.gameState==='over',
+      isNaming: this.state.gameState==='menu' && this.state.naming,
+      isChoosing: this.state.gameState==='menu' && !this.state.naming,
+      username: this.state.username || 'Pilote',
+      board: this.boardView(8),
+      boardFull: this.boardView(25),
+      boardEmpty: this.boardEntries().length===0,
+      isBoardOpen: this.state.boardOpen,
+      openBoard: ()=>this.setState({ boardOpen:true }),
+      closeBoard: ()=>this.setState({ boardOpen:false }),
+      isRecord: this.state.isRecord,
+      submitName: ()=>this.submitName(),
+      editName: ()=>this.editName(),
+      nameKey: (e)=>{ if(e.key==='Enter'){ e.preventDefault(); this.submitName(); } },
+      nameInputRef: this.nameInputRef,
+      score:this.state.score, best:this.state.best,
+      loading:this.state.loading, loadPct:this.state.loadPct,
+      start0:()=>this.startGame(0), start1:()=>this.startGame(1), start2:()=>this.startGame(2),
+      restart:()=>this.startGame(this.state.selectedCar), menu:()=>this.toMenu(),
+      moveLeft:()=>this.move(-1), moveRight:()=>this.move(1),
+      rot0:()=>this.toggleRot(0), rot1:()=>this.toggleRot(1), rot2:()=>this.toggleRot(2),
+      rst0:()=>this.resetView(0), rst1:()=>this.resetView(1), rst2:()=>this.resetView(2),
+    };
+  }
+
+  componentDidMount(){
+    this._mounted = true;
+    const wait = ()=>{ if(!this._mounted) return; if(window.THREE && window.THREE.GLTFLoader){ this.init(); } else setTimeout(wait, 80); };
+    wait();
+  }
+  componentWillUnmount(){
+    this._mounted = false;
+    if(this._raf) cancelAnimationFrame(this._raf);
+    if(this._onResize) window.removeEventListener('resize', this._onResize);
+    if(this._onKey) window.removeEventListener('keydown', this._onKey);
+  }
+
+  init(){
+    if(this._initStarted) return;
+    this._initStarted = true;
+    this.loadModels().then(()=>this.buildAll()).catch(()=>this.buildAll());
+  }
+
+  placeholderTexURL(){
+    const c=document.createElement('canvas'); c.width=c.height=4;
+    const x=c.getContext('2d'); x.fillStyle='#33383f'; x.fillRect(0,0,4,4);
+    return c.toDataURL();
+  }
+
+  async loadModels(){
+    const T = window.THREE;
+    const mgr = new T.LoadingManager();
+    const ph = this.placeholderTexURL();
+    mgr.setURLModifier((url)=>{ if(/colormap\.png$/i.test(url)||/Textures\//i.test(url)) return ph; return url; });
+    const loader = new T.GLTFLoader(mgr);
+    if(window.MeshoptDecoder){
+      try { await window.MeshoptDecoder.ready; loader.setMeshoptDecoder(window.MeshoptDecoder); } catch(e){ console.warn('meshopt init failed', e); }
+    }
+    const trafficFiles = ['police-a617b880.glb','suv-9df31f6e.glb','suv-luxury-9e2a79dc.glb','taxi-38035397.glb','truck-5e1bc66c.glb'];
+    this.traffic = [];
+    let done = 0;
+    const total = this.cars.length + trafficFiles.length + 1;
+    const bump = ()=>{ done++; if(this._mounted) this.setState({loadPct:Math.round(done/total*100)}); };
+    const carJobs = this.cars.map((c,i)=>new Promise((res)=>{
+      loader.load(c.modelUrl,
+        (g)=>{ this.models[i] = g.scene || (g.scenes && g.scenes[0]); bump(); res(); },
+        undefined,
+        (err)=>{ console.warn('GLB load failed', c.modelUrl, err); bump(); res(); }
+      );
+    }));
+    const trafficJobs = trafficFiles.map((n)=>new Promise((res)=>{
+      loader.load('uploads/'+n,
+        (g)=>{ this.traffic.push(g.scene || (g.scenes && g.scenes[0])); bump(); res(); },
+        undefined,
+        (err)=>{ console.warn('traffic load failed', n, err); bump(); res(); }
+      );
+    }));
+    const coneJob = new Promise((res)=>{
+      loader.load('uploads/cone.glb',
+        (g)=>{ this.coneModel = g.scene || (g.scenes && g.scenes[0]); bump(); res(); },
+        undefined,
+        (err)=>{ console.warn('cone load failed', err); bump(); res(); }
+      );
+    });
+    return Promise.all(carJobs.concat(trafficJobs, [coneJob]));
+  }
+
+  buildAll(){
+    if(!this._mounted) return;
+    this.setState({ loading:false });
+    if(this.heroRef.current) this.initHero(this.heroRef.current);
+    this.cars.forEach((c,i)=>{ if(this.carRefs[i].current) this.initCarScene(this.carRefs[i].current, c, i); });
+    if(this.gameRef.current) this.initGame(this.gameRef.current);
+
+    const io = new IntersectionObserver((es)=>es.forEach(en=>{
+      const sc = this.scenes.find(s=>s.el===en.target);
+      if(sc && !sc.alwaysOn) sc.active = en.isIntersecting;
+    }), {threshold:0.08});
+    this.scenes.forEach(s=>io.observe(s.el));
+
+    const ro = new IntersectionObserver((es)=>es.forEach(en=>{
+      if(en.isIntersecting){ en.target.style.opacity='1'; en.target.style.transform='none'; ro.unobserve(en.target); }
+    }), {threshold:0.15});
+    document.querySelectorAll('[data-reveal]').forEach(el=>ro.observe(el));
+
+    this._onResize = ()=>this.scenes.forEach(s=>{
+      const w=s.el.clientWidth, h=s.el.clientHeight;
+      if(w&&h){ s.renderer.setSize(w,h); s.camera.aspect=w/h; s.camera.updateProjectionMatrix(); }
+    });
+    window.addEventListener('resize', this._onResize);
+
+    this._onKey = (e)=>{
+      const k = e.key;
+      if(k==='ArrowLeft'||k==='a'||k==='A'){ this.move(-1); if(this._playing) e.preventDefault(); }
+      if(k==='ArrowRight'||k==='d'||k==='D'){ this.move(1); if(this._playing) e.preventDefault(); }
+    };
+    window.addEventListener('keydown', this._onKey);
+
+    this._heroTextEl = document.getElementById('heroText');
+    this._scrollBarEl = document.getElementById('scrollBar');
+    this._paraEls = Array.prototype.slice.call(document.querySelectorAll('[data-para]')).map(el=>({el, dir:parseFloat(el.getAttribute('data-para'))||1}));
+    this._last = performance.now();
+    this.loop();
+  }
+
+  loop(){
+    const now = performance.now();
+    const dt = Math.min((now - this._last)/1000, 0.05);
+    this._last = now;
+    for(const s of this.scenes){
+      if(s.active){ if(s.update) s.update(dt, now); s.renderer.render(s.scene, s.camera); }
+    }
+    this.applyScroll();
+    this._raf = requestAnimationFrame(()=>this.loop());
+  }
+
+  applyScroll(){
+    const sy = window.pageYOffset || 0;
+    const vh = window.innerHeight || 1;
+    if(this._scrollBarEl){
+      const max = (document.body.scrollHeight - vh) || 1;
+      this._scrollBarEl.style.width = Math.max(0, Math.min(100, sy/max*100)) + '%';
+    }
+    if(this._heroTextEl){
+      const p = Math.min(1, sy / (vh*0.85));
+      this._heroTextEl.style.transform = 'translateY(' + (-p*70) + 'px)';
+      this._heroTextEl.style.opacity = String(Math.max(0, 1 - p*1.15));
+    }
+    if(this._paraEls){
+      for(const o of this._paraEls){
+        const rr = o.el.getBoundingClientRect();
+        const c = (rr.top + rr.height/2) - vh/2;
+        o.el.style.transform = 'translateX(' + (o.dir * -c * 0.08) + 'px)';
+      }
+    }
+  }
+
+  makeEnvTex(renderer){
+    const T = window.THREE;
+    const c = document.createElement('canvas'); c.width = 16; c.height = 64;
+    const ctx = c.getContext('2d');
+    const g = ctx.createLinearGradient(0,0,0,64);
+    g.addColorStop(0.0,'#9aa7bd'); g.addColorStop(0.35,'#3a424f'); g.addColorStop(0.55,'#151a22'); g.addColorStop(1.0,'#050609');
+    ctx.fillStyle = g; ctx.fillRect(0,0,16,64);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(0,4,16,4);
+    const tex = new T.CanvasTexture(c);
+    tex.mapping = T.EquirectangularReflectionMapping;
+    const pmrem = new T.PMREMGenerator(renderer);
+    const env = pmrem.fromEquirectangular(tex).texture;
+    tex.dispose(); pmrem.dispose();
+    return env;
+  }
+
+  makeScene(el, opts){
+    const T = window.THREE;
+    opts = opts || {};
+    const w = el.clientWidth || 400, h = el.clientHeight || 400;
+    const renderer = new T.WebGLRenderer({antialias:true, alpha:true, powerPreference:'high-performance'});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 1.5));
+    renderer.setSize(w, h);
+    renderer.outputEncoding = T.sRGBEncoding;
+    renderer.toneMapping = T.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    el.appendChild(renderer.domElement);
+    const scene = new T.Scene();
+    scene.environment = this.makeEnvTex(renderer);
+    scene.add(new T.AmbientLight(0xffffff, 0.22));
+    const key = new T.DirectionalLight(0xffffff, 1.35); key.position.set(6,10,7); scene.add(key);
+    const fill = new T.DirectionalLight(0xbcd0ff, 0.5); fill.position.set(-6,4,-5); scene.add(fill);
+    const rim = new T.PointLight(opts.glow!=null?opts.glow:0x88aaff, opts.glowI!=null?opts.glowI:2.4, 42);
+    rim.position.set(-4,3,-4); scene.add(rim);
+    const entry = {renderer, scene, camera:null, el, active:false, update:null, alwaysOn:false};
+    entry.camera = new T.PerspectiveCamera(45, w/h, 0.1, 400);
+    this.scenes.push(entry);
+    return entry;
+  }
+
+  prepModel(i, targetLen){
+    const T = window.THREE;
+    const src = this.models[i];
+    if(!src){ const fb = this.makeCar(this.cars[i].carOpts); fb.scale.setScalar((targetLen||4.4)/4.7); return fb; }
+    return this.normalizeModel(src, targetLen, this.cars[i].rotY||0);
+  }
+
+  normalizeModel(src, targetLen, rotY){
+    const T = window.THREE;
+    const obj = src.clone(true);
+    obj.rotation.y = rotY||0;
+    obj.updateMatrixWorld(true);
+    const box = new T.Box3().setFromObject(obj);
+    const size = new T.Vector3(); box.getSize(size);
+    const center = new T.Vector3(); box.getCenter(center);
+    const maxDim = Math.max(size.x, size.z) || 1;
+    const s = (targetLen||4.4)/maxDim;
+    obj.position.set(-center.x, -box.min.y, -center.z);
+    const inner = new T.Group(); inner.add(obj); inner.scale.setScalar(s);
+    const wrap = new T.Group(); wrap.add(inner);
+    wrap.userData.len = maxDim * s;
+    return wrap;
+  }
+
+  makeCar(opts){
+    const T = window.THREE;
+    opts = opts || {};
+    const g = new T.Group();
+    const bodyColor = opts.body!=null?opts.body:0x111214;
+    const edgeColor = opts.edge!=null?opts.edge:0xffffff;
+    const bodyMat = new T.MeshStandardMaterial({color:bodyColor, metalness:0.78, roughness:0.3, emissive:opts.emissive!=null?opts.emissive:0x000000, emissiveIntensity:0.55});
+    const edgeMat = new T.LineBasicMaterial({color:edgeColor});
+    const glassMat = new T.MeshStandardMaterial({color:0x05070c, metalness:0.4, roughness:0.15, emissive:0x0a1424, emissiveIntensity:0.4, transparent:true, opacity:0.85});
+    const add = (geo, x, y, z, mat, edges)=>{
+      const m = new T.Mesh(geo, mat||bodyMat); m.position.set(x,y,z); g.add(m);
+      if(edges!==false){ const e = new T.LineSegments(new T.EdgesGeometry(geo,24), edgeMat); e.position.set(x,y,z); g.add(e); }
+      return m;
+    };
+    const prof = opts.profile || [
+      [-2.34,0.30],[-2.30,0.62],[-1.95,0.72],[-1.30,0.80],[-0.75,0.98],
+      [-0.35,1.20],[0.30,1.22],[0.70,1.10],[1.25,0.80],[1.65,0.70],
+      [2.15,0.55],[2.40,0.40],[2.42,0.22],[2.25,0.12],[-2.30,0.14]
+    ];
+    const shape = new T.Shape();
+    shape.moveTo(prof[0][0], prof[0][1]);
+    for(let i=1;i<prof.length;i++) shape.lineTo(prof[i][0], prof[i][1]);
+    shape.closePath();
+    const W = 1.95;
+    const bodyGeo = new T.ExtrudeGeometry(shape, {depth:W, bevelEnabled:true, bevelThickness:0.07, bevelSize:0.07, bevelSegments:2, steps:1});
+    bodyGeo.computeBoundingBox();
+    const bb = bodyGeo.boundingBox;
+    bodyGeo.translate(-(bb.min.x+bb.max.x)/2, 0, -(bb.min.z+bb.max.z)/2);
+    const bodyMesh = new T.Mesh(bodyGeo, bodyMat); bodyMesh.rotation.y = -Math.PI/2; g.add(bodyMesh);
+    const bodyEdges = new T.LineSegments(new T.EdgesGeometry(bodyGeo,26), edgeMat); bodyEdges.rotation.y = -Math.PI/2; g.add(bodyEdges);
+    const gprof = [[-0.65,1.02],[-0.28,1.20],[0.28,1.22],[0.62,1.08],[1.10,0.86],[-0.65,0.86]];
+    const gshape = new T.Shape();
+    gshape.moveTo(gprof[0][0], gprof[0][1]);
+    for(let i=1;i<gprof.length;i++) gshape.lineTo(gprof[i][0], gprof[i][1]);
+    gshape.closePath();
+    const glassGeo = new T.ExtrudeGeometry(gshape, {depth:1.55, bevelEnabled:false, steps:1});
+    glassGeo.computeBoundingBox();
+    const gb = glassGeo.boundingBox;
+    glassGeo.translate(-(gb.min.x+gb.max.x)/2, 0.005, -(gb.min.z+gb.max.z)/2);
+    const glassMesh = new T.Mesh(glassGeo, glassMat); glassMesh.rotation.y = -Math.PI/2; g.add(glassMesh);
+    const tyreGeo = new T.CylinderGeometry(0.52,0.52,0.4,20);
+    const tyreMat = new T.MeshStandardMaterial({color:0x0a0a0b, metalness:0.4, roughness:0.7});
+    const rimGeo = new T.CylinderGeometry(0.3,0.3,0.42,10);
+    [[-1.0,0.52,1.42],[1.0,0.52,1.42],[-1.0,0.52,-1.42],[1.0,0.52,-1.42]].forEach(p=>{
+      const w = new T.Mesh(tyreGeo, tyreMat); w.rotation.z=Math.PI/2; w.position.set(p[0],p[1],p[2]); g.add(w);
+      const rim = new T.LineSegments(new T.EdgesGeometry(rimGeo,1), edgeMat); rim.rotation.z=Math.PI/2; rim.position.set(p[0],p[1],p[2]); g.add(rim);
+      const arc = new T.LineSegments(new T.EdgesGeometry(tyreGeo,20), edgeMat); arc.rotation.z=Math.PI/2; arc.position.set(p[0],p[1],p[2]); g.add(arc);
+    });
+    add(new T.BoxGeometry(1.8,0.12,0.35), 0,0.14,2.28);
+    if(opts.wing){
+      add(new T.BoxGeometry(1.85,0.07,0.5), 0,1.28,-2.15);
+      add(new T.BoxGeometry(0.09,0.42,0.1), -0.68,1.02,-2.05);
+      add(new T.BoxGeometry(0.09,0.42,0.1), 0.68,1.02,-2.05);
+    }
+    return g;
+  }
+
+  initHero(el){
+    const T = window.THREE;
+    const s = this.makeScene(el, {glow:0x1fc8d8, glowI:2.2});
+    s.camera.position.set(0.5,1.7,8.6);
+    const car = this.prepModel(2, 4.6);
+    car.position.x = -2.4;
+    s.scene.add(car);
+    const N = 850;
+    const pos = new Float32Array(N*3);
+    for(let i=0;i<N;i++){ pos[i*3]=(Math.random()-0.5)*48; pos[i*3+1]=(Math.random()-0.5)*26; pos[i*3+2]=(Math.random()-0.5)*48; }
+    const pg = new T.BufferGeometry(); pg.setAttribute('position', new T.BufferAttribute(pos,3));
+    const pts = new T.Points(pg, new T.PointsMaterial({color:0x9fc0ff, size:0.07, transparent:true, opacity:0.72, blending:T.AdditiveBlending, depthWrite:false}));
+    s.scene.add(pts);
+    s.update = (dt)=>{
+      const sp = this._heroSpin;
+      const boost = sp>0 ? (11*sp*sp) : 0;
+      if(sp>0){ this._heroSpin = Math.max(0, sp - dt*0.75); }
+      if(this.props.autoRotate!==false || boost>0) car.rotation.y += dt*(0.32 + boost);
+      car.scale.setScalar(1 + 0.07*Math.sin((1-sp)*Math.PI)*(sp>0?1:0));
+      pts.rotation.y += dt*(0.02 + boost*0.22);
+      pts.visible = this.props.particles!==false;
+      s.camera.position.x += (0.5 + this._heroTarget.x*1.8 - s.camera.position.x)*0.05;
+      s.camera.position.y += (1.7 + this._heroTarget.y*0.9 - s.camera.position.y)*0.05;
+      s.camera.lookAt(0,0.55,0);
+    };
+    el.addEventListener('pointermove', (e)=>{
+      const r = el.getBoundingClientRect();
+      this._heroTarget.x = ((e.clientX-r.left)/r.width - 0.5);
+      this._heroTarget.y = -((e.clientY-r.top)/r.height - 0.5);
+    });
+    this._heroCar = car; this._heroSpin = 0;
+    let downX=0, downY=0, downT=0;
+    el.addEventListener('pointerdown', (e)=>{ downX=e.clientX; downY=e.clientY; downT=performance.now(); });
+    el.addEventListener('pointerup', (e)=>{
+      const moved = Math.abs(e.clientX-downX)+Math.abs(e.clientY-downY);
+      if(moved < 8 && performance.now()-downT < 400 && !this._heroSpin){ this.launchFromHero(); }
+    });
+    s.active = true;
+  }
+
+  boardEntries(){
+    const map={};
+    for(const e of (this._board||[])){ if(!map[e.name] || e.score>map[e.name].score) map[e.name]=e; }
+    return Object.keys(map).map(k=>map[k]).sort((a,b)=>b.score-a.score);
+  }
+  boardView(limit){
+    const rc=['#ffcc00','#cfd6df','#d98a52'];
+    return this.boardEntries().slice(0,limit).map((e,i)=>({
+      rankLabel:String(i+1), rankColor:rc[i]||'#8a8f98',
+      carColor:this.brandColors[e.car]||'#1fc8d8',
+      carName:(this.cars[e.car]||{}).name||'—',
+      name:e.name||'Pilote', score:e.score,
+      bg:(e.name===this.state.username)?'rgba(31,200,216,.18)':'rgba(255,255,255,.03)'
+    }));
+  }
+  submitName(){
+    let v=(this.nameInputRef.current && this.nameInputRef.current.value || '').trim().slice(0,16);
+    if(!v) v='Pilote';
+    try { localStorage.setItem('apex_user', v); } catch(e){}
+    this.setState({ username:v, naming:false });
+  }
+  editName(){ this.setState({ naming:true }, ()=>this.focusName()); }
+  focusName(){ setTimeout(()=>{ if(this.nameInputRef.current){ this.nameInputRef.current.value=this.state.username||''; this.nameInputRef.current.focus(); this.nameInputRef.current.select(); } },60); }
+
+  launchFromHero(){
+    this._heroSpin = 1;
+  }
+
+  initCarScene(el, cfg, idx){
+    const s = this.makeScene(el, {glow:cfg.glow, glowI:2.6});
+    s.camera.position.set(4.7,2.3,6.3);
+    const car = this.prepModel(idx, 4.7);
+    const baseRot = -0.55;
+    car.rotation.y = baseRot;
+    s.scene.add(car);
+    const ctrl = { auto: this.props.autoRotate!==false, resetting:false, dragging:false, car, baseRot };
+    this.carCtrls[idx] = ctrl;
+    s.update = (dt)=>{
+      if(ctrl.resetting){
+        car.rotation.y += (baseRot - car.rotation.y) * 0.12;
+        if(Math.abs(baseRot - car.rotation.y) < 0.01){ car.rotation.y = baseRot; ctrl.resetting = false; }
+      } else if(ctrl.auto && !ctrl.dragging){
+        car.rotation.y += dt*0.3;
+      }
+      s.camera.lookAt(0,0.6,0);
+    };
+    const dom = s.renderer.domElement;
+    dom.style.cursor = 'grab';
+    let lastX = 0;
+    dom.addEventListener('pointerdown', (e)=>{ ctrl.dragging=true; ctrl.resetting=false; lastX=e.clientX; dom.style.cursor='grabbing'; });
+    window.addEventListener('pointermove', (e)=>{ if(!ctrl.dragging) return; car.rotation.y += (e.clientX-lastX)*0.01; lastX=e.clientX; });
+    window.addEventListener('pointerup', ()=>{ if(ctrl.dragging){ ctrl.dragging=false; dom.style.cursor='grab'; } });
+  }
+
+  toggleRot(i){ const c = this.carCtrls[i]; if(c){ c.auto = !c.auto; c.resetting = false; } }
+  resetView(i){ const c = this.carCtrls[i]; if(c){ c.resetting = true; } }
+
+  initGame(el){
+    const T = window.THREE;
+    const s = this.makeScene(el, {glow:0x1fc8d8, glowI:1.0});
+    s.alwaysOn = true; s.active = true;
+    s.scene.fog = new T.Fog(0x0b0a1a, 26, 118);
+    s.camera.position.set(0,3.0,7.6);
+    s.camera.lookAt(0,1.05,-40);
+    const road = new T.Mesh(new T.PlaneGeometry(9,240), new T.MeshStandardMaterial({color:0x050609, metalness:0.35, roughness:0.7}));
+    road.rotation.x = -Math.PI/2; road.position.z = -100; s.scene.add(road);
+    const stripeMat = new T.MeshBasicMaterial({color:0x39404d});
+    for(const lane of [-1.1, 1.1]){
+      for(let i=0;i<44;i++){
+        const st = new T.Mesh(new T.BoxGeometry(0.13,0.02,2), stripeMat);
+        st.position.set(lane, 0.02, -i*5);
+        s.scene.add(st); this._stripes.push(st);
+      }
+    }
+    [-4.5, 4.5].forEach(x=>{
+      const edge = new T.Mesh(new T.BoxGeometry(0.16,0.18,240), new T.MeshStandardMaterial({color:0x1b2129, emissive:0x0a1a3a, emissiveIntensity:0.8}));
+      edge.position.set(x, 0.12, -100); s.scene.add(edge);
+    });
+    s.scene.add(new T.HemisphereLight(0x8899ff, 0x060608, 0.4));
+    this._gameScene = s;
+    s.update = (dt, now)=>this.gameUpdate(dt, now);
+  }
+
+  startGame(idx){
+    const s = this._gameScene; if(!s) return;
+    if(!this.state.username){ this.setState({ naming:true }, ()=>this.focusName()); return; }
+    if(this._player){ s.scene.remove(this._player); }
+    this._obstacles.forEach(o=>s.scene.remove(o.mesh)); this._obstacles = [];
+    this._player = this.prepModel(idx, 3.4);
+    this._player.rotation.y = Math.PI - (this.cars[idx].rotY || 0);
+    this._player.position.set(0,0,0);
+    s.scene.add(this._player);
+    this._lane = 1; this._playerX = 0;
+    this._speed = this.props.gameSpeed!=null ? this.props.gameSpeed : 18;
+    this._dist = 0; this._bonus = 0; this._time = 0; this._spawnT = 0.6;
+    this._playing = true;
+    this.setState({ gameState:'playing', selectedCar:idx, score:0 });
+  }
+
+  toMenu(){
+    this._playing = false;
+    const s = this._gameScene;
+    if(s){
+      if(this._player){ s.scene.remove(this._player); this._player = null; }
+      this._obstacles.forEach(o=>s.scene.remove(o.mesh)); this._obstacles = [];
+    }
+    this.setState({ gameState:'menu' });
+  }
+
+  move(d){
+    if(!this._playing) return;
+    this._lane = Math.max(0, Math.min(2, this._lane + d));
+  }
+
+  spawnObstacle(forceLane){
+    const li = (forceLane!=null) ? forceLane : Math.floor(Math.random()*3);
+    const lane = this._lanes[li];
+    let mesh, w = 1.2;
+    const r = Math.random();
+    if(r < 0.3 && this.coneModel){
+      mesh = this.normalizeModel(this.coneModel, 0.95, 0);
+      mesh.position.set(lane, 0, -132); w = 0.7;
+    } else if(this.traffic && this.traffic.length){
+      const src = this.traffic[Math.floor(Math.random()*this.traffic.length)];
+      mesh = this.normalizeModel(src, 3.5, Math.PI);
+      mesh.position.set(lane, 0, -132); w = 1.25;
+    } else {
+      mesh = this.makeCar({edge:0x5b6675, body:0x161b23, emissive:0x0a0e16});
+      mesh.scale.set(0.72,0.72,0.72);
+      mesh.position.set(lane, 0, -132); w = 1.2;
+    }
+    mesh.userData.w = w;
+    this._gameScene.scene.add(mesh);
+    this._obstacles.push({mesh, hit:false, scored:false});
+    return li;
+  }
+
+  gameUpdate(dt, now){
+    const move = (this._playing ? this._speed : 8) * dt;
+    for(const st of this._stripes){ st.position.z += move; if(st.position.z > 10) st.position.z -= 220; }
+    if(!this._playing) return;
+
+    this._time += dt;
+    this._speed += dt * (0.85 + this._time*0.03);
+    this._dist += move;
+
+    const targetX = this._lanes[this._lane];
+    this._playerX += (targetX - this._playerX) * Math.min(1, dt*10);
+    if(this._player){
+      this._player.position.x = this._playerX;
+      this._player.position.y = Math.sin(now*0.02)*0.02;
+      this._player.rotation.z = (targetX - this._playerX) * 0.16;
+    }
+
+    this._spawnT -= dt;
+    const interval = Math.max(0.24, 1.05 - this._time*0.03);
+    if(this._spawnT <= 0){
+      this._spawnT = interval;
+      const l1 = this.spawnObstacle();
+      if(this._time>14 && Math.random() < Math.min(0.6,(this._time-14)*0.025)){
+        let l2 = Math.floor(Math.random()*3); if(l2===l1) l2=(l1+1)%3;
+        this.spawnObstacle(l2);
+      }
+    }
+
+    for(let i=this._obstacles.length-1; i>=0; i--){
+      const o = this._obstacles[i];
+      o.mesh.position.z += move;
+      if(!o.hit && Math.abs(o.mesh.position.z) < 1.5 && Math.abs(o.mesh.position.x - this._playerX) < (o.mesh.userData.w||1.2)){
+        o.hit = true; this.gameOver(); return;
+      }
+      if(!o.scored && o.mesh.position.z > 2){ o.scored = true; this._bonus += 50; }
+      if(o.mesh.position.z > 11){ this._gameScene.scene.remove(o.mesh); this._obstacles.splice(i,1); }
+    }
+
+    const total = Math.floor(this._dist) + this._bonus;
+    if(this.timeRef.current) this.timeRef.current.textContent = this._time.toFixed(1);
+    if(this.scoreLiveRef.current) this.scoreLiveRef.current.textContent = total;
+    if(this.speedRef.current) this.speedRef.current.textContent = Math.round(this._speed*5);
+  }
+
+  gameOver(){
+    this._playing = false;
+    const total = Math.floor(this._dist) + this._bonus;
+    const prevBest = this.state.best;
+    const isRecord = total > prevBest;
+    let best = isRecord ? total : prevBest;
+    if(isRecord){ try { localStorage.setItem('apex_best', String(best)); } catch(e){} }
+    this._board = (this._board||[]).concat([{ name:this.state.username||'Pilote', score:total, car:this.state.selectedCar, t:Date.now() }]);
+    const map={};
+    for(const e of this._board){ if(!map[e.name] || e.score>map[e.name].score) map[e.name]=e; }
+    this._board = Object.keys(map).map(k=>map[k]).sort((a,b)=>b.score-a.score).slice(0,50);
+    try { localStorage.setItem('apex_board_v2', JSON.stringify(this._board)); } catch(e){}
+    this.setState({ gameState:'over', score:total, best, isRecord });
+  }
+}
+</script>
+</body>
+</html>
