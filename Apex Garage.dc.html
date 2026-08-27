@@ -22,7 +22,7 @@
  button{font-family:inherit;transition:transform .12s cubic-bezier(.2,.7,.2,1),box-shadow .2s,background .2s,border-color .2s}
  button:active{transform:translateY(1px) scale(.97)!important}
  a{-webkit-tap-highlight-color:transparent}
- ::selection{background:#1fc8d8;color:#fff}
+ ::selection{background:#7aa2ff;color:#fff}
  canvas{display:block}
  @keyframes floaty{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,8px)}}
  @keyframes spin{to{transform:rotate(360deg)}}
@@ -30,12 +30,13 @@
  @keyframes glowline{0%,100%{opacity:.55}50%{opacity:1}}
  @keyframes hintpulse{0%,100%{opacity:.35;transform:translateX(-50%) scale(1)}50%{opacity:.9;transform:translateX(-50%) scale(1.06)}}
  @keyframes heroUp{from{opacity:0;transform:translateY(34px);filter:blur(7px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
+ @keyframes premPulse{0%,100%{box-shadow:0 0 26px -12px #7aa2ff}50%{box-shadow:0 0 40px -6px #7aa2ff}}
+ @keyframes sheen{0%{background-position:-160% 0}60%,100%{background-position:220% 0}}
+ @keyframes glowDot{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.35)}}
+ [data-reveal]{will-change:opacity,transform}
  @media (max-width:860px){ nav{padding:12px 16px!important} nav > div:last-child{gap:3px!important} nav > div:last-child a{padding:7px 10px!important;font-size:11px!important;letter-spacing:.06em!important} }
  @media (max-width:680px){
-  #heroText{left:6vw!important;right:6vw!important;max-width:none!important;text-align:left!important;bottom:12%!important}
-  #heroText > div:first-child{justify-content:flex-start!important}
-  #heroText p{margin-left:0!important}
-  #heroText > div:last-child{justify-content:flex-start!important}
+  #heroText{left:5vw!important;right:5vw!important;max-width:none!important;bottom:11%!important}
   #porsche,#lamborghini,#bugatti,#jeu{padding-left:5vw!important;padding-right:5vw!important;padding-top:80px!important;padding-bottom:80px!important}
   #gameBox{height:min(72vh,540px)!important}
   #hud{transform:scale(.82);transform-origin:top left}
@@ -51,21 +52,27 @@
 
   <nav style="position:fixed;top:0;left:0;right:0;z-index:60;display:flex;align-items:center;justify-content:space-between;padding:15px 34px;backdrop-filter:blur(16px);background:linear-gradient(#08090be0,#08090b00);border-bottom:1px solid rgba(255,255,255,.06)">
     <div style="display:flex;align-items:center;gap:12px">
-      <div style="width:26px;height:26px;transform:rotate(45deg);border:2px solid #fff;border-radius:5px;position:relative"><div style="position:absolute;inset:5px;background:#1fc8d8;border-radius:2px"></div></div>
-      <div style="font-family:'Saira Condensed';font-weight:900;font-size:22px;letter-spacing:.16em">DEYLO<span style="color:#1fc8d8">·</span>GARAGE</div>
+      <div style="width:36px;height:36px;border-radius:11px;background:linear-gradient(150deg,#8fb0ff,#3a5fd0);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px -8px #7aa2ff;position:relative;overflow:hidden">
+        <span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 40%,rgba(255,255,255,.45) 50%,transparent 60%);background-size:220% 100%;animation:sheen 5s ease-in-out infinite"></span>
+        <span style="font-family:'Saira Condensed';font-weight:900;font-size:22px;color:#080a10;letter-spacing:-.03em">D</span>
+      </div>
+      <div style="line-height:1.05">
+        <div style="font-family:'Saira Condensed';font-weight:900;font-size:19px;letter-spacing:.16em">DEYLO GARAGE</div>
+        <div style="font-size:8px;letter-spacing:.4em;color:#7aa2ff;text-transform:uppercase;margin-top:2px">Supercars · 3D</div>
+      </div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;font-size:12.5px;letter-spacing:.16em;text-transform:uppercase">
       <a href="#porsche" style="padding:8px 14px;border-radius:8px" style-hover="background:rgba(255,255,255,.06)">Porsche</a>
       <a href="#lamborghini" style="padding:8px 14px;border-radius:8px" style-hover="background:rgba(255,255,255,.06)">Lamborghini</a>
       <a href="#bugatti" style="padding:8px 14px;border-radius:8px" style-hover="background:rgba(255,255,255,.06)">Bugatti</a>
-      <a href="#jeu" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px;padding:10px 20px;border:1px solid #1fc8d8;border-radius:999px;color:#fff;background:rgba(31,200,216,.12);box-shadow:0 0 24px -8px rgba(31,200,216,.7)" style-hover="background:rgba(31,200,216,.24)">▶ Jouer</a>
+      <a href="#jeu" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px;padding:10px 20px;border:1px solid #7aa2ff;border-radius:999px;color:#fff;background:rgba(122,162,255,.12);box-shadow:0 0 24px -8px rgba(122,162,255,.7);animation:premPulse 3s ease-in-out infinite;position:relative;overflow:hidden" style-hover="background:rgba(122,162,255,.28)"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 42%,rgba(255,255,255,.4) 50%,transparent 58%);background-size:240% 100%;animation:sheen 5s ease-in-out infinite;pointer-events:none"></span>▶ Jouer</a>
     </div>
   </nav>
-  <div id="scrollBar" style="position:fixed;top:0;left:0;height:3px;width:0;z-index:61;background:linear-gradient(90deg,#0aa7c2,#1fc8d8);box-shadow:0 0 14px #1fc8d8;pointer-events:none"></div>
+  <div id="scrollBar" style="position:fixed;top:0;left:0;height:3px;width:0;z-index:61;background:linear-gradient(90deg,#3a5fd0,#7aa2ff);box-shadow:0 0 14px #7aa2ff;pointer-events:none"></div>
 
   <section style="position:relative;height:100vh;min-height:660px;overflow:hidden">
     <div ref="{{ heroRef }}" style="position:absolute;inset:0;cursor:pointer"></div>
-    <div style="position:absolute;left:20%;bottom:20%;transform:translateX(-50%);font-family:monospace;font-size:10.5px;letter-spacing:.24em;color:#5fd8e6;text-transform:uppercase;animation:hintpulse 2.6s ease-in-out infinite;pointer-events:none">↻ cliquez la voiture</div>
+    <div style="position:absolute;left:80%;bottom:24%;transform:translateX(-50%);font-family:monospace;font-size:10.5px;letter-spacing:.24em;color:#9db8ff;text-transform:uppercase;animation:hintpulse 2.6s ease-in-out infinite;pointer-events:none">↻ cliquez la voiture</div>
     <div style="position:absolute;inset:0;background:radial-gradient(80% 62% at 50% 44%, transparent 28%, #08090b 88%);pointer-events:none"></div>
 
     <div style="position:absolute;top:96px;right:34px;text-align:right;font-family:monospace;font-size:11px;letter-spacing:.14em;color:#4a5058;pointer-events:none;line-height:1.9">
@@ -73,15 +80,15 @@
       <div>48.8566° N / 2.3522° E</div>
     </div>
 
-    <div id="heroText" style="position:absolute;right:6vw;left:auto;bottom:13%;max-width:660px;text-align:right;padding:0;pointer-events:none;will-change:transform,opacity">
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;justify-content:flex-end;animation:heroUp .7s cubic-bezier(.2,.7,.2,1) both">
-        <span style="width:42px;height:1px;background:#1fc8d8"></span>
+    <div id="heroText" style="position:absolute;left:6vw;right:auto;bottom:15%;max-width:600px;text-align:left;padding:0;pointer-events:none;will-change:transform,opacity">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;justify-content:flex-start;animation:heroUp .7s cubic-bezier(.2,.7,.2,1) both">
+        <span style="width:42px;height:1px;background:#7aa2ff"></span>
         <span style="font-size:13px;letter-spacing:.42em;text-transform:uppercase;color:#9aa1ab">Showroom 3D · Supercars d'exception</span>
       </div>
-      <h1 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(42px,7.6vw,120px);line-height:.9;margin:0;text-transform:uppercase;letter-spacing:-.015em;transition:filter .3s,letter-spacing .3s;animation:heroUp .85s .12s cubic-bezier(.2,.7,.2,1) both" style-hover="filter:brightness(1.12);letter-spacing:.005em">L'art de la<br><span style="background:linear-gradient(100deg,#ffffff 8%,#8ff0f7 38%,#ffffff 58%,#1fc8d8 100%);background-size:220% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 7s linear infinite">performance</span></h1>
-      <p style="max-width:520px;margin:26px 0 0 auto;font-size:clamp(15px,1.4vw,19px);color:#b6bcc4;line-height:1.55;font-weight:300;animation:heroUp .9s .26s cubic-bezier(.2,.7,.2,1) both">Trois machines d'exception, modélisées en 3D haute-fidélité. Explorez chaque bolide sous tous les angles, puis prenez le volant dans notre course de réflexes.</p>
-      <div style="display:flex;gap:14px;margin-top:34px;pointer-events:auto;flex-wrap:wrap;justify-content:flex-end;animation:heroUp .95s .4s cubic-bezier(.2,.7,.2,1) both">
-        <a href="#porsche" style="display:inline-flex;align-items:center;gap:10px;padding:16px 32px;border-radius:12px;background:#fff;color:#0a0b0d;font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 14px 40px -14px rgba(255,255,255,.5)" style-hover="transform:translateY(-3px);box-shadow:0 22px 50px -14px rgba(255,255,255,.6)">Découvrir la collection →</a>
+      <h1 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(42px,7.6vw,120px);line-height:.9;margin:0;text-transform:uppercase;letter-spacing:-.015em;transition:filter .3s,letter-spacing .3s;animation:heroUp .85s .12s cubic-bezier(.2,.7,.2,1) both" style-hover="filter:brightness(1.12);letter-spacing:.005em">L'art de la<br><span style="background:linear-gradient(100deg,#ffffff 8%,#b9ccff 38%,#ffffff 58%,#7aa2ff 100%);background-size:220% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 7s linear infinite">performance</span></h1>
+      <p style="max-width:520px;font-size:clamp(15px,1.4vw,19px);color:#b6bcc4;line-height:1.55;font-weight:300;animation:heroUp .9s .26s cubic-bezier(.2,.7,.2,1) both;margin:26px 0 0 0">Trois machines d'exception, modélisées en 3D haute-fidélité. Explorez chaque bolide sous tous les angles, puis prenez le volant dans notre course de réflexes.</p>
+      <div style="display:flex;gap:14px;margin-top:34px;pointer-events:auto;flex-wrap:wrap;justify-content:flex-start;animation:heroUp .95s .4s cubic-bezier(.2,.7,.2,1) both">
+        <a href="#porsche" style="display:inline-flex;align-items:center;gap:10px;padding:16px 32px;border-radius:12px;background:#fff;color:#0a0b0d;font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 14px 40px -14px rgba(255,255,255,.5);position:relative;overflow:hidden" style-hover="transform:translateY(-3px);box-shadow:0 22px 50px -14px rgba(255,255,255,.6);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 42%,rgba(255,255,255,.55) 50%,transparent 58%);background-size:220% 100%;animation:sheen 4.5s ease-in-out infinite;pointer-events:none"></span>Découvrir la collection →</a>
         <a href="#jeu" style="display:inline-flex;align-items:center;gap:10px;padding:16px 30px;border-radius:12px;border:1px solid rgba(255,255,255,.25);color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase" style-hover="border-color:#fff;background:rgba(255,255,255,.12);transform:translateY(-3px)">▶ Lancer le jeu</a>
       </div>
     </div>
@@ -93,14 +100,19 @@
 
   <section id="porsche" style="position:relative;padding:120px 6vw;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:56px;align-items:center;border-top:1px solid rgba(255,255,255,.05)">
     <div style="position:absolute;top:40px;left:5vw;font-family:'Saira Condensed';font-weight:900;font-size:clamp(120px,20vw,300px);line-height:.8;color:rgba(255,255,255,.03);pointer-events:none;z-index:0" data-para="-1">01</div>
-    <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 30% 15%, rgba(213,0,28,.18), transparent 60%), linear-gradient(180deg,#0e1013,#08090b);border:1px solid rgba(255,255,255,.08);min-height:520px;box-shadow:0 40px 90px -50px rgba(213,0,28,.5)">
+    <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 30% 10%, rgba(213,0,28,.30), transparent 58%), linear-gradient(180deg, rgba(8,9,11,.48), rgba(8,9,11,.86)), url('uploads/garage.png') center 46%/cover;border:1px solid rgba(255,255,255,.08);min-height:520px;box-shadow:0 40px 90px -50px rgba(213,0,28,.5)">
       <div ref="{{ carRef0 }}" style="position:absolute;inset:0"></div>
       <div style="position:absolute;top:16px;left:18px;font-family:monospace;font-size:10.5px;letter-spacing:.16em;color:#6a7078">MODÈLE 3D · GLB</div>
-      <div style="position:absolute;top:14px;right:14px;display:flex;gap:8px;z-index:2">
-        <button onClick="{{ rot0 }}" title="Rotation automatique" style="width:38px;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:16px;backdrop-filter:blur(6px)" style-hover="border-color:#d5001c;color:#fff">⟲</button>
-        <button onClick="{{ rst0 }}" title="Réinitialiser la vue" style="width:38px;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:15px;backdrop-filter:blur(6px)" style-hover="border-color:#d5001c;color:#fff">↺</button>
+      <div style="position:absolute;top:50%;left:14px;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:2">
+        <button onClick="{{ rot0 }}" title="Rotation automatique" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#d5001c;color:#fff;background:#14171ccc">⟲</button>
+        <button onClick="{{ rst0 }}" title="Réinitialiser la vue" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:15px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#d5001c;color:#fff;background:#14171ccc">↺</button>
+        <button onClick="{{ zin0 }}" title="Zoom avant" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#d5001c;color:#fff;background:#14171ccc">＋</button>
+        <button onClick="{{ zout0 }}" title="Zoom arrière" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#d5001c;color:#fff;background:#14171ccc">－</button>
+        <button onClick="{{ vav0 }}" title="Vue de face" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:14px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#d5001c;color:#fff;background:#14171ccc">▤</button>
+        <button onClick="{{ vpr0 }}" title="Vue de profil" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:14px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#d5001c;color:#fff;background:#14171ccc">◧</button>
+        <button onClick="{{ vht0 }}" title="Vue de dessus" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:14px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#d5001c;color:#fff;background:#14171ccc">⬒</button>
       </div>
-      <div style="position:absolute;left:18px;bottom:16px;font-family:monospace;font-size:11px;color:#6a7078;letter-spacing:.12em">CLIQUEZ · GLISSEZ POUR PIVOTER · 360°</div>
+      <div style="position:absolute;left:18px;bottom:16px;font-family:monospace;font-size:11px;color:#6a7078;letter-spacing:.12em">GLISSEZ POUR PIVOTER · MOLETTE POUR ZOOMER</div>
     </div>
     <div data-reveal style="position:relative;z-index:1;opacity:0;transform:translateY(40px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
@@ -111,13 +123,13 @@
       <p style="color:#c1c7cf;font-size:18px;margin:16px 0 30px;line-height:1.5;font-weight:300">La précision allemande à l'état pur. Un Flat-6 atmosphérique qui grimpe à 9 000 tr/min, châssis 992 taillé pour le circuit.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
         <sc-for list="{{ specs0 }}" as="s" hint-placeholder-count="6">
-          <div style="background:#0f1216;border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(213,0,28,.55);border-radius:12px;padding:16px 18px;transition:.2s" style-hover="border-color:rgba(213,0,28,.5);transform:translateY(-3px)">
+          <div style="background:linear-gradient(180deg,rgba(19,22,28,.92),rgba(10,12,15,.92));border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(213,0,28,.55);border-radius:14px;padding:15px 18px;transition:transform .2s,border-color .2s,background .2s" style-hover="border-color:rgba(213,0,28,.5);transform:translateY(-3px)">
             <div style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#8a8f98;font-weight:600">{{ s.l }}</div>
             <div style="font-family:'Saira Condensed';font-weight:800;font-size:30px;line-height:1.05;margin-top:6px;color:#fff">{{ s.v }}<span style="font-size:14px;color:#8a8f98;margin-left:5px;font-family:'Saira';font-weight:400">{{ s.u }}</span></div>
           </div>
         </sc-for>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(213,0,28,.18),rgba(213,0,28,0));border:1px solid rgba(213,0,28,.32)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(213,0,28,.18),rgba(213,0,28,0));border:1px solid rgba(213,0,28,.32);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 44%,rgba(255,255,255,.14) 50%,transparent 56%);background-size:240% 100%;animation:sheen 6s ease-in-out infinite;pointer-events:none"></span>
         <span style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#c8ccd2;font-weight:600">Prix indicatif</span>
         <span style="font-family:'Saira Condensed';font-weight:800;font-size:30px;color:#fff">189 000 €</span>
       </div>
@@ -135,55 +147,65 @@
       <p style="color:#c1c7cf;font-size:18px;margin:16px 0 30px;line-height:1.5;font-weight:300">La fureur d'un V12 atmosphérique italien. Des lignes tranchantes, une agressivité brute, un hurlement de 8 500 tr/min.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
         <sc-for list="{{ specs1 }}" as="s" hint-placeholder-count="6">
-          <div style="background:#0f1216;border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(255,204,0,.55);border-radius:12px;padding:16px 18px;transition:.2s" style-hover="border-color:rgba(255,204,0,.5);transform:translateY(-3px)">
+          <div style="background:linear-gradient(180deg,rgba(19,22,28,.92),rgba(10,12,15,.92));border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(255,204,0,.55);border-radius:14px;padding:15px 18px;transition:transform .2s,border-color .2s,background .2s" style-hover="border-color:rgba(255,204,0,.5);transform:translateY(-3px)">
             <div style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#8a8f98;font-weight:600">{{ s.l }}</div>
             <div style="font-family:'Saira Condensed';font-weight:800;font-size:30px;line-height:1.05;margin-top:6px;color:#fff">{{ s.v }}<span style="font-size:14px;color:#8a8f98;margin-left:5px;font-family:'Saira';font-weight:400">{{ s.u }}</span></div>
           </div>
         </sc-for>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(255,204,0,.18),rgba(255,204,0,0));border:1px solid rgba(255,204,0,.32)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(255,204,0,.18),rgba(255,204,0,0));border:1px solid rgba(255,204,0,.32);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 44%,rgba(255,255,255,.14) 50%,transparent 56%);background-size:240% 100%;animation:sheen 6s ease-in-out infinite;pointer-events:none"></span>
         <span style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#c8ccd2;font-weight:600">Prix indicatif</span>
         <span style="font-family:'Saira Condensed';font-weight:800;font-size:30px;color:#fff">450 000 €</span>
       </div>
     </div>
-    <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 70% 15%, rgba(255,204,0,.16), transparent 60%), linear-gradient(180deg,#0e1013,#08090b);border:1px solid rgba(255,255,255,.08);min-height:520px;order:1;box-shadow:0 40px 90px -50px rgba(255,204,0,.4)">
+    <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 70% 10%, rgba(255,204,0,.26), transparent 58%), linear-gradient(180deg, rgba(8,9,11,.48), rgba(8,9,11,.86)), url('uploads/garage.png') center 46%/cover;border:1px solid rgba(255,255,255,.08);min-height:520px;order:1;box-shadow:0 40px 90px -50px rgba(255,204,0,.4)">
       <div ref="{{ carRef1 }}" style="position:absolute;inset:0"></div>
       <div style="position:absolute;top:16px;left:18px;font-family:monospace;font-size:10.5px;letter-spacing:.16em;color:#6a7078">MODÈLE 3D · GLB</div>
-      <div style="position:absolute;top:14px;right:14px;display:flex;gap:8px;z-index:2">
-        <button onClick="{{ rot1 }}" title="Rotation automatique" style="width:38px;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:16px;backdrop-filter:blur(6px)" style-hover="border-color:#ffcc00;color:#fff">⟲</button>
-        <button onClick="{{ rst1 }}" title="Réinitialiser la vue" style="width:38px;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:15px;backdrop-filter:blur(6px)" style-hover="border-color:#ffcc00;color:#fff">↺</button>
+      <div style="position:absolute;top:50%;left:14px;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:2">
+        <button onClick="{{ rot1 }}" title="Rotation automatique" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#ffcc00;color:#fff;background:#14171ccc">⟲</button>
+        <button onClick="{{ rst1 }}" title="Réinitialiser la vue" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:15px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#ffcc00;color:#fff;background:#14171ccc">↺</button>
+        <button onClick="{{ zin1 }}" title="Zoom avant" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#ffcc00;color:#fff;background:#14171ccc">＋</button>
+        <button onClick="{{ zout1 }}" title="Zoom arrière" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#ffcc00;color:#fff;background:#14171ccc">－</button>
+        <button onClick="{{ vav1 }}" title="Vue de face" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:14px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#ffcc00;color:#fff;background:#14171ccc">▤</button>
+        <button onClick="{{ vpr1 }}" title="Vue de profil" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:14px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#ffcc00;color:#fff;background:#14171ccc">◧</button>
+        <button onClick="{{ vht1 }}" title="Vue de dessus" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:14px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#ffcc00;color:#fff;background:#14171ccc">⬒</button>
       </div>
-      <div style="position:absolute;left:18px;bottom:16px;font-family:monospace;font-size:11px;color:#6a7078;letter-spacing:.12em">CLIQUEZ · GLISSEZ POUR PIVOTER · 360°</div>
+      <div style="position:absolute;left:18px;bottom:16px;font-family:monospace;font-size:11px;color:#6a7078;letter-spacing:.12em">GLISSEZ POUR PIVOTER · MOLETTE POUR ZOOMER</div>
     </div>
   </section>
 
   <section id="bugatti" style="position:relative;padding:120px 6vw;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:56px;align-items:center;border-top:1px solid rgba(255,255,255,.05)">
     <div style="position:absolute;top:40px;left:5vw;font-family:'Saira Condensed';font-weight:900;font-size:clamp(120px,20vw,300px);line-height:.8;color:rgba(255,255,255,.03);pointer-events:none;z-index:0" data-para="-1">03</div>
-    <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 30% 15%, rgba(31,200,216,.2), transparent 60%), linear-gradient(180deg,#0e1013,#08090b);border:1px solid rgba(255,255,255,.08);min-height:520px;box-shadow:0 40px 90px -50px rgba(31,200,216,.55)">
+    <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 30% 10%, rgba(122,162,255,.32), transparent 58%), linear-gradient(180deg, rgba(8,9,11,.48), rgba(8,9,11,.86)), url('uploads/garage.png') center 46%/cover;border:1px solid rgba(255,255,255,.08);min-height:520px;box-shadow:0 40px 90px -50px rgba(122,162,255,.55)">
       <div ref="{{ carRef2 }}" style="position:absolute;inset:0"></div>
       <div style="position:absolute;top:16px;left:18px;font-family:monospace;font-size:10.5px;letter-spacing:.16em;color:#6a7078">MODÈLE 3D · GLB</div>
-      <div style="position:absolute;top:14px;right:14px;display:flex;gap:8px;z-index:2">
-        <button onClick="{{ rot2 }}" title="Rotation automatique" style="width:38px;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:16px;backdrop-filter:blur(6px)" style-hover="border-color:#1fc8d8;color:#fff">⟲</button>
-        <button onClick="{{ rst2 }}" title="Réinitialiser la vue" style="width:38px;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:15px;backdrop-filter:blur(6px)" style-hover="border-color:#1fc8d8;color:#fff">↺</button>
+      <div style="position:absolute;top:50%;left:14px;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:2">
+        <button onClick="{{ rot2 }}" title="Rotation automatique" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#7aa2ff;color:#fff;background:#14171ccc">⟲</button>
+        <button onClick="{{ rst2 }}" title="Réinitialiser la vue" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:15px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#7aa2ff;color:#fff;background:#14171ccc">↺</button>
+        <button onClick="{{ zin2 }}" title="Zoom avant" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#7aa2ff;color:#fff;background:#14171ccc">＋</button>
+        <button onClick="{{ zout2 }}" title="Zoom arrière" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#7aa2ff;color:#fff;background:#14171ccc">－</button>
+        <button onClick="{{ vav2 }}" title="Vue de face" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:14px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#7aa2ff;color:#fff;background:#14171ccc">▤</button>
+        <button onClick="{{ vpr2 }}" title="Vue de profil" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:14px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#7aa2ff;color:#fff;background:#14171ccc">◧</button>
+        <button onClick="{{ vht2 }}" title="Vue de dessus" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:14px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#7aa2ff;color:#fff;background:#14171ccc">⬒</button>
       </div>
-      <div style="position:absolute;left:18px;bottom:16px;font-family:monospace;font-size:11px;color:#6a7078;letter-spacing:.12em">CLIQUEZ · GLISSEZ POUR PIVOTER · 360°</div>
+      <div style="position:absolute;left:18px;bottom:16px;font-family:monospace;font-size:11px;color:#6a7078;letter-spacing:.12em">GLISSEZ POUR PIVOTER · MOLETTE POUR ZOOMER</div>
     </div>
     <div data-reveal style="position:relative;z-index:1;opacity:0;transform:translateY(40px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
-        <span style="font-family:'Saira Condensed';font-weight:800;font-size:15px;color:#1fc8d8;letter-spacing:.14em">BUGATTI</span>
-        <span style="height:1px;flex:1;background:linear-gradient(90deg,#1fc8d8,transparent)"></span>
+        <span style="font-family:'Saira Condensed';font-weight:800;font-size:15px;color:#7aa2ff;letter-spacing:.14em">BUGATTI</span>
+        <span style="height:1px;flex:1;background:linear-gradient(90deg,#7aa2ff,transparent)"></span>
       </div>
-      <h2 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(42px,5.5vw,80px);margin:0;line-height:.92;text-transform:uppercase;transition:letter-spacing .3s,text-shadow .3s;cursor:default" style-hover="letter-spacing:.03em;text-shadow:0 0 40px rgba(31,200,216,.75)">Centodieci</h2>
+      <h2 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(42px,5.5vw,80px);margin:0;line-height:.92;text-transform:uppercase;transition:letter-spacing .3s,text-shadow .3s;cursor:default" style-hover="letter-spacing:.03em;text-shadow:0 0 40px rgba(122,162,255,.75)">Centodieci</h2>
       <p style="color:#c1c7cf;font-size:18px;margin:16px 0 30px;line-height:1.5;font-weight:300">Une réédition hommage à l'EB110, produite à seulement 10 exemplaires. Le W16 quadri-turbo dans toute sa démesure hyper-exclusive.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
         <sc-for list="{{ specs2 }}" as="s" hint-placeholder-count="6">
-          <div style="background:#0f1216;border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(31,200,216,.55);border-radius:12px;padding:16px 18px;transition:.2s" style-hover="border-color:rgba(31,200,216,.5);transform:translateY(-3px)">
+          <div style="background:linear-gradient(180deg,rgba(19,22,28,.92),rgba(10,12,15,.92));border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(122,162,255,.55);border-radius:14px;padding:15px 18px;transition:transform .2s,border-color .2s,background .2s" style-hover="border-color:rgba(122,162,255,.5);transform:translateY(-3px)">
             <div style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#8a8f98;font-weight:600">{{ s.l }}</div>
             <div style="font-family:'Saira Condensed';font-weight:800;font-size:30px;line-height:1.05;margin-top:6px;color:#fff">{{ s.v }}<span style="font-size:14px;color:#8a8f98;margin-left:5px;font-family:'Saira';font-weight:400">{{ s.u }}</span></div>
           </div>
         </sc-for>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(31,200,216,.2),rgba(31,200,216,0));border:1px solid rgba(31,200,216,.34)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(122,162,255,.2),rgba(122,162,255,0));border:1px solid rgba(122,162,255,.34);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 44%,rgba(255,255,255,.16) 50%,transparent 56%);background-size:240% 100%;animation:sheen 6s ease-in-out infinite;pointer-events:none"></span>
         <span style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#c8ccd2;font-weight:600">Prix indicatif</span>
         <span style="font-family:'Saira Condensed';font-weight:800;font-size:30px;color:#fff">8 000 000 €</span>
       </div>
@@ -193,125 +215,136 @@
   <section id="jeu" style="padding:120px 6vw 130px;background:linear-gradient(#08090b,#0b0d12);border-top:1px solid rgba(255,255,255,.05)">
     <div data-reveal style="opacity:0;transform:translateY(40px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1);max-width:760px">
       <div style="display:flex;align-items:center;gap:12px">
-        <span style="width:36px;height:1px;background:#1fc8d8"></span>
+        <span style="width:36px;height:1px;background:#7aa2ff"></span>
         <span style="font-size:12px;letter-spacing:.36em;text-transform:uppercase;color:#9aa1ab">Mini-jeu · Time attack</span>
       </div>
       <h2 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(38px,6vw,76px);margin:12px 0 0;text-transform:uppercase;line-height:.94">Course de réflexes</h2>
       <p style="color:#b6bcc4;font-size:17px;margin:16px 0 0;line-height:1.55;font-weight:300">Prenez le volant d'un des trois bolides, changez de voie et évitez les obstacles. La vitesse ne cesse d'augmenter — chaque évitement au ras rapporte un bonus.</p>
     </div>
 
-    <div style="position:relative;margin-top:34px;border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,.09);background:radial-gradient(135% 78% at 50% 60%, rgba(31,200,216,.24), transparent 52%), linear-gradient(#070812 0%, #100c26 58%, #060509 100%);height:min(76vh,640px);box-shadow:0 50px 120px -60px rgba(31,200,216,.45)" id="gameBox">
+    <div style="position:relative;margin-top:34px;border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,.09);background:radial-gradient(135% 78% at 50% 60%, rgba(122,162,255,.24), transparent 52%), linear-gradient(#070812 0%, #100c26 58%, #060509 100%);height:min(76vh,640px);box-shadow:0 50px 120px -60px rgba(122,162,255,.45)" id="gameBox">
       <div ref="{{ gameRef }}" style="position:absolute;inset:0"></div>
 
       <sc-if value="{{ isPlaying }}" hint-placeholder-val="{{ true }}">
-        <div id="hud" style="position:absolute;top:18px;left:18px;right:18px;display:flex;gap:12px;justify-content:space-between;pointer-events:none">
-          <div style="display:flex;gap:10px">
-            <div style="background:#0f1216cc;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:9px 16px;backdrop-filter:blur(8px)">
-              <div style="font-size:10px;letter-spacing:.2em;color:#8a8f98;font-weight:600">TEMPS</div>
-              <div style="font-family:'Saira Condensed';font-weight:800;font-size:24px;color:#fff"><span ref="{{ timeRef }}">0.0</span>s</div>
+        <div id="hud" style="position:absolute;top:16px;left:16px;right:16px;display:flex;gap:10px;justify-content:space-between;align-items:flex-start;pointer-events:none">
+          <div style="display:flex;align-items:stretch;background:rgba(11,13,19,.62);border:1px solid rgba(255,255,255,.12);border-radius:14px;backdrop-filter:blur(12px);overflow:hidden">
+            <div style="padding:8px 15px">
+              <div style="font-size:9px;letter-spacing:.22em;color:#8a8f98;font-weight:700">TEMPS</div>
+              <div style="font-family:'Saira Condensed';font-weight:800;font-size:22px;color:#fff"><span ref="{{ timeRef }}">0.0</span>s</div>
             </div>
-            <div style="background:#0f1216cc;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:9px 16px;backdrop-filter:blur(8px)">
-              <div style="font-size:10px;letter-spacing:.2em;color:#8a8f98;font-weight:600">SCORE</div>
-              <div style="font-family:'Saira Condensed';font-weight:800;font-size:24px;color:#1fc8d8"><span ref="{{ scoreLiveRef }}">0</span></div>
+            <div style="width:1px;background:rgba(255,255,255,.1)"></div>
+            <div style="padding:8px 15px">
+              <div style="font-size:9px;letter-spacing:.22em;color:#8a8f98;font-weight:700">SCORE</div>
+              <div style="font-family:'Saira Condensed';font-weight:800;font-size:22px;color:#7aa2ff"><span ref="{{ scoreLiveRef }}">0</span></div>
             </div>
-            <div style="background:#0f1216cc;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:9px 16px;backdrop-filter:blur(8px)">
-              <div style="font-size:10px;letter-spacing:.2em;color:#8a8f98;font-weight:600">VITESSE</div>
-              <div style="font-family:'Saira Condensed';font-weight:800;font-size:24px;color:#fff"><span ref="{{ speedRef }}">0</span><span style="font-size:12px;color:#8a8f98;margin-left:3px;font-family:'Saira';font-weight:400">km/h</span></div>
+            <div style="width:1px;background:rgba(255,255,255,.1)"></div>
+            <div style="padding:8px 15px">
+              <div style="font-size:9px;letter-spacing:.22em;color:#8a8f98;font-weight:700">VITESSE</div>
+              <div style="font-family:'Saira Condensed';font-weight:800;font-size:22px;color:#fff"><span ref="{{ speedRef }}">0</span><span style="font-size:11px;color:#8a8f98;margin-left:2px;font-family:'Saira';font-weight:400">km/h</span></div>
             </div>
           </div>
-          <div style="background:#0f1216cc;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:9px 16px;backdrop-filter:blur(8px);text-align:right">
-            <div style="font-size:10px;letter-spacing:.2em;color:#8a8f98;font-weight:600">MEILLEUR</div>
-            <div style="font-family:'Saira Condensed';font-weight:800;font-size:24px;color:#ffcc00">{{ best }}</div>
+          <div style="display:flex;gap:8px;align-items:stretch;pointer-events:auto">
+            <button onClick="{{ cycleCam }}" title="Changer de caméra" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(11,13,19,.62);color:#fff;cursor:pointer;backdrop-filter:blur(12px)" style-hover="border-color:#7aa2ff">
+              <span style="font-size:16px">🎥</span><span style="font-size:9px;letter-spacing:.12em;color:#b9ccff;font-weight:700">{{ camLabel }}</span>
+            </button>
+            <div style="padding:8px 15px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(11,13,19,.62);backdrop-filter:blur(12px);text-align:right">
+              <div style="font-size:9px;letter-spacing:.22em;color:#8a8f98;font-weight:700">MEILLEUR</div>
+              <div style="font-family:'Saira Condensed';font-weight:800;font-size:20px;color:#ffcc00">{{ best }}</div>
+            </div>
           </div>
         </div>
-        <div style="position:absolute;bottom:18px;left:18px;right:18px;display:flex;justify-content:space-between;align-items:center;gap:12px">
-          <button onClick="{{ moveLeft }}" style="width:66px;height:66px;border-radius:16px;border:1px solid rgba(255,255,255,.16);background:#0f1216cc;color:#fff;font-size:26px;cursor:pointer;backdrop-filter:blur(8px)" style-hover="border-color:#1fc8d8;background:rgba(31,200,216,.22);box-shadow:0 0 26px -8px #1fc8d8">◀</button>
-          <div style="font-family:monospace;font-size:12px;color:#8a8f98;letter-spacing:.1em">← →  ·  A / D</div>
-          <button onClick="{{ moveRight }}" style="width:66px;height:66px;border-radius:16px;border:1px solid rgba(255,255,255,.16);background:#0f1216cc;color:#fff;font-size:26px;cursor:pointer;backdrop-filter:blur(8px)" style-hover="border-color:#1fc8d8;background:rgba(31,200,216,.22);box-shadow:0 0 26px -8px #1fc8d8">▶</button>
+        <div style="position:absolute;bottom:18px;left:16px;right:16px;display:flex;justify-content:flex-end;align-items:flex-end;pointer-events:none">
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:9px">
+            <div style="width:100%;height:8px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden;border:1px solid rgba(255,255,255,.12)">
+              <div ref="{{ boostRef }}" style="height:100%;width:100%;background:linear-gradient(90deg,#3a5fd0,#b9ccff);transition:width .05s linear"></div>
+            </div>
+            <div style="display:flex;gap:10px;pointer-events:auto">
+              <button onPointerDown="{{ moveLeft }}" style="width:64px;height:64px;border-radius:16px;border:1px solid rgba(255,255,255,.16);background:rgba(11,13,19,.62);color:#fff;font-size:25px;cursor:pointer;backdrop-filter:blur(12px);touch-action:none;transition:transform .1s,background .2s,border-color .2s" style-hover="border-color:#7aa2ff;background:rgba(122,162,255,.22)" style-active="transform:scale(.9)">◀</button>
+              <button onPointerDown="{{ moveRight }}" style="width:64px;height:64px;border-radius:16px;border:1px solid rgba(255,255,255,.16);background:rgba(11,13,19,.62);color:#fff;font-size:25px;cursor:pointer;backdrop-filter:blur(12px);touch-action:none;transition:transform .1s,background .2s,border-color .2s" style-hover="border-color:#7aa2ff;background:rgba(122,162,255,.22)" style-active="transform:scale(.9)">▶</button>
+              <button onPointerDown="{{ boostDown }}" onPointerUp="{{ boostUp }}" onPointerLeave="{{ boostUp }}" style="height:64px;padding:0 28px;border-radius:16px;border:1px solid rgba(122,162,255,.55);background:linear-gradient(180deg,rgba(122,162,255,.34),rgba(122,162,255,.1));color:#fff;font-family:'Saira Condensed';font-weight:900;font-size:18px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;backdrop-filter:blur(12px);touch-action:none;animation:premPulse 2.6s ease-in-out infinite;transition:transform .1s,background .2s;position:relative;overflow:hidden" style-active="background:rgba(122,162,255,.55);transform:scale(.95)"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 42%,rgba(255,255,255,.4) 50%,transparent 58%);background-size:240% 100%;animation:sheen 3.5s ease-in-out infinite;pointer-events:none"></span>⚡ Boost</button>
+            </div>
+            <div style="font-family:monospace;font-size:10px;color:#8a8f98;letter-spacing:.06em">ESPACE / MAJ · ← → A/D · C caméra</div>
+          </div>
         </div>
       </sc-if>
 
       <sc-if value="{{ isMenu }}" hint-placeholder-val="{{ true }}">
         <div style="position:absolute;inset:0;overflow:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:radial-gradient(circle at 50% 34%, #0b0e14e6, #06070af5);text-align:center;padding:34px 24px">
           <sc-if value="{{ isNaming }}" hint-placeholder-val="{{ true }}">
-            <div style="width:min(420px,92%);background:linear-gradient(180deg,#141326,#0b0b14);border:1px solid rgba(31,200,216,.35);border-radius:20px;padding:30px 28px;box-shadow:0 30px 80px -40px rgba(31,200,216,.7)">
-              <div style="font-size:12px;letter-spacing:.34em;color:#5fd8e6;text-transform:uppercase">Classement</div>
+            <div style="width:min(420px,92%);background:linear-gradient(180deg,#141326,#0b0b14);border:1px solid rgba(122,162,255,.35);border-radius:20px;padding:30px 28px;box-shadow:0 30px 80px -40px rgba(122,162,255,.7)">
+              <div style="font-size:12px;letter-spacing:.34em;color:#9db8ff;text-transform:uppercase">Classement</div>
               <div style="font-family:'Saira Condensed';font-weight:900;font-size:30px;margin:6px 0 4px;text-transform:uppercase">Votre pseudo</div>
               <div style="font-size:13px;color:#9aa1ab;font-weight:300;margin-bottom:18px">Choisissez un nom pour apparaître au classement.</div>
               <input ref="{{ nameInputRef }}" onKeyDown="{{ nameKey }}" maxLength="16" placeholder="Ex. SpeedX" style="width:100%;box-sizing:border-box;background:#07080d;border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:14px 16px;color:#fff;font-family:'Saira Condensed';font-weight:700;font-size:20px;letter-spacing:.04em;text-align:center;outline:none" />
-              <button onClick="{{ submitName }}" style="cursor:pointer;margin-top:16px;width:100%;padding:14px;border:0;border-radius:12px;background:#1fc8d8;color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:17px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 12px 34px -12px rgba(31,200,216,.9)" style-hover="transform:translateY(-2px)">Valider →</button>
+              <button onClick="{{ submitName }}" style="cursor:pointer;margin-top:16px;width:100%;padding:14px;border:0;border-radius:12px;background:#7aa2ff;color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:17px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 12px 34px -12px rgba(122,162,255,.9)" style-hover="transform:translateY(-2px)">Valider →</button>
             </div>
           </sc-if>
           <sc-if value="{{ isChoosing }}" hint-placeholder-val="{{ true }}">
-          <div style="display:flex;align-items:center;gap:12px;background:#0f1016cc;border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:8px 8px 8px 18px">
-            <span style="font-size:11px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Pilote</span>
-            <span style="font-family:'Saira Condensed';font-weight:800;font-size:18px;color:#fff">{{ username }}</span>
-            <button onClick="{{ editName }}" style="cursor:pointer;padding:7px 14px;border-radius:999px;border:1px solid rgba(31,200,216,.5);background:rgba(31,200,216,.14);color:#9ff0f7;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700" style-hover="background:rgba(31,200,216,.28)">Changer</button>
-          </div>
-          <div>
-            <div style="font-size:12px;letter-spacing:.34em;color:#9aa1ab;text-transform:uppercase">Choisissez votre bolide</div>
-            <div style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(28px,4.2vw,48px);margin-top:6px;text-transform:uppercase">Prêt au départ</div>
-          </div>
-          <div style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center">
-            <button onClick="{{ start0 }}" style="cursor:pointer;text-align:left;width:230px;background:linear-gradient(180deg,#13161c,#0b0d11);border:1px solid rgba(213,0,28,.4);border-radius:18px;overflow:hidden;color:#fff;transition:.2s;padding:0" style-hover="transform:translateY(-5px);border-color:#d5001c">
-              <div style="height:4px;background:#d5001c"></div>
-              <div style="padding:18px 20px">
-                <div style="font-size:11px;letter-spacing:.2em;color:#d5001c;text-transform:uppercase;font-weight:700">Porsche</div>
-                <div style="font-family:'Saira Condensed';font-weight:900;font-size:23px;margin:4px 0 12px">911 GT3</div>
-                <div style="display:flex;gap:18px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
-                  <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">0-100</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:18px">3,4s</div></div>
-                  <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">PUISS.</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:18px">510 ch</div></div>
+          <div style="width:min(1010px,96%);display:flex;flex-direction:column;gap:26px;text-align:left;animation:heroUp .6s cubic-bezier(.2,.7,.2,1) both">
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+              <div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="width:8px;height:8px;border-radius:2px;background:#7aa2ff;animation:glowDot 1.8s ease-in-out infinite"></span>
+                  <span style="font-size:12px;letter-spacing:.36em;color:#9db8ff;text-transform:uppercase;font-weight:600">Mode jeu · Time attack</span>
                 </div>
+                <div style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(32px,4.8vw,58px);text-transform:uppercase;line-height:.9;margin-top:8px">Choisissez<br>votre bolide</div>
               </div>
-            </button>
-            <button onClick="{{ start1 }}" style="cursor:pointer;text-align:left;width:230px;background:linear-gradient(180deg,#13161c,#0b0d11);border:1px solid rgba(255,204,0,.4);border-radius:18px;overflow:hidden;color:#fff;transition:.2s;padding:0" style-hover="transform:translateY(-5px);border-color:#ffcc00">
-              <div style="height:4px;background:#ffcc00"></div>
-              <div style="padding:18px 20px">
-                <div style="font-size:11px;letter-spacing:.2em;color:#ffcc00;text-transform:uppercase;font-weight:700">Lamborghini</div>
-                <div style="font-family:'Saira Condensed';font-weight:900;font-size:23px;margin:4px 0 12px">Aventador SVJ</div>
-                <div style="display:flex;gap:18px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
-                  <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">0-100</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:18px">2,8s</div></div>
-                  <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">PUISS.</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:18px">770 ch</div></div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px">
+                <div style="display:flex;align-items:center;gap:12px;background:rgba(15,16,22,.7);border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:7px 7px 7px 16px;backdrop-filter:blur(10px)">
+                  <span style="font-size:10px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Pilote</span>
+                  <span style="font-family:'Saira Condensed';font-weight:800;font-size:17px;color:#fff">{{ username }}</span>
+                  <button onClick="{{ editName }}" style="cursor:pointer;padding:6px 13px;border-radius:999px;border:1px solid rgba(122,162,255,.5);background:rgba(122,162,255,.14);color:#b9ccff;font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:700" style-hover="background:rgba(122,162,255,.3)">Changer</button>
                 </div>
+                <div style="font-size:11px;letter-spacing:.16em;color:#8a8f98;text-transform:uppercase">Meilleur : <span style="color:#ffcc00;font-family:'Saira Condensed';font-weight:800;font-size:16px">{{ best }}</span></div>
               </div>
-            </button>
-            <button onClick="{{ start2 }}" style="cursor:pointer;text-align:left;width:230px;background:linear-gradient(180deg,#13161c,#0b0d11);border:1px solid rgba(31,200,216,.4);border-radius:18px;overflow:hidden;color:#fff;transition:.2s;padding:0" style-hover="transform:translateY(-5px);border-color:#1fc8d8">
-              <div style="height:4px;background:#1fc8d8"></div>
-              <div style="padding:18px 20px">
-                <div style="font-size:11px;letter-spacing:.2em;color:#1fc8d8;text-transform:uppercase;font-weight:700">Bugatti</div>
-                <div style="font-family:'Saira Condensed';font-weight:900;font-size:23px;margin:4px 0 12px">Centodieci</div>
-                <div style="display:flex;gap:18px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
-                  <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">0-100</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:18px">2,4s</div></div>
-                  <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">PUISS.</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:18px">1600 ch</div></div>
-                </div>
-              </div>
-            </button>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#8a8f98;flex-wrap:wrap;justify-content:center">
-            <span style="display:inline-flex;min-width:28px;height:28px;padding:0 6px;align-items:center;justify-content:center;border-radius:7px;border:1px solid rgba(255,255,255,.18);border-bottom-width:3px;background:#12151a;font-family:'Saira Condensed';font-weight:700">◀</span>
-            <span style="display:inline-flex;min-width:28px;height:28px;padding:0 6px;align-items:center;justify-content:center;border-radius:7px;border:1px solid rgba(255,255,255,.18);border-bottom-width:3px;background:#12151a;font-family:'Saira Condensed';font-weight:700">▶</span>
-            <span>ou</span>
-            <span style="display:inline-flex;min-width:28px;height:28px;padding:0 8px;align-items:center;justify-content:center;border-radius:7px;border:1px solid rgba(255,255,255,.18);border-bottom-width:3px;background:#12151a;font-family:'Saira Condensed';font-weight:700">A</span>
-            <span style="display:inline-flex;min-width:28px;height:28px;padding:0 8px;align-items:center;justify-content:center;border-radius:7px;border:1px solid rgba(255,255,255,.18);border-bottom-width:3px;background:#12151a;font-family:'Saira Condensed';font-weight:700">D</span>
-            <span>pour changer de voie</span>
-          </div>
-          <div style="width:min(460px,94%);background:#0c0d14cc;border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:18px 20px;text-align:left">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-              <div style="font-family:'Saira Condensed';font-weight:900;font-size:20px;letter-spacing:.04em;text-transform:uppercase">🏆 Classement</div>
-              <button onClick="{{ openBoard }}" style="cursor:pointer;font-size:11px;letter-spacing:.14em;color:#8ff0f7;text-transform:uppercase;background:transparent;border:0;font-weight:700;font-family:inherit" style-hover="color:#fff">Voir tout (25) →</button>
             </div>
-            <sc-for list="{{ board }}" as="e" hint-placeholder-count="3">
-              <div style="display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:10px;background:{{ e.bg }};margin-bottom:6px">
-                <span style="font-family:'Saira Condensed';font-weight:900;font-size:16px;width:26px;color:{{ e.rankColor }}">{{ e.rankLabel }}</span>
-                <span style="width:9px;height:9px;border-radius:2px;background:{{ e.carColor }}"></span>
-                <span style="flex:1;font-family:'Saira Condensed';font-weight:700;font-size:16px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.name }}</span>
-                <span style="font-size:11px;color:#8a8f98;font-weight:600;white-space:nowrap">{{ e.carName }}</span>
-                <span style="font-family:'Saira Condensed';font-weight:800;font-size:17px;color:#9ff0f7">{{ e.score }}</span>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
+              <button onClick="{{ start0 }}" style="cursor:pointer;text-align:left;position:relative;background:linear-gradient(180deg,#14171e,#0a0c10);border:1px solid rgba(213,0,28,.35);border-radius:20px;overflow:hidden;color:#fff;padding:0;transition:transform .2s,box-shadow .2s,border-color .2s" style-hover="transform:translateY(-6px);border-color:#d5001c;box-shadow:0 26px 60px -30px rgba(213,0,28,.9)">
+                <div style="height:5px;background:linear-gradient(90deg,#d5001c,transparent)"></div>
+                <div style="padding:20px 22px 22px">
+                  <div style="font-size:11px;letter-spacing:.24em;color:#d5001c;text-transform:uppercase;font-weight:700">Porsche</div>
+                  <div style="font-family:'Saira Condensed';font-weight:900;font-size:27px;margin:4px 0 16px">911 GT3</div>
+                  <div style="display:flex;gap:22px;border-top:1px solid rgba(255,255,255,.08);padding-top:14px">
+                    <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">0-100</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:19px">3,4s</div></div>
+                    <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">V-MAX</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:19px">318</div></div>
+                    <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">CH</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:19px">510</div></div>
+                  </div>
+                  <div style="margin-top:16px;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:12px;background:rgba(213,0,28,.14);border:1px solid rgba(213,0,28,.42);font-family:'Saira Condensed';font-weight:800;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:#fff">▶ Démarrer</div>
+                </div>
+              </button>
+              <button onClick="{{ start1 }}" style="cursor:pointer;text-align:left;position:relative;background:linear-gradient(180deg,#14171e,#0a0c10);border:1px solid rgba(255,204,0,.35);border-radius:20px;overflow:hidden;color:#fff;padding:0;transition:transform .2s,box-shadow .2s,border-color .2s" style-hover="transform:translateY(-6px);border-color:#ffcc00;box-shadow:0 26px 60px -30px rgba(255,204,0,.9)">
+                <div style="height:5px;background:linear-gradient(90deg,#ffcc00,transparent)"></div>
+                <div style="padding:20px 22px 22px">
+                  <div style="font-size:11px;letter-spacing:.24em;color:#ffcc00;text-transform:uppercase;font-weight:700">Lamborghini</div>
+                  <div style="font-family:'Saira Condensed';font-weight:900;font-size:27px;margin:4px 0 16px">Aventador SVJ</div>
+                  <div style="display:flex;gap:22px;border-top:1px solid rgba(255,255,255,.08);padding-top:14px">
+                    <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">0-100</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:19px">2,8s</div></div>
+                    <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">V-MAX</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:19px">350</div></div>
+                    <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">CH</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:19px">770</div></div>
+                  </div>
+                  <div style="margin-top:16px;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:12px;background:rgba(255,204,0,.14);border:1px solid rgba(255,204,0,.42);font-family:'Saira Condensed';font-weight:800;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:#fff">▶ Démarrer</div>
+                </div>
+              </button>
+              <button onClick="{{ start2 }}" style="cursor:pointer;text-align:left;position:relative;background:linear-gradient(180deg,#14171e,#0a0c10);border:1px solid rgba(122,162,255,.35);border-radius:20px;overflow:hidden;color:#fff;padding:0;transition:transform .2s,box-shadow .2s,border-color .2s" style-hover="transform:translateY(-6px);border-color:#7aa2ff;box-shadow:0 26px 60px -30px rgba(122,162,255,.9)">
+                <div style="height:5px;background:linear-gradient(90deg,#7aa2ff,transparent)"></div>
+                <div style="padding:20px 22px 22px">
+                  <div style="font-size:11px;letter-spacing:.24em;color:#7aa2ff;text-transform:uppercase;font-weight:700">Bugatti</div>
+                  <div style="font-family:'Saira Condensed';font-weight:900;font-size:27px;margin:4px 0 16px">Centodieci</div>
+                  <div style="display:flex;gap:22px;border-top:1px solid rgba(255,255,255,.08);padding-top:14px">
+                    <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">0-100</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:19px">2,4s</div></div>
+                    <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">V-MAX</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:19px">380</div></div>
+                    <div><div style="font-size:9px;letter-spacing:.14em;color:#8a8f98">CH</div><div style="font-family:'Saira Condensed';font-weight:800;font-size:19px">1600</div></div>
+                  </div>
+                  <div style="margin-top:16px;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:12px;background:rgba(122,162,255,.14);border:1px solid rgba(122,162,255,.42);font-family:'Saira Condensed';font-weight:800;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:#fff">▶ Démarrer</div>
+                </div>
+              </button>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#8a8f98;letter-spacing:.04em;flex-wrap:wrap">
+                <span style="display:inline-flex;min-width:26px;height:26px;padding:0 7px;align-items:center;justify-content:center;border-radius:6px;border:1px solid rgba(255,255,255,.18);border-bottom-width:3px;background:#12151a;font-family:'Saira Condensed';font-weight:700;font-size:12px">◀</span><span style="display:inline-flex;min-width:26px;height:26px;padding:0 7px;align-items:center;justify-content:center;border-radius:6px;border:1px solid rgba(255,255,255,.18);border-bottom-width:3px;background:#12151a;font-family:'Saira Condensed';font-weight:700;font-size:12px">▶</span><span>changer de voie</span><span style="opacity:.4">·</span><span style="display:inline-flex;min-width:26px;height:26px;padding:0 7px;align-items:center;justify-content:center;border-radius:6px;border:1px solid rgba(255,255,255,.18);border-bottom-width:3px;background:#12151a;font-family:'Saira Condensed';font-weight:700;font-size:12px">␣</span><span>boost</span><span style="opacity:.4">·</span><span style="display:inline-flex;min-width:26px;height:26px;padding:0 7px;align-items:center;justify-content:center;border-radius:6px;border:1px solid rgba(255,255,255,.18);border-bottom-width:3px;background:#12151a;font-family:'Saira Condensed';font-weight:700;font-size:12px">C</span><span>caméra</span>
               </div>
-            </sc-for>
-            <sc-if value="{{ boardEmpty }}" hint-placeholder-val="{{ true }}">
-              <div style="text-align:center;color:#8a8f98;font-size:13px;padding:10px">Aucun score encore — soyez le premier !</div>
-            </sc-if>
+              <button onClick="{{ openBoard }}" style="cursor:pointer;display:inline-flex;align-items:center;gap:10px;padding:12px 22px;border-radius:999px;border:1px solid rgba(122,162,255,.45);background:rgba(122,162,255,.12);color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:14px;letter-spacing:.1em;text-transform:uppercase;backdrop-filter:blur(10px);transition:transform .2s,background .2s" style-hover="background:rgba(122,162,255,.26);transform:translateY(-2px)">🏆 Classement — Top 25 →</button>
+            </div>
           </div>
           </sc-if>
         </div>
@@ -324,7 +357,7 @@
             <div style="padding:7px 18px;border-radius:999px;background:linear-gradient(90deg,#ffcc00,#ff9500);color:#1a1400;font-family:'Saira Condensed';font-weight:900;font-size:14px;letter-spacing:.14em;text-transform:uppercase">★ Nouveau record</div>
           </sc-if>
           <div style="display:flex;gap:44px">
-            <div><div style="font-size:11px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Score</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:56px;color:#1fc8d8;line-height:1">{{ score }}</div></div>
+            <div><div style="font-size:11px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Score</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:56px;color:#7aa2ff;line-height:1">{{ score }}</div></div>
             <div><div style="font-size:11px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Meilleur</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:56px;color:#ffcc00;line-height:1">{{ best }}</div></div>
           </div>
           <div style="width:min(430px,92%);background:#0c0d14cc;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px 18px;text-align:left">
@@ -335,12 +368,12 @@
                 <span style="width:9px;height:9px;border-radius:2px;background:{{ e.carColor }}"></span>
                 <span style="flex:1;font-family:'Saira Condensed';font-weight:700;font-size:15px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.name }}</span>
                 <span style="font-size:10px;color:#8a8f98;font-weight:600;white-space:nowrap">{{ e.carName }}</span>
-                <span style="font-family:'Saira Condensed';font-weight:800;font-size:16px;color:#9ff0f7">{{ e.score }}</span>
+                <span style="font-family:'Saira Condensed';font-weight:800;font-size:16px;color:#b9ccff">{{ e.score }}</span>
               </div>
             </sc-for>
           </div>
           <div style="display:flex;gap:14px;margin-top:6px;flex-wrap:wrap;justify-content:center">
-            <button onClick="{{ restart }}" style="cursor:pointer;padding:15px 32px;border-radius:12px;border:0;background:#1fc8d8;color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 12px 34px -12px rgba(31,200,216,.8)" style-hover="transform:translateY(-3px);box-shadow:0 20px 48px -12px rgba(31,200,216,.95)">↻ Rejouer</button>
+            <button onClick="{{ restart }}" style="cursor:pointer;padding:15px 32px;border-radius:12px;border:0;background:#7aa2ff;color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 12px 34px -12px rgba(122,162,255,.8);position:relative;overflow:hidden" style-hover="transform:translateY(-3px);box-shadow:0 20px 48px -12px rgba(122,162,255,.95)"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 42%,rgba(255,255,255,.45) 50%,transparent 58%);background-size:240% 100%;animation:sheen 4s ease-in-out infinite;pointer-events:none"></span>↻ Rejouer</button>
             <button onClick="{{ menu }}" style="cursor:pointer;padding:15px 32px;border-radius:12px;border:1px solid rgba(255,255,255,.22);background:transparent;color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase" style-hover="border-color:#fff;background:rgba(255,255,255,.06)">Changer de voiture</button>
           </div>
         </div>
@@ -359,7 +392,7 @@
                 <span style="width:10px;height:10px;border-radius:2px;background:{{ e.carColor }}"></span>
                 <span style="flex:1;font-family:'Saira Condensed';font-weight:700;font-size:18px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.name }}</span>
                 <span style="font-size:12px;color:#8a8f98;font-weight:600;min-width:120px;text-align:right">{{ e.carName }}</span>
-                <span style="font-family:'Saira Condensed';font-weight:800;font-size:19px;color:#8ff0f7;min-width:70px;text-align:right">{{ e.score }}</span>
+                <span style="font-family:'Saira Condensed';font-weight:800;font-size:19px;color:#b9ccff;min-width:70px;text-align:right">{{ e.score }}</span>
               </div>
             </sc-for>
             <sc-if value="{{ boardEmpty }}" hint-placeholder-val="{{ true }}">
@@ -372,18 +405,18 @@
   </section>
 
   <footer style="padding:44px 6vw;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;align-items:center;color:#6a7078;font-size:12.5px;letter-spacing:.08em">
-    <div style="font-family:'Saira Condensed';font-weight:900;letter-spacing:.16em;color:#c7ccd2;font-size:16px">DEYLO<span style="color:#1fc8d8">·</span>GARAGE</div>
+    <div style="font-family:'Saira Condensed';font-weight:900;letter-spacing:.16em;color:#c7ccd2;font-size:16px">DEYLO<span style="color:#7aa2ff">·</span>GARAGE</div>
     <div>Showroom 3D · WebGL · Modèles 3D fournis par l'utilisateur · Marques citées à titre illustratif.</div>
   </footer>
 
   <sc-if value="{{ loading }}" hint-placeholder-val="{{ true }}">
     <div style="position:fixed;inset:0;z-index:200;background:#08090b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px">
       <div style="display:flex;align-items:center;gap:12px">
-        <div style="width:30px;height:30px;transform:rotate(45deg);border:2px solid #fff;border-radius:6px;position:relative"><div style="position:absolute;inset:6px;background:#1fc8d8;border-radius:2px"></div></div>
-        <div style="font-family:'Saira Condensed';font-weight:900;font-size:26px;letter-spacing:.18em">DEYLO<span style="color:#1fc8d8">·</span>GARAGE</div>
+        <div style="width:46px;height:46px;border-radius:14px;background:linear-gradient(150deg,#8fb0ff,#3a5fd0);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -8px #7aa2ff"><span style="font-family:'Saira Condensed';font-weight:900;font-size:28px;color:#080a10;letter-spacing:-.03em">D</span></div>
+        <div style="font-family:'Saira Condensed';font-weight:900;font-size:26px;letter-spacing:.18em">DEYLO GARAGE</div>
       </div>
       <div style="width:min(340px,70vw);height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden">
-        <div style="height:100%;width:{{ loadPct }}%;background:linear-gradient(90deg,#1fc8d8,#8ff0f7);border-radius:2px;transition:width .3s"></div>
+        <div style="height:100%;width:{{ loadPct }}%;background:linear-gradient(90deg,#7aa2ff,#b9ccff);border-radius:2px;transition:width .3s"></div>
       </div>
       <div style="font-family:monospace;font-size:12px;letter-spacing:.18em;color:#6a7078">CHARGEMENT DES MODÈLES 3D · {{ loadPct }}%</div>
     </div>
@@ -417,14 +450,14 @@ class Component extends DCLogic {
     try { const b=JSON.parse(localStorage.getItem('apex_board_v2')||'[]'); if(Array.isArray(b)) board=b; } catch(e){}
     this._board = board;
     this.nameInputRef = React.createRef();
-    this.brandColors = ['#d5001c','#ffcc00','#1fc8d8'];
-    this.state = { gameState:'menu', score:0, best, selectedCar:0, loading:true, loadPct:0, username, naming:!username, isRecord:false, boardOpen:false };
+    this.brandColors = ['#d5001c','#ffcc00','#7aa2ff'];
+    this.state = { gameState:'menu', score:0, best, selectedCar:0, loading:true, loadPct:0, username, naming:!username, isRecord:false, boardOpen:false, camLabel:'STANDARD' };
     this.cars = [
       { brand:'Porsche', name:'911 GT3', glow:0xd5001c, modelUrl:'uploads/gt3992.glb', rotY:Math.PI,
         carOpts:{edge:0xd6dade, emissive:0x2a0008, body:0x14161a, wing:true} },
       { brand:'Lamborghini', name:'Aventador SVJ', glow:0xffcc00, modelUrl:'uploads/AventadorSvj.glb', rotY:Math.PI,
         carOpts:{edge:0xffcc00, emissive:0x241f00, body:0x0f0f0c, wing:true} },
-      { brand:'Bugatti', name:'Centodieci', glow:0x1fc8d8, modelUrl:'uploads/FV8UHMV5GHZGYVYSTV5NOKD56.glb', rotY:0,
+      { brand:'Bugatti', name:'Centodieci', glow:0x7aa2ff, modelUrl:'uploads/FV8UHMV5GHZGYVYSTV5NOKD56.glb', rotY:0,
         carOpts:{edge:0x6fa0ff, emissive:0x00112a, body:0x0c1220, wing:false} },
     ];
     this.specs = [
@@ -432,7 +465,15 @@ class Component extends DCLogic {
       [{l:'0-100 km/h',v:'2,8',u:'s'},{l:'V-max',v:'350',u:'km/h'},{l:'Puissance',v:'770',u:'ch'},{l:'Couple',v:'720',u:'Nm'},{l:'Poids',v:'1 525',u:'kg'},{l:'Moteur',v:'V12',u:'6.5L'}],
       [{l:'0-100 km/h',v:'2,4',u:'s'},{l:'V-max',v:'380',u:'km/h'},{l:'Puissance',v:'1 600',u:'ch'},{l:'Couple',v:'1 600',u:'Nm'},{l:'Poids',v:'1 976',u:'kg'},{l:'Moteur',v:'W16',u:'8.0L'}],
     ];
-    this._lanes = [-2.2, 0, 2.2];
+    this._lanes = [-3.3, -1.1, 1.1, 3.3];
+    this.boostRef = React.createRef();
+    this._camIndex = 1;
+    this._camPresets = [
+      {name:'PROCHE', pos:[0,2.6,7.2], look:[0,0.85,-30]},
+      {name:'STANDARD', pos:[0,3.6,9.8], look:[0,1.1,-46]},
+      {name:'LARGE', pos:[0,4.9,13.2], look:[0,1.4,-62]},
+    ];
+    this._boostFuel = 1; this._boostHeld = false; this._boostActive = false;
     this._obstacles = [];
     this._stripes = [];
     this._playing = false;
@@ -464,8 +505,16 @@ class Component extends DCLogic {
       start0:()=>this.startGame(0), start1:()=>this.startGame(1), start2:()=>this.startGame(2),
       restart:()=>this.startGame(this.state.selectedCar), menu:()=>this.toMenu(),
       moveLeft:()=>this.move(-1), moveRight:()=>this.move(1),
+      boostRef:this.boostRef, camLabel:this.state.camLabel,
+      cycleCam:()=>this.cycleCam(),
+      boostDown:()=>{ this._boostHeld=true; }, boostUp:()=>{ this._boostHeld=false; },
       rot0:()=>this.toggleRot(0), rot1:()=>this.toggleRot(1), rot2:()=>this.toggleRot(2),
       rst0:()=>this.resetView(0), rst1:()=>this.resetView(1), rst2:()=>this.resetView(2),
+      zin0:()=>this.zoomCar(0,-0.22), zin1:()=>this.zoomCar(1,-0.22), zin2:()=>this.zoomCar(2,-0.22),
+      zout0:()=>this.zoomCar(0,0.22), zout1:()=>this.zoomCar(1,0.22), zout2:()=>this.zoomCar(2,0.22),
+      vav0:()=>this.setCarView(0,'avant'), vav1:()=>this.setCarView(1,'avant'), vav2:()=>this.setCarView(2,'avant'),
+      vpr0:()=>this.setCarView(0,'profil'), vpr1:()=>this.setCarView(1,'profil'), vpr2:()=>this.setCarView(2,'profil'),
+      vht0:()=>this.setCarView(0,'haut'), vht1:()=>this.setCarView(1,'haut'), vht2:()=>this.setCarView(2,'haut'),
     };
   }
 
@@ -479,6 +528,7 @@ class Component extends DCLogic {
     if(this._raf) cancelAnimationFrame(this._raf);
     if(this._onResize) window.removeEventListener('resize', this._onResize);
     if(this._onKey) window.removeEventListener('keydown', this._onKey);
+    if(this._onKeyUp) window.removeEventListener('keyup', this._onKeyUp);
   }
 
   init(){
@@ -559,8 +609,12 @@ class Component extends DCLogic {
       const k = e.key;
       if(k==='ArrowLeft'||k==='a'||k==='A'){ this.move(-1); if(this._playing) e.preventDefault(); }
       if(k==='ArrowRight'||k==='d'||k==='D'){ this.move(1); if(this._playing) e.preventDefault(); }
+      if((k===' '||k==='Shift'||k==='ArrowUp'||k==='w'||k==='W')){ this._boostHeld=true; if(this._playing) e.preventDefault(); }
+      if((k==='c'||k==='C')){ this.cycleCam(); }
     };
+    this._onKeyUp = (e)=>{ const k=e.key; if(k===' '||k==='Shift'||k==='ArrowUp'||k==='w'||k==='W'){ this._boostHeld=false; } };
     window.addEventListener('keydown', this._onKey);
+    window.addEventListener('keyup', this._onKeyUp);
 
     this._heroTextEl = document.getElementById('heroText');
     this._scrollBarEl = document.getElementById('scrollBar');
@@ -641,11 +695,24 @@ class Component extends DCLogic {
     return entry;
   }
 
-  prepModel(i, targetLen){
+  prepModel(i, targetLen, noPaint){
     const T = window.THREE;
     const src = this.models[i];
     if(!src){ const fb = this.makeCar(this.cars[i].carOpts); fb.scale.setScalar((targetLen||4.4)/4.7); return fb; }
-    return this.normalizeModel(src, targetLen, this.cars[i].rotY||0);
+    const wrap = this.normalizeModel(src, targetLen, this.cars[i].rotY||0);
+    return wrap;
+  }
+
+  paintCar(root, color){
+    const T = window.THREE; const c = new T.Color(color);
+    root.traverse(o=>{
+      if(o.isMesh && o.material){
+        const paint=(m)=>{ const nm=m.clone(); const lum=nm.color?(nm.color.r+nm.color.g+nm.color.b)/3:1;
+          if(lum>0.15){ nm.color.copy(c); nm.map=null; if('vertexColors' in nm) nm.vertexColors=false; if('metalness' in nm) nm.metalness=0.5; if('roughness' in nm) nm.roughness=0.4; if('envMapIntensity' in nm) nm.envMapIntensity=0.55; }
+          nm.needsUpdate=true; return nm; };
+        o.material = Array.isArray(o.material)? o.material.map(paint): paint(o.material);
+      }
+    });
   }
 
   normalizeModel(src, targetLen, rotY){
@@ -724,10 +791,10 @@ class Component extends DCLogic {
 
   initHero(el){
     const T = window.THREE;
-    const s = this.makeScene(el, {glow:0x1fc8d8, glowI:2.2});
+    const s = this.makeScene(el, {glow:0x7aa2ff, glowI:2.2});
     s.camera.position.set(0.5,1.7,8.6);
     const car = this.prepModel(2, 4.6);
-    car.position.x = -2.4;
+    car.position.x = 2.6;
     s.scene.add(car);
     const N = 850;
     const pos = new Float32Array(N*3);
@@ -771,10 +838,10 @@ class Component extends DCLogic {
     const rc=['#ffcc00','#cfd6df','#d98a52'];
     return this.boardEntries().slice(0,limit).map((e,i)=>({
       rankLabel:String(i+1), rankColor:rc[i]||'#8a8f98',
-      carColor:this.brandColors[e.car]||'#1fc8d8',
+      carColor:this.brandColors[e.car]||'#7aa2ff',
       carName:(this.cars[e.car]||{}).name||'—',
       name:e.name||'Pilote', score:e.score,
-      bg:(e.name===this.state.username)?'rgba(31,200,216,.18)':'rgba(255,255,255,.03)'
+      bg:(e.name===this.state.username)?'rgba(122,162,255,.18)':'rgba(255,255,255,.03)'
     }));
   }
   submitName(){
@@ -791,13 +858,22 @@ class Component extends DCLogic {
   }
 
   initCarScene(el, cfg, idx){
+    const T = window.THREE;
     const s = this.makeScene(el, {glow:cfg.glow, glowI:2.6});
-    s.camera.position.set(4.7,2.3,6.3);
-    const car = this.prepModel(idx, 4.7);
+    const car = this.prepModel(idx, 3.8);
+    car.position.y = -0.62;
     const baseRot = -0.55;
     car.rotation.y = baseRot;
     s.scene.add(car);
-    const ctrl = { auto: this.props.autoRotate!==false, resetting:false, dragging:false, car, baseRot };
+    const views = {
+      defaut:{pos:new T.Vector3(4.5,1.55,6.2), look:0.02},
+      avant:{pos:new T.Vector3(0,1.15,7.0), look:0.08},
+      profil:{pos:new T.Vector3(7.0,1.05,0.25), look:0.02},
+      haut:{pos:new T.Vector3(0.4,6.4,4.2), look:-0.1},
+    };
+    s.camera.position.copy(views.defaut.pos);
+    const ctrl = { auto: this.props.autoRotate!==false, resetting:false, dragging:false, car, baseRot,
+      camTarget: views.defaut.pos.clone(), lookY: views.defaut.look, zoom:1, views };
     this.carCtrls[idx] = ctrl;
     s.update = (dt)=>{
       if(ctrl.resetting){
@@ -806,7 +882,9 @@ class Component extends DCLogic {
       } else if(ctrl.auto && !ctrl.dragging){
         car.rotation.y += dt*0.3;
       }
-      s.camera.lookAt(0,0.6,0);
+      const tgt = ctrl.camTarget.clone().multiplyScalar(ctrl.zoom);
+      s.camera.position.lerp(tgt, 0.08);
+      s.camera.lookAt(0, ctrl.lookY, 0);
     };
     const dom = s.renderer.domElement;
     dom.style.cursor = 'grab';
@@ -814,29 +892,32 @@ class Component extends DCLogic {
     dom.addEventListener('pointerdown', (e)=>{ ctrl.dragging=true; ctrl.resetting=false; lastX=e.clientX; dom.style.cursor='grabbing'; });
     window.addEventListener('pointermove', (e)=>{ if(!ctrl.dragging) return; car.rotation.y += (e.clientX-lastX)*0.01; lastX=e.clientX; });
     window.addEventListener('pointerup', ()=>{ if(ctrl.dragging){ ctrl.dragging=false; dom.style.cursor='grab'; } });
+    dom.addEventListener('wheel', (e)=>{ e.preventDefault(); ctrl.zoom = Math.max(0.55, Math.min(1.8, ctrl.zoom + (e.deltaY>0?0.08:-0.08))); }, {passive:false});
   }
 
   toggleRot(i){ const c = this.carCtrls[i]; if(c){ c.auto = !c.auto; c.resetting = false; } }
-  resetView(i){ const c = this.carCtrls[i]; if(c){ c.resetting = true; } }
+  resetView(i){ const c = this.carCtrls[i]; if(c){ c.resetting = true; c.zoom=1; c.camTarget.copy(c.views.defaut.pos); c.lookY=c.views.defaut.look; } }
+  zoomCar(i,d){ const c = this.carCtrls[i]; if(c){ c.zoom = Math.max(0.55, Math.min(1.8, c.zoom + d)); } }
+  setCarView(i,name){ const c = this.carCtrls[i]; if(c && c.views[name]){ c.camTarget.copy(c.views[name].pos); c.lookY=c.views[name].look; c.zoom=1; } }
 
   initGame(el){
     const T = window.THREE;
-    const s = this.makeScene(el, {glow:0x1fc8d8, glowI:1.0});
+    const s = this.makeScene(el, {glow:0x7aa2ff, glowI:1.0});
     s.alwaysOn = true; s.active = true;
     s.scene.fog = new T.Fog(0x0b0a1a, 26, 118);
-    s.camera.position.set(0,3.0,7.6);
-    s.camera.lookAt(0,1.05,-40);
-    const road = new T.Mesh(new T.PlaneGeometry(9,240), new T.MeshStandardMaterial({color:0x050609, metalness:0.35, roughness:0.7}));
+    s.camera.position.set(0,3.6,9.8);
+    s.camera.lookAt(0,1.1,-46);
+    const road = new T.Mesh(new T.PlaneGeometry(14,240), new T.MeshStandardMaterial({color:0x050609, metalness:0.35, roughness:0.7}));
     road.rotation.x = -Math.PI/2; road.position.z = -100; s.scene.add(road);
     const stripeMat = new T.MeshBasicMaterial({color:0x39404d});
-    for(const lane of [-1.1, 1.1]){
+    for(const lane of [-2.2, 0, 2.2]){
       for(let i=0;i<44;i++){
         const st = new T.Mesh(new T.BoxGeometry(0.13,0.02,2), stripeMat);
         st.position.set(lane, 0.02, -i*5);
         s.scene.add(st); this._stripes.push(st);
       }
     }
-    [-4.5, 4.5].forEach(x=>{
+    [-5.5, 5.5].forEach(x=>{
       const edge = new T.Mesh(new T.BoxGeometry(0.16,0.18,240), new T.MeshStandardMaterial({color:0x1b2129, emissive:0x0a1a3a, emissiveIntensity:0.8}));
       edge.position.set(x, 0.12, -100); s.scene.add(edge);
     });
@@ -850,12 +931,14 @@ class Component extends DCLogic {
     if(!this.state.username){ this.setState({ naming:true }, ()=>this.focusName()); return; }
     if(this._player){ s.scene.remove(this._player); }
     this._obstacles.forEach(o=>s.scene.remove(o.mesh)); this._obstacles = [];
-    this._player = this.prepModel(idx, 3.4);
+    this._player = this.prepModel(idx, 3.4, true);
     this._player.rotation.y = Math.PI - (this.cars[idx].rotY || 0);
     this._player.position.set(0,0,0);
     s.scene.add(this._player);
-    this._lane = 1; this._playerX = 0;
+    this._lane = 1; this._playerX = this._lanes[1];
     this._speed = this.props.gameSpeed!=null ? this.props.gameSpeed : 18;
+    this._boostFuel = 1; this._boostHeld = false; this._boostActive = false;
+    if(this.boostRef.current) this.boostRef.current.style.width='100%';
     this._dist = 0; this._bonus = 0; this._time = 0; this._spawnT = 0.6;
     this._playing = true;
     this.setState({ gameState:'playing', selectedCar:idx, score:0 });
@@ -873,25 +956,45 @@ class Component extends DCLogic {
 
   move(d){
     if(!this._playing) return;
-    this._lane = Math.max(0, Math.min(2, this._lane + d));
+    this._lane = Math.max(0, Math.min(3, this._lane + d));
+  }
+
+  cycleCam(){ this._camIndex=(this._camIndex+1)%this._camPresets.length; this.setState({camLabel:this._camPresets[this._camIndex].name}); }
+
+  tintModel(root, color, emissiveI){
+    const T = window.THREE;
+    const c = new T.Color(color);
+    root.traverse(o=>{
+      if(o.isMesh && o.material){
+        const clone1=(m)=>{ const nm=m.clone(); const lum=nm.color?(nm.color.r+nm.color.g+nm.color.b)/3:1;
+          if(lum>0.16){ nm.color.copy(c); nm.map=null; } if(emissiveI && nm.emissive){ nm.emissive.copy(c); nm.emissiveIntensity=emissiveI; } nm.needsUpdate=true; return nm; };
+        o.material = Array.isArray(o.material)? o.material.map(clone1): clone1(o.material);
+      }
+    });
   }
 
   spawnObstacle(forceLane){
-    const li = (forceLane!=null) ? forceLane : Math.floor(Math.random()*3);
+    const li = (forceLane!=null) ? forceLane : Math.floor(Math.random()*4);
     const lane = this._lanes[li];
     let mesh, w = 1.2;
     const r = Math.random();
-    if(r < 0.3 && this.coneModel){
-      mesh = this.normalizeModel(this.coneModel, 0.95, 0);
-      mesh.position.set(lane, 0, -132); w = 0.7;
+    if(r < 0.32 && this.coneModel){
+      mesh = this.normalizeModel(this.coneModel, 1.0, 0);
+      const cc=[0xff7a00,0xff8c1a,0xff6600];
+      this.tintModel(mesh, cc[Math.floor(Math.random()*cc.length)], 0.5);
+      mesh.position.set(lane, 0, -134); w = 0.7;
     } else if(this.traffic && this.traffic.length){
-      const src = this.traffic[Math.floor(Math.random()*this.traffic.length)];
-      mesh = this.normalizeModel(src, 3.5, Math.PI);
-      mesh.position.set(lane, 0, -132); w = 1.25;
+      let ti = Math.floor(Math.random()*this.traffic.length);
+      if(this.traffic.length>1 && ti===this._lastTrafficIdx) ti=(ti+1)%this.traffic.length;
+      this._lastTrafficIdx = ti;
+      mesh = this.normalizeModel(this.traffic[ti], 3.6, Math.PI);
+      const cc=[0xe23b3b,0x2f7bff,0x18c56b,0xf5b301,0xff7a00,0x9b5cff,0xeceff4,0x18324a,0x00c2ff];
+      this.tintModel(mesh, cc[Math.floor(Math.random()*cc.length)], 0.0);
+      mesh.position.set(lane, 0, -134); w = 1.25;
     } else {
       mesh = this.makeCar({edge:0x5b6675, body:0x161b23, emissive:0x0a0e16});
       mesh.scale.set(0.72,0.72,0.72);
-      mesh.position.set(lane, 0, -132); w = 1.2;
+      mesh.position.set(lane, 0, -134); w = 1.2;
     }
     mesh.userData.w = w;
     this._gameScene.scene.add(mesh);
@@ -900,20 +1003,42 @@ class Component extends DCLogic {
   }
 
   gameUpdate(dt, now){
-    const move = (this._playing ? this._speed : 8) * dt;
-    for(const st of this._stripes){ st.position.z += move; if(st.position.z > 10) st.position.z -= 220; }
+    const T = window.THREE;
+    const cp = this._camPresets[this._camIndex];
+    const cam = this._gameScene.camera;
+    const bz = (this._playing && this._boostActive) ? -1.0 : 0;
+    const shake = (this._playing && this._boostActive) ? Math.sin(now*0.05)*0.05 : 0;
+    cam.position.x += (cp.pos[0]+shake - cam.position.x)*0.07;
+    cam.position.y += (cp.pos[1] - cam.position.y)*0.07;
+    cam.position.z += (cp.pos[2]+bz - cam.position.z)*0.07;
+    if(!this._look) this._look = new T.Vector3(cp.look[0],cp.look[1],cp.look[2]);
+    this._look.x += (cp.look[0]-this._look.x)*0.07;
+    this._look.y += (cp.look[1]-this._look.y)*0.07;
+    this._look.z += (cp.look[2]-this._look.z)*0.07;
+    cam.lookAt(this._look);
+
+    let scroll = (this._playing ? this._speed : 8) * dt;
+    if(this._playing){
+      const want = this._boostHeld && this._boostFuel>0.02;
+      this._boostActive = want;
+      if(want) this._boostFuel = Math.max(0, this._boostFuel - dt*0.45);
+      else this._boostFuel = Math.min(1, this._boostFuel + dt*0.20);
+      if(want) scroll *= 1.9;
+      if(this.boostRef.current) this.boostRef.current.style.width = (this._boostFuel*100)+'%';
+    }
+    for(const st of this._stripes){ st.position.z += scroll; if(st.position.z > 10) st.position.z -= 220; }
     if(!this._playing) return;
 
     this._time += dt;
     this._speed += dt * (0.85 + this._time*0.03);
-    this._dist += move;
+    this._dist += scroll;
 
     const targetX = this._lanes[this._lane];
     this._playerX += (targetX - this._playerX) * Math.min(1, dt*10);
     if(this._player){
       this._player.position.x = this._playerX;
       this._player.position.y = Math.sin(now*0.02)*0.02;
-      this._player.rotation.z = (targetX - this._playerX) * 0.16;
+      this._player.rotation.z = (targetX - this._playerX) * 0.14;
     }
 
     this._spawnT -= dt;
@@ -922,14 +1047,14 @@ class Component extends DCLogic {
       this._spawnT = interval;
       const l1 = this.spawnObstacle();
       if(this._time>14 && Math.random() < Math.min(0.6,(this._time-14)*0.025)){
-        let l2 = Math.floor(Math.random()*3); if(l2===l1) l2=(l1+1)%3;
+        let l2 = Math.floor(Math.random()*4); if(l2===l1) l2=(l1+1)%4;
         this.spawnObstacle(l2);
       }
     }
 
     for(let i=this._obstacles.length-1; i>=0; i--){
       const o = this._obstacles[i];
-      o.mesh.position.z += move;
+      o.mesh.position.z += scroll;
       if(!o.hit && Math.abs(o.mesh.position.z) < 1.5 && Math.abs(o.mesh.position.x - this._playerX) < (o.mesh.userData.w||1.2)){
         o.hit = true; this.gameOver(); return;
       }
