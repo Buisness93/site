@@ -15,14 +15,26 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
 <style>
+ :root{
+  --bg:#08090b; --bg-rgb:8,9,11; --bg2:#0b0d12;
+  --accent:#7aa2ff; --accent-rgb:122,162,255; --accent-deep:#3a5fd0; --accent-light:#b9ccff; --accent-soft:#9db8ff; --accent-pale:#8fb0ff;
+ }
+ [data-theme="ember"]{
+  --bg:#0c0605; --bg-rgb:12,6,5; --bg2:#130806;
+  --accent:#ff4d3d; --accent-rgb:255,77,61; --accent-deep:#b31a12; --accent-light:#ffb199; --accent-soft:#ff9270; --accent-pale:#ff7a52;
+ }
+ [data-theme="aurora"]{
+  --bg:#07050f; --bg-rgb:7,5,15; --bg2:#0b0818;
+  --accent:#39e6ff; --accent-rgb:57,230,255; --accent-deep:#7a3fff; --accent-light:#d3c2ff; --accent-soft:#8fe3ff; --accent-pale:#b18bff;
+ }
  *{box-sizing:border-box}
- html,body{margin:0;padding:0;background:#08090b;color:#eef1f5;font-family:'Saira',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+ html,body{margin:0;padding:0;background:var(--bg);color:#eef1f5;font-family:'Saira',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
  a{color:#c7ccd2;text-decoration:none;transition:color .2s}
  a:hover{color:#ffffff}
  button{font-family:inherit;transition:transform .12s cubic-bezier(.2,.7,.2,1),box-shadow .2s,background .2s,border-color .2s}
  button:active{transform:translateY(1px) scale(.97)!important}
  a{-webkit-tap-highlight-color:transparent}
- ::selection{background:#7aa2ff;color:#fff}
+ ::selection{background:var(--accent);color:#fff}
  canvas{display:block}
  @keyframes floaty{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,8px)}}
  @keyframes spin{to{transform:rotate(360deg)}}
@@ -30,10 +42,18 @@
  @keyframes glowline{0%,100%{opacity:.55}50%{opacity:1}}
  @keyframes hintpulse{0%,100%{opacity:.35;transform:translateX(-50%) scale(1)}50%{opacity:.9;transform:translateX(-50%) scale(1.06)}}
  @keyframes heroUp{from{opacity:0;transform:translateY(34px);filter:blur(7px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
- @keyframes premPulse{0%,100%{box-shadow:0 0 26px -12px #7aa2ff}50%{box-shadow:0 0 40px -6px #7aa2ff}}
+ @keyframes premPulse{0%,100%{box-shadow:0 0 26px -12px var(--accent)}50%{box-shadow:0 0 40px -6px var(--accent)}}
  @keyframes sheen{0%{background-position:-160% 0}60%,100%{background-position:220% 0}}
  @keyframes glowDot{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.35)}}
- [data-reveal]{will-change:opacity,transform}
+ @keyframes shootStar{0%{transform:translate(0,0) rotate(215deg);opacity:0}4%{opacity:1}12%{opacity:0}100%{transform:translate(-620px,460px) rotate(215deg);opacity:0}}
+ @keyframes twinkle{0%,100%{opacity:.15;transform:scale(1)}50%{opacity:.9;transform:scale(1.4)}}
+ @keyframes flashSweep{0%,92%{opacity:0}94%{opacity:.9}100%{opacity:0}}
+ .star-field{position:fixed;inset:0;z-index:1;overflow:hidden;pointer-events:none;mix-blend-mode:screen;opacity:.8}
+ .shoot-star{position:absolute;top:-10%;width:2px;height:2px;border-radius:50%;background:linear-gradient(90deg,#fff,var(--accent) 60%,transparent);box-shadow:0 0 6px 1px rgba(255,255,255,.8);animation:shootStar linear infinite}
+ .shoot-star::after{content:'';position:absolute;top:0;right:0;width:130px;height:1px;background:linear-gradient(90deg,transparent,var(--accent-light))}
+ .twinkle{position:absolute;border-radius:50%;background:#fff;animation:twinkle ease-in-out infinite}
+ .flash-veil{position:fixed;inset:0;z-index:2;pointer-events:none;background:radial-gradient(60% 40% at 50% 0%,rgba(var(--accent-rgb),.5),transparent 70%);animation:flashSweep 9s ease-in-out infinite}
+ [data-reveal]{will-change:opacity,transform,filter}
  @media (max-width:860px){ nav{padding:12px 16px!important} nav > div:last-child{gap:3px!important} nav > div:last-child a{padding:7px 10px!important;font-size:11px!important;letter-spacing:.06em!important} }
  @media (max-width:680px){
   #heroText{left:5vw!important;right:5vw!important;max-width:none!important;bottom:11%!important}
@@ -48,32 +68,67 @@
  }
 </style>
 </helmet>
-<div style="min-height:100vh;background:#08090b;overflow-x:hidden;position:relative">
+<div data-theme="{{ theme }}" style="min-height:100vh;background:var(--bg);overflow-x:hidden;position:relative;transition:background-color .5s ease">
 
-  <nav style="position:fixed;top:0;left:0;right:0;z-index:60;display:flex;align-items:center;justify-content:space-between;padding:15px 34px;backdrop-filter:blur(16px);background:linear-gradient(#08090be0,#08090b00);border-bottom:1px solid rgba(255,255,255,.06)">
+  <div class="star-field">
+    <span class="shoot-star" style="left:6%;animation-duration:6.5s;animation-delay:.2s"></span>
+    <span class="shoot-star" style="left:22%;top:4%;animation-duration:8s;animation-delay:2.6s"></span>
+    <span class="shoot-star" style="left:48%;top:-4%;animation-duration:7.2s;animation-delay:5.1s"></span>
+    <span class="shoot-star" style="left:68%;animation-duration:9s;animation-delay:1.4s"></span>
+    <span class="shoot-star" style="left:84%;top:6%;animation-duration:6.8s;animation-delay:4s"></span>
+    <span class="shoot-star" style="left:96%;top:-2%;animation-duration:7.6s;animation-delay:6.4s"></span>
+    <span class="twinkle" style="left:12%;top:14%;width:2px;height:2px;animation-duration:3.2s"></span>
+    <span class="twinkle" style="left:30%;top:8%;width:3px;height:3px;animation-duration:4.1s;animation-delay:.6s"></span>
+    <span class="twinkle" style="left:44%;top:22%;width:2px;height:2px;animation-duration:2.8s;animation-delay:1.2s"></span>
+    <span class="twinkle" style="left:58%;top:12%;width:2px;height:2px;animation-duration:3.6s;animation-delay:.3s"></span>
+    <span class="twinkle" style="left:74%;top:26%;width:3px;height:3px;animation-duration:3.9s;animation-delay:1.8s"></span>
+    <span class="twinkle" style="left:88%;top:18%;width:2px;height:2px;animation-duration:3.1s;animation-delay:.9s"></span>
+    <span class="twinkle" style="left:20%;top:36%;width:2px;height:2px;animation-duration:4.4s;animation-delay:2.1s"></span>
+    <span class="twinkle" style="left:64%;top:40%;width:2px;height:2px;animation-duration:3.3s;animation-delay:1.5s"></span>
+  </div>
+  <div class="flash-veil"></div>
+
+  <nav style="position:fixed;top:0;left:0;right:0;z-index:60;display:flex;align-items:center;justify-content:space-between;padding:15px 34px;backdrop-filter:blur(16px);background:linear-gradient(rgba(var(--bg-rgb),.88),rgba(var(--bg-rgb),0));border-bottom:1px solid rgba(255,255,255,.06)">
     <div style="display:flex;align-items:center;gap:12px">
-      <div style="width:36px;height:36px;border-radius:11px;background:linear-gradient(150deg,#8fb0ff,#3a5fd0);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px -8px #7aa2ff;position:relative;overflow:hidden">
+      <div style="width:36px;height:36px;border-radius:11px;background:linear-gradient(150deg,var(--accent-pale),var(--accent-deep));display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px -8px var(--accent);position:relative;overflow:hidden">
         <span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 40%,rgba(255,255,255,.45) 50%,transparent 60%);background-size:220% 100%;animation:sheen 5s ease-in-out infinite"></span>
         <span style="font-family:'Saira Condensed';font-weight:900;font-size:22px;color:#080a10;letter-spacing:-.03em">D</span>
       </div>
       <div style="line-height:1.05">
         <div style="font-family:'Saira Condensed';font-weight:900;font-size:19px;letter-spacing:.16em">DEYLO GARAGE</div>
-        <div style="font-size:8px;letter-spacing:.4em;color:#7aa2ff;text-transform:uppercase;margin-top:2px">Supercars · 3D</div>
+        <div style="font-size:8px;letter-spacing:.4em;color:var(--accent);text-transform:uppercase;margin-top:2px">Supercars · 3D</div>
       </div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;font-size:12.5px;letter-spacing:.16em;text-transform:uppercase">
-      <a href="#porsche" style="padding:8px 14px;border-radius:8px" style-hover="background:rgba(255,255,255,.06)">Porsche</a>
-      <a href="#lamborghini" style="padding:8px 14px;border-radius:8px" style-hover="background:rgba(255,255,255,.06)">Lamborghini</a>
-      <a href="#bugatti" style="padding:8px 14px;border-radius:8px" style-hover="background:rgba(255,255,255,.06)">Bugatti</a>
-      <a href="#jeu" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px;padding:10px 20px;border:1px solid #7aa2ff;border-radius:999px;color:#fff;background:rgba(122,162,255,.12);box-shadow:0 0 24px -8px rgba(122,162,255,.7);animation:premPulse 3s ease-in-out infinite;position:relative;overflow:hidden" style-hover="background:rgba(122,162,255,.28)"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 42%,rgba(255,255,255,.4) 50%,transparent 58%);background-size:240% 100%;animation:sheen 5s ease-in-out infinite;pointer-events:none"></span>▶ Jouer</a>
+      <a href="#porsche" style="padding:8px 14px;border-radius:8px" style-hover="background:rgba(255,255,255,.06)">Collection</a>
+      <a onClick="{{ openBoard }}" style="cursor:pointer;padding:8px 14px;border-radius:8px" style-hover="background:rgba(255,255,255,.06)">🏆 Classement</a>
+      <div style="position:relative">
+        <button onClick="{{ toggleThemeMenu }}" title="Changer de thème" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:#fff;font-family:inherit;font-size:12.5px;letter-spacing:.16em;text-transform:uppercase" style-hover="border-color:rgba(255,255,255,.32);background:rgba(255,255,255,.08)">
+          <span style="width:13px;height:13px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-deep));box-shadow:0 0 8px rgba(var(--accent-rgb),.75)"></span>Thème
+        </button>
+        <sc-if value="{{ themeMenuOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;top:calc(100% + 10px);right:0;background:#0d0f14ee;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:180px;backdrop-filter:blur(14px);box-shadow:0 24px 60px -20px rgba(0,0,0,.75);text-transform:none;letter-spacing:normal">
+            <button onClick="{{ setThemeNocturne }}" style="cursor:pointer;display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:10px;border:1px solid transparent;background:transparent;color:#fff;font-family:'Saira Condensed';font-weight:700;font-size:14px" style-hover="background:rgba(255,255,255,.06)">
+              <span style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#7aa2ff,#3a5fd0);border:{{ ringNocturne }}"></span>Nocturne
+            </button>
+            <button onClick="{{ setThemeEmber }}" style="cursor:pointer;display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:10px;border:1px solid transparent;background:transparent;color:#fff;font-family:'Saira Condensed';font-weight:700;font-size:14px" style-hover="background:rgba(255,255,255,.06)">
+              <span style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#ff4d3d,#b31a12);border:{{ ringEmber }}"></span>Ember
+            </button>
+            <button onClick="{{ setThemeAurora }}" style="cursor:pointer;display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:10px;border:1px solid transparent;background:transparent;color:#fff;font-family:'Saira Condensed';font-weight:700;font-size:14px" style-hover="background:rgba(255,255,255,.06)">
+              <span style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#39e6ff,#7a3fff);border:{{ ringAurora }}"></span>Aurora
+            </button>
+          </div>
+        </sc-if>
+      </div>
+      <a href="#jeu" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px;padding:10px 20px;border:1px solid var(--accent);border-radius:999px;color:#fff;background:rgba(var(--accent-rgb),.12);box-shadow:0 0 24px -8px rgba(var(--accent-rgb),.7);animation:premPulse 3s ease-in-out infinite;position:relative;overflow:hidden" style-hover="background:rgba(var(--accent-rgb),.28)"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 42%,rgba(255,255,255,.4) 50%,transparent 58%);background-size:240% 100%;animation:sheen 5s ease-in-out infinite;pointer-events:none"></span>▶ Jouer</a>
     </div>
   </nav>
-  <div id="scrollBar" style="position:fixed;top:0;left:0;height:3px;width:0;z-index:61;background:linear-gradient(90deg,#3a5fd0,#7aa2ff);box-shadow:0 0 14px #7aa2ff;pointer-events:none"></div>
+  <div id="scrollBar" style="position:fixed;top:0;left:0;height:3px;width:0;z-index:61;background:linear-gradient(90deg,var(--accent-deep),var(--accent));box-shadow:0 0 14px var(--accent);pointer-events:none"></div>
 
   <section style="position:relative;height:100vh;min-height:660px;overflow:hidden">
     <div ref="{{ heroRef }}" style="position:absolute;inset:0;cursor:pointer"></div>
-    <div style="position:absolute;left:80%;bottom:24%;transform:translateX(-50%);font-family:monospace;font-size:10.5px;letter-spacing:.24em;color:#9db8ff;text-transform:uppercase;animation:hintpulse 2.6s ease-in-out infinite;pointer-events:none">↻ cliquez la voiture</div>
-    <div style="position:absolute;inset:0;background:radial-gradient(80% 62% at 50% 44%, transparent 28%, #08090b 88%);pointer-events:none"></div>
+    <div style="position:absolute;left:80%;bottom:24%;transform:translateX(-50%);font-family:monospace;font-size:10.5px;letter-spacing:.24em;color:var(--accent-soft);text-transform:uppercase;animation:hintpulse 2.6s ease-in-out infinite;pointer-events:none">↻ cliquez la voiture</div>
+    <div style="position:absolute;inset:0;background:radial-gradient(80% 62% at 50% 44%, transparent 28%, var(--bg) 88%);pointer-events:none"></div>
 
     <div style="position:absolute;top:96px;right:34px;text-align:right;font-family:monospace;font-size:11px;letter-spacing:.14em;color:#4a5058;pointer-events:none;line-height:1.9">
       <div>N°001 — 003 · COLLECTION 2026</div>
@@ -82,10 +137,10 @@
 
     <div id="heroText" style="position:absolute;left:6vw;right:auto;bottom:15%;max-width:600px;text-align:left;padding:0;pointer-events:none;will-change:transform,opacity">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;justify-content:flex-start;animation:heroUp .7s cubic-bezier(.2,.7,.2,1) both">
-        <span style="width:42px;height:1px;background:#7aa2ff"></span>
+        <span style="width:42px;height:1px;background:var(--accent)"></span>
         <span style="font-size:13px;letter-spacing:.42em;text-transform:uppercase;color:#9aa1ab">Showroom 3D · Supercars d'exception</span>
       </div>
-      <h1 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(42px,7.6vw,120px);line-height:.9;margin:0;text-transform:uppercase;letter-spacing:-.015em;transition:filter .3s,letter-spacing .3s;animation:heroUp .85s .12s cubic-bezier(.2,.7,.2,1) both" style-hover="filter:brightness(1.12);letter-spacing:.005em">L'art de la<br><span style="background:linear-gradient(100deg,#ffffff 8%,#b9ccff 38%,#ffffff 58%,#7aa2ff 100%);background-size:220% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 7s linear infinite">performance</span></h1>
+      <h1 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(42px,7.6vw,120px);line-height:.9;margin:0;text-transform:uppercase;letter-spacing:-.015em;transition:filter .3s,letter-spacing .3s;animation:heroUp .85s .12s cubic-bezier(.2,.7,.2,1) both" style-hover="filter:brightness(1.12);letter-spacing:.005em">L'art de la<br><span style="background:linear-gradient(100deg,#ffffff 8%,var(--accent-light) 38%,#ffffff 58%,var(--accent) 100%);background-size:220% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 7s linear infinite">performance</span></h1>
       <p style="max-width:520px;font-size:clamp(15px,1.4vw,19px);color:#b6bcc4;line-height:1.55;font-weight:300;animation:heroUp .9s .26s cubic-bezier(.2,.7,.2,1) both;margin:26px 0 0 0">Trois machines d'exception, modélisées en 3D haute-fidélité. Explorez chaque bolide sous tous les angles, puis prenez le volant dans notre course de réflexes.</p>
       <div style="display:flex;gap:14px;margin-top:34px;pointer-events:auto;flex-wrap:wrap;justify-content:flex-start;animation:heroUp .95s .4s cubic-bezier(.2,.7,.2,1) both">
         <a href="#porsche" style="display:inline-flex;align-items:center;gap:10px;padding:16px 32px;border-radius:12px;background:#fff;color:#0a0b0d;font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 14px 40px -14px rgba(255,255,255,.5);position:relative;overflow:hidden" style-hover="transform:translateY(-3px);box-shadow:0 22px 50px -14px rgba(255,255,255,.6);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 42%,rgba(255,255,255,.55) 50%,transparent 58%);background-size:220% 100%;animation:sheen 4.5s ease-in-out infinite;pointer-events:none"></span>Découvrir la collection →</a>
@@ -114,7 +169,7 @@
       </div>
       <div style="position:absolute;left:18px;bottom:16px;font-family:monospace;font-size:11px;color:#6a7078;letter-spacing:.12em">GLISSEZ POUR PIVOTER · MOLETTE POUR ZOOMER</div>
     </div>
-    <div data-reveal style="position:relative;z-index:1;opacity:0;transform:translateY(40px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)">
+    <div data-reveal style="position:relative;z-index:1;opacity:0;transform:translateY(40px);filter:blur(9px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1),filter .8s cubic-bezier(.2,.7,.2,1)">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
         <span style="font-family:'Saira Condensed';font-weight:800;font-size:15px;color:#d5001c;letter-spacing:.14em">PORSCHE</span>
         <span style="height:1px;flex:1;background:linear-gradient(90deg,#d5001c,transparent)"></span>
@@ -138,7 +193,7 @@
 
   <section id="lamborghini" style="position:relative;padding:120px 6vw;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:56px;align-items:center;border-top:1px solid rgba(255,255,255,.05)">
     <div style="position:absolute;top:40px;right:5vw;font-family:'Saira Condensed';font-weight:900;font-size:clamp(120px,20vw,300px);line-height:.8;color:rgba(255,255,255,.03);pointer-events:none;z-index:0" data-para="1">02</div>
-    <div data-reveal style="position:relative;z-index:1;opacity:0;transform:translateY(40px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1);order:2">
+    <div data-reveal style="position:relative;z-index:1;opacity:0;transform:translateY(40px);filter:blur(9px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1),filter .8s cubic-bezier(.2,.7,.2,1);order:2">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
         <span style="font-family:'Saira Condensed';font-weight:800;font-size:15px;color:#ffcc00;letter-spacing:.14em">LAMBORGHINI</span>
         <span style="height:1px;flex:1;background:linear-gradient(90deg,#ffcc00,transparent)"></span>
@@ -190,7 +245,7 @@
       </div>
       <div style="position:absolute;left:18px;bottom:16px;font-family:monospace;font-size:11px;color:#6a7078;letter-spacing:.12em">GLISSEZ POUR PIVOTER · MOLETTE POUR ZOOMER</div>
     </div>
-    <div data-reveal style="position:relative;z-index:1;opacity:0;transform:translateY(40px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)">
+    <div data-reveal style="position:relative;z-index:1;opacity:0;transform:translateY(40px);filter:blur(9px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1),filter .8s cubic-bezier(.2,.7,.2,1)">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
         <span style="font-family:'Saira Condensed';font-weight:800;font-size:15px;color:#7aa2ff;letter-spacing:.14em">BUGATTI</span>
         <span style="height:1px;flex:1;background:linear-gradient(90deg,#7aa2ff,transparent)"></span>
@@ -212,17 +267,17 @@
     </div>
   </section>
 
-  <section id="jeu" style="padding:120px 6vw 130px;background:linear-gradient(#08090b,#0b0d12);border-top:1px solid rgba(255,255,255,.05)">
-    <div data-reveal style="opacity:0;transform:translateY(40px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1);max-width:760px">
+  <section id="jeu" style="padding:120px 6vw 130px;background:linear-gradient(var(--bg),var(--bg2));border-top:1px solid rgba(255,255,255,.05)">
+    <div data-reveal style="opacity:0;transform:translateY(40px);filter:blur(9px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1),filter .8s cubic-bezier(.2,.7,.2,1);max-width:760px">
       <div style="display:flex;align-items:center;gap:12px">
-        <span style="width:36px;height:1px;background:#7aa2ff"></span>
+        <span style="width:36px;height:1px;background:var(--accent)"></span>
         <span style="font-size:12px;letter-spacing:.36em;text-transform:uppercase;color:#9aa1ab">Mini-jeu · Time attack</span>
       </div>
       <h2 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(38px,6vw,76px);margin:12px 0 0;text-transform:uppercase;line-height:.94">Course de réflexes</h2>
       <p style="color:#b6bcc4;font-size:17px;margin:16px 0 0;line-height:1.55;font-weight:300">Prenez le volant d'un des trois bolides, changez de voie et évitez les obstacles. La vitesse ne cesse d'augmenter — chaque évitement au ras rapporte un bonus.</p>
     </div>
 
-    <div style="position:relative;margin-top:34px;border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,.09);background:radial-gradient(135% 78% at 50% 60%, rgba(122,162,255,.24), transparent 52%), linear-gradient(#070812 0%, #100c26 58%, #060509 100%);height:min(76vh,640px);box-shadow:0 50px 120px -60px rgba(122,162,255,.45)" id="gameBox">
+    <div style="position:relative;margin-top:34px;border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,.09);background:radial-gradient(135% 78% at 50% 60%, rgba(var(--accent-rgb),.24), transparent 52%), linear-gradient(#070812 0%, #100c26 58%, #060509 100%);height:min(76vh,640px);box-shadow:0 50px 120px -60px rgba(var(--accent-rgb),.45)" id="gameBox">
       <div ref="{{ gameRef }}" style="position:absolute;inset:0"></div>
 
       <sc-if value="{{ isPlaying }}" hint-placeholder-val="{{ true }}">
@@ -235,7 +290,7 @@
             <div style="width:1px;background:rgba(255,255,255,.1)"></div>
             <div style="padding:8px 15px">
               <div style="font-size:9px;letter-spacing:.22em;color:#8a8f98;font-weight:700">SCORE</div>
-              <div style="font-family:'Saira Condensed';font-weight:800;font-size:22px;color:#7aa2ff"><span ref="{{ scoreLiveRef }}">0</span></div>
+              <div style="font-family:'Saira Condensed';font-weight:800;font-size:22px;color:var(--accent)"><span ref="{{ scoreLiveRef }}">0</span></div>
             </div>
             <div style="width:1px;background:rgba(255,255,255,.1)"></div>
             <div style="padding:8px 15px">
@@ -244,8 +299,8 @@
             </div>
           </div>
           <div style="display:flex;gap:8px;align-items:stretch;pointer-events:auto">
-            <button onClick="{{ cycleCam }}" title="Changer de caméra" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(11,13,19,.62);color:#fff;cursor:pointer;backdrop-filter:blur(12px)" style-hover="border-color:#7aa2ff">
-              <span style="font-size:16px">🎥</span><span style="font-size:9px;letter-spacing:.12em;color:#b9ccff;font-weight:700">{{ camLabel }}</span>
+            <button onClick="{{ cycleCam }}" title="Changer de caméra" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(11,13,19,.62);color:#fff;cursor:pointer;backdrop-filter:blur(12px)" style-hover="border-color:var(--accent)">
+              <span style="font-size:16px">🎥</span><span style="font-size:9px;letter-spacing:.12em;color:var(--accent-light);font-weight:700">{{ camLabel }}</span>
             </button>
             <div style="padding:8px 15px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(11,13,19,.62);backdrop-filter:blur(12px);text-align:right">
               <div style="font-size:9px;letter-spacing:.22em;color:#8a8f98;font-weight:700">MEILLEUR</div>
@@ -256,12 +311,12 @@
         <div style="position:absolute;bottom:18px;left:16px;right:16px;display:flex;justify-content:flex-end;align-items:flex-end;pointer-events:none">
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:9px">
             <div style="width:100%;height:8px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden;border:1px solid rgba(255,255,255,.12)">
-              <div ref="{{ boostRef }}" style="height:100%;width:100%;background:linear-gradient(90deg,#3a5fd0,#b9ccff);transition:width .05s linear"></div>
+              <div ref="{{ boostRef }}" style="height:100%;width:100%;background:linear-gradient(90deg,var(--accent-deep),var(--accent-light));transition:width .05s linear"></div>
             </div>
             <div style="display:flex;gap:10px;pointer-events:auto">
-              <button onPointerDown="{{ moveLeft }}" style="width:64px;height:64px;border-radius:16px;border:1px solid rgba(255,255,255,.16);background:rgba(11,13,19,.62);color:#fff;font-size:25px;cursor:pointer;backdrop-filter:blur(12px);touch-action:none;transition:transform .1s,background .2s,border-color .2s" style-hover="border-color:#7aa2ff;background:rgba(122,162,255,.22)" style-active="transform:scale(.9)">◀</button>
-              <button onPointerDown="{{ moveRight }}" style="width:64px;height:64px;border-radius:16px;border:1px solid rgba(255,255,255,.16);background:rgba(11,13,19,.62);color:#fff;font-size:25px;cursor:pointer;backdrop-filter:blur(12px);touch-action:none;transition:transform .1s,background .2s,border-color .2s" style-hover="border-color:#7aa2ff;background:rgba(122,162,255,.22)" style-active="transform:scale(.9)">▶</button>
-              <button onPointerDown="{{ boostDown }}" onPointerUp="{{ boostUp }}" onPointerLeave="{{ boostUp }}" style="height:64px;padding:0 28px;border-radius:16px;border:1px solid rgba(122,162,255,.55);background:linear-gradient(180deg,rgba(122,162,255,.34),rgba(122,162,255,.1));color:#fff;font-family:'Saira Condensed';font-weight:900;font-size:18px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;backdrop-filter:blur(12px);touch-action:none;animation:premPulse 2.6s ease-in-out infinite;transition:transform .1s,background .2s;position:relative;overflow:hidden" style-active="background:rgba(122,162,255,.55);transform:scale(.95)"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 42%,rgba(255,255,255,.4) 50%,transparent 58%);background-size:240% 100%;animation:sheen 3.5s ease-in-out infinite;pointer-events:none"></span>⚡ Boost</button>
+              <button onPointerDown="{{ moveLeft }}" style="width:64px;height:64px;border-radius:16px;border:1px solid rgba(255,255,255,.16);background:rgba(11,13,19,.62);color:#fff;font-size:25px;cursor:pointer;backdrop-filter:blur(12px);touch-action:none;transition:transform .1s,background .2s,border-color .2s" style-hover="border-color:var(--accent);background:rgba(var(--accent-rgb),.22)" style-active="transform:scale(.9)">◀</button>
+              <button onPointerDown="{{ moveRight }}" style="width:64px;height:64px;border-radius:16px;border:1px solid rgba(255,255,255,.16);background:rgba(11,13,19,.62);color:#fff;font-size:25px;cursor:pointer;backdrop-filter:blur(12px);touch-action:none;transition:transform .1s,background .2s,border-color .2s" style-hover="border-color:var(--accent);background:rgba(var(--accent-rgb),.22)" style-active="transform:scale(.9)">▶</button>
+              <button onPointerDown="{{ boostDown }}" onPointerUp="{{ boostUp }}" onPointerLeave="{{ boostUp }}" style="height:64px;padding:0 28px;border-radius:16px;border:1px solid rgba(var(--accent-rgb),.55);background:linear-gradient(180deg,rgba(var(--accent-rgb),.34),rgba(var(--accent-rgb),.1));color:#fff;font-family:'Saira Condensed';font-weight:900;font-size:18px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;backdrop-filter:blur(12px);touch-action:none;animation:premPulse 2.6s ease-in-out infinite;transition:transform .1s,background .2s;position:relative;overflow:hidden" style-active="background:rgba(var(--accent-rgb),.55);transform:scale(.95)"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 42%,rgba(255,255,255,.4) 50%,transparent 58%);background-size:240% 100%;animation:sheen 3.5s ease-in-out infinite;pointer-events:none"></span>⚡ Boost</button>
             </div>
             <div style="font-family:monospace;font-size:10px;color:#8a8f98;letter-spacing:.06em">ESPACE / MAJ · ← → A/D · C caméra</div>
           </div>
@@ -271,12 +326,12 @@
       <sc-if value="{{ isMenu }}" hint-placeholder-val="{{ true }}">
         <div style="position:absolute;inset:0;overflow:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:radial-gradient(circle at 50% 34%, #0b0e14e6, #06070af5);text-align:center;padding:34px 24px">
           <sc-if value="{{ isNaming }}" hint-placeholder-val="{{ true }}">
-            <div style="width:min(420px,92%);background:linear-gradient(180deg,#141326,#0b0b14);border:1px solid rgba(122,162,255,.35);border-radius:20px;padding:30px 28px;box-shadow:0 30px 80px -40px rgba(122,162,255,.7)">
-              <div style="font-size:12px;letter-spacing:.34em;color:#9db8ff;text-transform:uppercase">Classement</div>
+            <div style="width:min(420px,92%);background:linear-gradient(180deg,#141326,#0b0b14);border:1px solid rgba(var(--accent-rgb),.35);border-radius:20px;padding:30px 28px;box-shadow:0 30px 80px -40px rgba(var(--accent-rgb),.7)">
+              <div style="font-size:12px;letter-spacing:.34em;color:var(--accent-soft);text-transform:uppercase">Classement</div>
               <div style="font-family:'Saira Condensed';font-weight:900;font-size:30px;margin:6px 0 4px;text-transform:uppercase">Votre pseudo</div>
               <div style="font-size:13px;color:#9aa1ab;font-weight:300;margin-bottom:18px">Choisissez un nom pour apparaître au classement.</div>
               <input ref="{{ nameInputRef }}" onKeyDown="{{ nameKey }}" maxLength="16" placeholder="Ex. SpeedX" style="width:100%;box-sizing:border-box;background:#07080d;border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:14px 16px;color:#fff;font-family:'Saira Condensed';font-weight:700;font-size:20px;letter-spacing:.04em;text-align:center;outline:none" />
-              <button onClick="{{ submitName }}" style="cursor:pointer;margin-top:16px;width:100%;padding:14px;border:0;border-radius:12px;background:#7aa2ff;color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:17px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 12px 34px -12px rgba(122,162,255,.9)" style-hover="transform:translateY(-2px)">Valider →</button>
+              <button onClick="{{ submitName }}" style="cursor:pointer;margin-top:16px;width:100%;padding:14px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:17px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 12px 34px -12px rgba(var(--accent-rgb),.9)" style-hover="transform:translateY(-2px)">Valider →</button>
             </div>
           </sc-if>
           <sc-if value="{{ isChoosing }}" hint-placeholder-val="{{ true }}">
@@ -284,8 +339,8 @@
             <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
               <div>
                 <div style="display:flex;align-items:center;gap:10px">
-                  <span style="width:8px;height:8px;border-radius:2px;background:#7aa2ff;animation:glowDot 1.8s ease-in-out infinite"></span>
-                  <span style="font-size:12px;letter-spacing:.36em;color:#9db8ff;text-transform:uppercase;font-weight:600">Mode jeu · Time attack</span>
+                  <span style="width:8px;height:8px;border-radius:2px;background:var(--accent);animation:glowDot 1.8s ease-in-out infinite"></span>
+                  <span style="font-size:12px;letter-spacing:.36em;color:var(--accent-soft);text-transform:uppercase;font-weight:600">Mode jeu · Time attack</span>
                 </div>
                 <div style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(32px,4.8vw,58px);text-transform:uppercase;line-height:.9;margin-top:8px">Choisissez<br>votre bolide</div>
               </div>
@@ -293,7 +348,7 @@
                 <div style="display:flex;align-items:center;gap:12px;background:rgba(15,16,22,.7);border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:7px 7px 7px 16px;backdrop-filter:blur(10px)">
                   <span style="font-size:10px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Pilote</span>
                   <span style="font-family:'Saira Condensed';font-weight:800;font-size:17px;color:#fff">{{ username }}</span>
-                  <button onClick="{{ editName }}" style="cursor:pointer;padding:6px 13px;border-radius:999px;border:1px solid rgba(122,162,255,.5);background:rgba(122,162,255,.14);color:#b9ccff;font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:700" style-hover="background:rgba(122,162,255,.3)">Changer</button>
+                  <button onClick="{{ editName }}" style="cursor:pointer;padding:6px 13px;border-radius:999px;border:1px solid rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.14);color:var(--accent-light);font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:700" style-hover="background:rgba(var(--accent-rgb),.3)">Changer</button>
                 </div>
                 <div style="font-size:11px;letter-spacing:.16em;color:#8a8f98;text-transform:uppercase">Meilleur : <span style="color:#ffcc00;font-family:'Saira Condensed';font-weight:800;font-size:16px">{{ best }}</span></div>
               </div>
@@ -343,7 +398,7 @@
               <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#8a8f98;letter-spacing:.04em;flex-wrap:wrap">
                 <span style="display:inline-flex;min-width:26px;height:26px;padding:0 7px;align-items:center;justify-content:center;border-radius:6px;border:1px solid rgba(255,255,255,.18);border-bottom-width:3px;background:#12151a;font-family:'Saira Condensed';font-weight:700;font-size:12px">◀</span><span style="display:inline-flex;min-width:26px;height:26px;padding:0 7px;align-items:center;justify-content:center;border-radius:6px;border:1px solid rgba(255,255,255,.18);border-bottom-width:3px;background:#12151a;font-family:'Saira Condensed';font-weight:700;font-size:12px">▶</span><span>changer de voie</span><span style="opacity:.4">·</span><span style="display:inline-flex;min-width:26px;height:26px;padding:0 7px;align-items:center;justify-content:center;border-radius:6px;border:1px solid rgba(255,255,255,.18);border-bottom-width:3px;background:#12151a;font-family:'Saira Condensed';font-weight:700;font-size:12px">␣</span><span>boost</span><span style="opacity:.4">·</span><span style="display:inline-flex;min-width:26px;height:26px;padding:0 7px;align-items:center;justify-content:center;border-radius:6px;border:1px solid rgba(255,255,255,.18);border-bottom-width:3px;background:#12151a;font-family:'Saira Condensed';font-weight:700;font-size:12px">C</span><span>caméra</span>
               </div>
-              <button onClick="{{ openBoard }}" style="cursor:pointer;display:inline-flex;align-items:center;gap:10px;padding:12px 22px;border-radius:999px;border:1px solid rgba(122,162,255,.45);background:rgba(122,162,255,.12);color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:14px;letter-spacing:.1em;text-transform:uppercase;backdrop-filter:blur(10px);transition:transform .2s,background .2s" style-hover="background:rgba(122,162,255,.26);transform:translateY(-2px)">🏆 Classement — Top 25 →</button>
+              <button onClick="{{ openBoard }}" style="cursor:pointer;display:inline-flex;align-items:center;gap:10px;padding:12px 22px;border-radius:999px;border:1px solid rgba(var(--accent-rgb),.45);background:rgba(var(--accent-rgb),.12);color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:14px;letter-spacing:.1em;text-transform:uppercase;backdrop-filter:blur(10px);transition:transform .2s,background .2s" style-hover="background:rgba(var(--accent-rgb),.26);transform:translateY(-2px)">🏆 Classement — Top 25 →</button>
             </div>
           </div>
           </sc-if>
@@ -357,7 +412,7 @@
             <div style="padding:7px 18px;border-radius:999px;background:linear-gradient(90deg,#ffcc00,#ff9500);color:#1a1400;font-family:'Saira Condensed';font-weight:900;font-size:14px;letter-spacing:.14em;text-transform:uppercase">★ Nouveau record</div>
           </sc-if>
           <div style="display:flex;gap:44px">
-            <div><div style="font-size:11px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Score</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:56px;color:#7aa2ff;line-height:1">{{ score }}</div></div>
+            <div><div style="font-size:11px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Score</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:56px;color:var(--accent);line-height:1">{{ score }}</div></div>
             <div><div style="font-size:11px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Meilleur</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:56px;color:#ffcc00;line-height:1">{{ best }}</div></div>
           </div>
           <div style="width:min(430px,92%);background:#0c0d14cc;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px 18px;text-align:left">
@@ -368,19 +423,20 @@
                 <span style="width:9px;height:9px;border-radius:2px;background:{{ e.carColor }}"></span>
                 <span style="flex:1;font-family:'Saira Condensed';font-weight:700;font-size:15px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.name }}</span>
                 <span style="font-size:10px;color:#8a8f98;font-weight:600;white-space:nowrap">{{ e.carName }}</span>
-                <span style="font-family:'Saira Condensed';font-weight:800;font-size:16px;color:#b9ccff">{{ e.score }}</span>
+                <span style="font-family:'Saira Condensed';font-weight:800;font-size:16px;color:var(--accent-light)">{{ e.score }}</span>
               </div>
             </sc-for>
           </div>
           <div style="display:flex;gap:14px;margin-top:6px;flex-wrap:wrap;justify-content:center">
-            <button onClick="{{ restart }}" style="cursor:pointer;padding:15px 32px;border-radius:12px;border:0;background:#7aa2ff;color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 12px 34px -12px rgba(122,162,255,.8);position:relative;overflow:hidden" style-hover="transform:translateY(-3px);box-shadow:0 20px 48px -12px rgba(122,162,255,.95)"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 42%,rgba(255,255,255,.45) 50%,transparent 58%);background-size:240% 100%;animation:sheen 4s ease-in-out infinite;pointer-events:none"></span>↻ Rejouer</button>
+            <button onClick="{{ restart }}" style="cursor:pointer;padding:15px 32px;border-radius:12px;border:0;background:var(--accent);color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 12px 34px -12px rgba(var(--accent-rgb),.8);position:relative;overflow:hidden" style-hover="transform:translateY(-3px);box-shadow:0 20px 48px -12px rgba(var(--accent-rgb),.95)"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 42%,rgba(255,255,255,.45) 50%,transparent 58%);background-size:240% 100%;animation:sheen 4s ease-in-out infinite;pointer-events:none"></span>↻ Rejouer</button>
             <button onClick="{{ menu }}" style="cursor:pointer;padding:15px 32px;border-radius:12px;border:1px solid rgba(255,255,255,.22);background:transparent;color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase" style-hover="border-color:#fff;background:rgba(255,255,255,.06)">Changer de voiture</button>
           </div>
         </div>
       </sc-if>
 
       <sc-if value="{{ isBoardOpen }}" hint-placeholder-val="{{ true }}">
-        <div style="position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;background:rgba(6,7,10,.96);backdrop-filter:blur(10px);padding:24px">
+        <div style="position:fixed;inset:0;z-index:150;display:flex;flex-direction:column;align-items:center;background:rgba(6,7,10,.96);backdrop-filter:blur(10px);padding:24px">
+          <div style="width:100%;max-width:820px;display:flex;flex-direction:column;flex:1;min-height:0">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
             <div style="font-family:'Saira Condensed';font-weight:900;font-size:26px;letter-spacing:.04em;text-transform:uppercase">🏆 Classement — Top 25</div>
             <button onClick="{{ closeBoard }}" style="cursor:pointer;padding:10px 20px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#fff;font-family:'Saira Condensed';font-weight:800;letter-spacing:.06em;text-transform:uppercase" style-hover="border-color:#fff;background:rgba(255,255,255,.06)">✕ Fermer</button>
@@ -392,31 +448,32 @@
                 <span style="width:10px;height:10px;border-radius:2px;background:{{ e.carColor }}"></span>
                 <span style="flex:1;font-family:'Saira Condensed';font-weight:700;font-size:18px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.name }}</span>
                 <span style="font-size:12px;color:#8a8f98;font-weight:600;min-width:120px;text-align:right">{{ e.carName }}</span>
-                <span style="font-family:'Saira Condensed';font-weight:800;font-size:19px;color:#b9ccff;min-width:70px;text-align:right">{{ e.score }}</span>
+                <span style="font-family:'Saira Condensed';font-weight:800;font-size:19px;color:var(--accent-light);min-width:70px;text-align:right">{{ e.score }}</span>
               </div>
             </sc-for>
             <sc-if value="{{ boardEmpty }}" hint-placeholder-val="{{ true }}">
               <div style="text-align:center;color:#8a8f98;font-size:14px;padding:30px">Aucun score encore — soyez le premier !</div>
             </sc-if>
           </div>
+          </div>
         </div>
       </sc-if>
     </div>
   </section>
 
-  <footer style="padding:44px 6vw;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;align-items:center;color:#6a7078;font-size:12.5px;letter-spacing:.08em">
-    <div style="font-family:'Saira Condensed';font-weight:900;letter-spacing:.16em;color:#c7ccd2;font-size:16px">DEYLO<span style="color:#7aa2ff">·</span>GARAGE</div>
+  <footer data-reveal style="opacity:0;transform:translateY(24px);filter:blur(9px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1),filter .8s cubic-bezier(.2,.7,.2,1);padding:44px 6vw;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;align-items:center;color:#6a7078;font-size:12.5px;letter-spacing:.08em">
+    <div style="font-family:'Saira Condensed';font-weight:900;letter-spacing:.16em;color:#c7ccd2;font-size:16px">DEYLO<span style="color:var(--accent)">·</span>GARAGE</div>
     <div>Showroom 3D · WebGL · Modèles 3D fournis par l'utilisateur · Marques citées à titre illustratif.</div>
   </footer>
 
   <sc-if value="{{ loading }}" hint-placeholder-val="{{ true }}">
-    <div style="position:fixed;inset:0;z-index:200;background:#08090b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px">
+    <div style="position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px">
       <div style="display:flex;align-items:center;gap:12px">
-        <div style="width:46px;height:46px;border-radius:14px;background:linear-gradient(150deg,#8fb0ff,#3a5fd0);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -8px #7aa2ff"><span style="font-family:'Saira Condensed';font-weight:900;font-size:28px;color:#080a10;letter-spacing:-.03em">D</span></div>
+        <div style="width:46px;height:46px;border-radius:14px;background:linear-gradient(150deg,var(--accent-pale),var(--accent-deep));display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -8px var(--accent)"><span style="font-family:'Saira Condensed';font-weight:900;font-size:28px;color:#080a10;letter-spacing:-.03em">D</span></div>
         <div style="font-family:'Saira Condensed';font-weight:900;font-size:26px;letter-spacing:.18em">DEYLO GARAGE</div>
       </div>
       <div style="width:min(340px,70vw);height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden">
-        <div style="height:100%;width:{{ loadPct }}%;background:linear-gradient(90deg,#7aa2ff,#b9ccff);border-radius:2px;transition:width .3s"></div>
+        <div style="height:100%;width:{{ loadPct }}%;background:linear-gradient(90deg,var(--accent),var(--accent-light));border-radius:2px;transition:width .3s"></div>
       </div>
       <div style="font-family:monospace;font-size:12px;letter-spacing:.18em;color:#6a7078">CHARGEMENT DES MODÈLES 3D · {{ loadPct }}%</div>
     </div>
@@ -444,14 +501,15 @@ class Component extends DCLogic {
     this.models = [null, null, null];
     this._last = performance.now();
     this._heroTarget = {x:0, y:0};
-    let best = 0, username='', board=[];
+    let best = 0, username='', board=[], theme='nocturne';
     try { best = parseInt(localStorage.getItem('apex_best')||'0',10) || 0; } catch(e){}
     try { username = (localStorage.getItem('apex_user')||'').slice(0,16); } catch(e){}
     try { const b=JSON.parse(localStorage.getItem('apex_board_v2')||'[]'); if(Array.isArray(b)) board=b; } catch(e){}
+    try { const t=localStorage.getItem('apex_theme'); if(t==='nocturne'||t==='ember'||t==='aurora') theme=t; } catch(e){}
     this._board = board;
     this.nameInputRef = React.createRef();
     this.brandColors = ['#d5001c','#ffcc00','#7aa2ff'];
-    this.state = { gameState:'menu', score:0, best, selectedCar:0, loading:true, loadPct:0, username, naming:!username, isRecord:false, boardOpen:false, camLabel:'STANDARD' };
+    this.state = { gameState:'menu', score:0, best, selectedCar:0, loading:true, loadPct:0, username, naming:!username, isRecord:false, boardOpen:false, camLabel:'STANDARD', theme, themeMenuOpen:false };
     this.cars = [
       { brand:'Porsche', name:'911 GT3', glow:0xd5001c, modelUrl:'uploads/gt3992.glb', rotY:Math.PI,
         carOpts:{edge:0xd6dade, emissive:0x2a0008, body:0x14161a, wing:true} },
@@ -495,6 +553,15 @@ class Component extends DCLogic {
       isBoardOpen: this.state.boardOpen,
       openBoard: ()=>this.setState({ boardOpen:true }),
       closeBoard: ()=>this.setState({ boardOpen:false }),
+      theme: this.state.theme,
+      themeMenuOpen: this.state.themeMenuOpen,
+      toggleThemeMenu: ()=>this.setState({ themeMenuOpen:!this.state.themeMenuOpen }),
+      setThemeNocturne: ()=>this.setTheme('nocturne'),
+      setThemeEmber: ()=>this.setTheme('ember'),
+      setThemeAurora: ()=>this.setTheme('aurora'),
+      ringNocturne: this.state.theme==='nocturne' ? '2px solid #fff' : '2px solid rgba(255,255,255,.2)',
+      ringEmber: this.state.theme==='ember' ? '2px solid #fff' : '2px solid rgba(255,255,255,.2)',
+      ringAurora: this.state.theme==='aurora' ? '2px solid #fff' : '2px solid rgba(255,255,255,.2)',
       isRecord: this.state.isRecord,
       submitName: ()=>this.submitName(),
       editName: ()=>this.editName(),
@@ -595,7 +662,7 @@ class Component extends DCLogic {
     this.scenes.forEach(s=>io.observe(s.el));
 
     const ro = new IntersectionObserver((es)=>es.forEach(en=>{
-      if(en.isIntersecting){ en.target.style.opacity='1'; en.target.style.transform='none'; ro.unobserve(en.target); }
+      if(en.isIntersecting){ en.target.style.opacity='1'; en.target.style.transform='none'; en.target.style.filter='none'; ro.unobserve(en.target); }
     }), {threshold:0.15});
     document.querySelectorAll('[data-reveal]').forEach(el=>ro.observe(el));
 
@@ -851,6 +918,7 @@ class Component extends DCLogic {
     this.setState({ username:v, naming:false });
   }
   editName(){ this.setState({ naming:true }, ()=>this.focusName()); }
+  setTheme(t){ this.setState({ theme:t, themeMenuOpen:false }); try { localStorage.setItem('apex_theme', t); } catch(e){} }
   focusName(){ setTimeout(()=>{ if(this.nameInputRef.current){ this.nameInputRef.current.value=this.state.username||''; this.nameInputRef.current.focus(); this.nameInputRef.current.select(); } },60); }
 
   launchFromHero(){
