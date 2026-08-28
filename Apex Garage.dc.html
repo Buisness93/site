@@ -16,19 +16,31 @@
 <script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
 <style>
  :root, [data-theme="obsidian"]{
-  --bg:#08090a; --bg-rgb:8,9,10; --bg2:#0d0e11;
+  --bg:#05070a; --bg-rgb:5,7,10; --bg2:#0a0d12;
   --accent:#9fb4c7; --accent-rgb:159,180,199; --accent-deep:#4d6478; --accent-light:#e6edf2; --accent-soft:#c3d2dd; --accent-pale:#b3c4d1;
+  --accent2-rgb:150,215,255;
   --text-1:#f4f6f8; --text-2:#c6ccd2; --text-3:#8b929b; --text-4:#565c64; --line-rgb:255,255,255;
+  --card-1:rgba(15,19,25,.94); --card-2:rgba(7,9,13,.94);
+  --veil-op:.6; --veil-bg:repeating-linear-gradient(115deg,rgba(200,220,255,.018) 0px,rgba(200,220,255,.018) 1px,transparent 1px,transparent 4px);
+  --vignette:radial-gradient(120% 70% at 15% -10%, rgba(120,160,220,.10), transparent 55%), radial-gradient(120% 70% at 85% 110%, rgba(90,130,190,.09), transparent 55%);
  }
  [data-theme="carmin"]{
-  --bg:#0c0605; --bg-rgb:12,6,5; --bg2:#150908;
-  --accent:#e2382c; --accent-rgb:226,56,44; --accent-deep:#8f1912; --accent-light:#ff9f80; --accent-soft:#ff7a5c; --accent-pale:#f2593f;
-  --text-1:#f6efe9; --text-2:#d8c9c2; --text-3:#9c8b84; --text-4:#5e514c; --line-rgb:255,240,235;
+  --bg:#120705; --bg-rgb:18,7,5; --bg2:#1d0c09;
+  --accent:#e2382c; --accent-rgb:226,56,44; --accent-deep:#7a140e; --accent-light:#ffb28f; --accent-soft:#ff8a63; --accent-pale:#f2593f;
+  --accent2-rgb:230,180,110;
+  --text-1:#f8efe6; --text-2:#ddc9bd; --text-3:#a58f83; --text-4:#63514a; --line-rgb:255,235,222;
+  --card-1:rgba(30,16,13,.94); --card-2:rgba(15,8,6,.94);
+  --veil-op:.7; --veil-bg:repeating-linear-gradient(45deg,rgba(255,150,110,.03) 0 2px,transparent 2px 7px),repeating-linear-gradient(-45deg,rgba(255,100,70,.022) 0 2px,transparent 2px 7px);
+  --vignette:radial-gradient(130% 60% at 50% 115%, rgba(226,56,44,.16), transparent 60%), radial-gradient(90% 50% at 50% -15%, rgba(230,180,110,.06), transparent 60%);
  }
  [data-theme="ivoire"]{
   --bg:#f5efe2; --bg-rgb:245,239,226; --bg2:#efe5d2;
   --accent:#b6863d; --accent-rgb:182,134,61; --accent-deep:#8a611f; --accent-light:#e6c17d; --accent-soft:#cf9f55; --accent-pale:#dcae66;
+  --accent2-rgb:150,110,80;
   --text-1:#241d13; --text-2:#5c5140; --text-3:#8a7f6c; --text-4:#a89c86; --line-rgb:35,27,15;
+  --card-1:rgba(28,22,15,.94); --card-2:rgba(14,10,7,.94);
+  --veil-op:1; --veil-bg:radial-gradient(rgba(35,27,15,.06) 1px,transparent 1px); --veil-size:15px 15px;
+  --vignette:radial-gradient(120% 65% at 50% -10%, rgba(182,134,61,.10), transparent 60%);
  }
  *{box-sizing:border-box}
  html,body{margin:0;padding:0;background:var(--bg);color:var(--text-1);font-family:'Saira',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;transition:background-color .5s ease,color .5s ease}
@@ -56,11 +68,15 @@
  .shoot-star::after{content:'';position:absolute;top:0;right:0;width:130px;height:1px;background:linear-gradient(90deg,transparent,var(--accent-light))}
  .twinkle{position:absolute;border-radius:50%;background:#fff;animation:twinkle ease-in-out infinite}
  .flash-veil{position:fixed;inset:0;z-index:2;pointer-events:none;background:radial-gradient(60% 40% at 50% 0%,rgba(var(--accent-rgb),.5),transparent 70%);animation:flashSweep 9s ease-in-out infinite}
- .material-veil{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.6;transition:opacity .5s ease;background:repeating-linear-gradient(115deg,rgba(255,255,255,.014) 0px,rgba(255,255,255,.014) 1px,transparent 1px,transparent 4px)}
- [data-theme="carmin"] .material-veil{background:repeating-linear-gradient(45deg,rgba(255,255,255,.02) 0 2px,transparent 2px 7px),repeating-linear-gradient(-45deg,rgba(255,255,255,.015) 0 2px,transparent 2px 7px)}
- [data-theme="ivoire"] .material-veil{opacity:1;background:radial-gradient(rgba(35,27,15,.06) 1px,transparent 1px);background-size:15px 15px}
+ .material-veil{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:var(--veil-op);transition:opacity .6s ease,background .6s ease;background:var(--veil-bg);background-size:var(--veil-size,auto)}
+ .theme-vignette{position:fixed;inset:0;z-index:1;pointer-events:none;transition:background 1s ease;background:var(--vignette)}
  [data-theme="ivoire"] .star-field,[data-theme="ivoire"] .flash-veil{display:none}
  [data-reveal]{will-change:opacity,transform,filter}
+ .car-frame{opacity:0;transform:scale(.93) translateY(30px);filter:brightness(.7) saturate(.65);clip-path:inset(7% 7% 7% 7% round 22px);transition:opacity 1.1s cubic-bezier(.16,1,.3,1),transform 1.2s cubic-bezier(.16,1,.3,1),filter 1.1s ease,clip-path 1.2s cubic-bezier(.16,1,.3,1);will-change:opacity,transform,filter,clip-path}
+ .car-frame.is-revealed{opacity:1;transform:scale(1) translateY(0);filter:brightness(1) saturate(1);clip-path:inset(0% 0% 0% 0% round 22px)}
+ .car-frame::after{content:'';position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:inherit;background:linear-gradient(115deg,transparent 34%,rgba(255,255,255,.55) 49%,transparent 64%);background-size:220% 100%;background-position:160% 0;opacity:0}
+ .car-frame.is-revealed::after{animation:carSweep 1.3s .2s cubic-bezier(.4,0,.2,1) both}
+ @keyframes carSweep{0%{opacity:0;background-position:160% 0}18%{opacity:.85}55%{opacity:.4}100%{opacity:0;background-position:-60% 0}}
  @media (max-width:860px){ nav{padding:12px 16px!important} nav > div:last-child{gap:3px!important} nav > div:last-child a{padding:7px 10px!important;font-size:11px!important;letter-spacing:.06em!important} }
  @media (max-width:680px){
   #heroText{left:5vw!important;right:5vw!important;max-width:none!important;bottom:11%!important}
@@ -113,6 +129,7 @@
   </div>
   <div class="flash-veil"></div>
   <div class="material-veil"></div>
+  <div class="theme-vignette"></div>
 
   <nav style="position:fixed;top:0;left:0;right:0;z-index:60;display:flex;align-items:center;justify-content:space-between;padding:15px 34px;backdrop-filter:blur(16px);background:linear-gradient(rgba(var(--bg-rgb),.88),rgba(var(--bg-rgb),0));border-bottom:1px solid rgba(var(--line-rgb),.08)">
     <div style="display:flex;align-items:center;gap:12px">
@@ -181,7 +198,7 @@
 
   <section id="porsche" style="position:relative;padding:120px 6vw;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:56px;align-items:center;border-top:1px solid rgba(var(--line-rgb),.07)">
     <div style="position:absolute;top:40px;left:5vw;font-family:'Saira Condensed';font-weight:900;font-size:clamp(120px,20vw,300px);line-height:.8;color:rgba(var(--line-rgb),.035);pointer-events:none;z-index:0" data-para="-1">01</div>
-    <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 30% 10%, rgba(213,0,28,.30), transparent 58%), linear-gradient(180deg, rgba(8,9,11,.48), rgba(8,9,11,.86)), url('uploads/garage.png') center 46%/cover;border:1px solid rgba(255,255,255,.08);min-height:520px;box-shadow:0 40px 90px -50px rgba(213,0,28,.5)">
+    <div class="car-frame" style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 30% 10%, rgba(213,0,28,.30), transparent 58%), linear-gradient(180deg, rgba(8,9,11,.48), rgba(8,9,11,.86)), url('uploads/garage.png') center 46%/cover;border:1px solid rgba(255,255,255,.08);min-height:520px;box-shadow:0 40px 90px -50px rgba(213,0,28,.5)">
       <div ref="{{ carRef0 }}" style="position:absolute;inset:0"></div>
       <div style="position:absolute;top:16px;left:18px;font-family:monospace;font-size:10.5px;letter-spacing:.16em;color:#6a7078">MODÈLE 3D · GLB</div>
       <div class="car-ctrls" style="position:absolute;top:16px;right:16px;left:auto;display:flex;flex-direction:row;flex-wrap:wrap;justify-content:flex-end;width:140px;gap:7px;z-index:2">
@@ -204,13 +221,13 @@
       <p style="color:var(--text-2);font-size:18px;margin:16px 0 30px;line-height:1.5;font-weight:300">La précision allemande à l'état pur. Un Flat-6 atmosphérique qui grimpe à 9 000 tr/min, châssis 992 taillé pour le circuit.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
         <sc-for list="{{ specs0 }}" as="s" hint-placeholder-count="6">
-          <div style="background:linear-gradient(180deg,rgba(19,22,28,.92),rgba(10,12,15,.92));border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(213,0,28,.55);border-radius:14px;padding:15px 18px;transition:transform .2s,border-color .2s,background .2s" style-hover="border-color:rgba(213,0,28,.5);transform:translateY(-3px)">
+          <div style="background:linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(213,0,28,.55);border-radius:14px;padding:15px 18px;transition:transform .2s,border-color .2s,background .2s" style-hover="border-color:rgba(213,0,28,.5);transform:translateY(-3px)">
             <div style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#8a8f98;font-weight:600">{{ s.l }}</div>
             <div style="font-family:'Saira Condensed';font-weight:800;font-size:30px;line-height:1.05;margin-top:6px;color:#fff">{{ s.v }}<span style="font-size:14px;color:#8a8f98;margin-left:5px;font-family:'Saira';font-weight:400">{{ s.u }}</span></div>
           </div>
         </sc-for>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(213,0,28,.24),rgba(213,0,28,.05)),linear-gradient(180deg,rgba(10,10,12,.92),rgba(6,6,8,.92));border:1px solid rgba(213,0,28,.35);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 44%,rgba(255,255,255,.14) 50%,transparent 56%);background-size:240% 100%;animation:sheen 6s ease-in-out infinite;pointer-events:none"></span>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(213,0,28,.24),rgba(213,0,28,.05)),linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid rgba(213,0,28,.35);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 44%,rgba(255,255,255,.14) 50%,transparent 56%);background-size:240% 100%;animation:sheen 6s ease-in-out infinite;pointer-events:none"></span>
         <span style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#c8ccd2;font-weight:600">Prix indicatif</span>
         <span style="font-family:'Saira Condensed';font-weight:800;font-size:30px;color:#fff">189 000 €</span>
       </div>
@@ -228,18 +245,18 @@
       <p style="color:var(--text-2);font-size:18px;margin:16px 0 30px;line-height:1.5;font-weight:300">La fureur d'un V12 atmosphérique italien. Des lignes tranchantes, une agressivité brute, un hurlement de 8 500 tr/min.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
         <sc-for list="{{ specs1 }}" as="s" hint-placeholder-count="6">
-          <div style="background:linear-gradient(180deg,rgba(19,22,28,.92),rgba(10,12,15,.92));border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(255,204,0,.55);border-radius:14px;padding:15px 18px;transition:transform .2s,border-color .2s,background .2s" style-hover="border-color:rgba(255,204,0,.5);transform:translateY(-3px)">
+          <div style="background:linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(255,204,0,.55);border-radius:14px;padding:15px 18px;transition:transform .2s,border-color .2s,background .2s" style-hover="border-color:rgba(255,204,0,.5);transform:translateY(-3px)">
             <div style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#8a8f98;font-weight:600">{{ s.l }}</div>
             <div style="font-family:'Saira Condensed';font-weight:800;font-size:30px;line-height:1.05;margin-top:6px;color:#fff">{{ s.v }}<span style="font-size:14px;color:#8a8f98;margin-left:5px;font-family:'Saira';font-weight:400">{{ s.u }}</span></div>
           </div>
         </sc-for>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(255,204,0,.24),rgba(255,204,0,.05)),linear-gradient(180deg,rgba(10,10,12,.92),rgba(6,6,8,.92));border:1px solid rgba(255,204,0,.35);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 44%,rgba(255,255,255,.14) 50%,transparent 56%);background-size:240% 100%;animation:sheen 6s ease-in-out infinite;pointer-events:none"></span>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(255,204,0,.24),rgba(255,204,0,.05)),linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid rgba(255,204,0,.35);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 44%,rgba(255,255,255,.14) 50%,transparent 56%);background-size:240% 100%;animation:sheen 6s ease-in-out infinite;pointer-events:none"></span>
         <span style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#c8ccd2;font-weight:600">Prix indicatif</span>
         <span style="font-family:'Saira Condensed';font-weight:800;font-size:30px;color:#fff">450 000 €</span>
       </div>
     </div>
-    <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 70% 10%, rgba(255,204,0,.26), transparent 58%), linear-gradient(180deg, rgba(8,9,11,.48), rgba(8,9,11,.86)), url('uploads/garage.png') center 46%/cover;border:1px solid rgba(255,255,255,.08);min-height:520px;order:1;box-shadow:0 40px 90px -50px rgba(255,204,0,.4)">
+    <div class="car-frame" style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 70% 10%, rgba(255,204,0,.26), transparent 58%), linear-gradient(180deg, rgba(8,9,11,.48), rgba(8,9,11,.86)), url('uploads/garage.png') center 46%/cover;border:1px solid rgba(255,255,255,.08);min-height:520px;order:1;box-shadow:0 40px 90px -50px rgba(255,204,0,.4)">
       <div ref="{{ carRef1 }}" style="position:absolute;inset:0"></div>
       <div style="position:absolute;top:16px;left:18px;font-family:monospace;font-size:10.5px;letter-spacing:.16em;color:#6a7078">MODÈLE 3D · GLB</div>
       <div class="car-ctrls" style="position:absolute;top:16px;right:16px;left:auto;display:flex;flex-direction:row;flex-wrap:wrap;justify-content:flex-end;width:140px;gap:7px;z-index:2">
@@ -257,7 +274,7 @@
 
   <section id="bugatti" style="position:relative;padding:120px 6vw;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:56px;align-items:center;border-top:1px solid rgba(var(--line-rgb),.07)">
     <div style="position:absolute;top:40px;left:5vw;font-family:'Saira Condensed';font-weight:900;font-size:clamp(120px,20vw,300px);line-height:.8;color:rgba(var(--line-rgb),.035);pointer-events:none;z-index:0" data-para="-1">03</div>
-    <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 30% 10%, rgba(122,162,255,.32), transparent 58%), linear-gradient(180deg, rgba(8,9,11,.48), rgba(8,9,11,.86)), url('uploads/garage.png') center 46%/cover;border:1px solid rgba(255,255,255,.08);min-height:520px;box-shadow:0 40px 90px -50px rgba(122,162,255,.55)">
+    <div class="car-frame" style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 30% 10%, rgba(122,162,255,.32), transparent 58%), linear-gradient(180deg, rgba(8,9,11,.48), rgba(8,9,11,.86)), url('uploads/garage.png') center 46%/cover;border:1px solid rgba(255,255,255,.08);min-height:520px;box-shadow:0 40px 90px -50px rgba(122,162,255,.55)">
       <div ref="{{ carRef2 }}" style="position:absolute;inset:0"></div>
       <div style="position:absolute;top:16px;left:18px;font-family:monospace;font-size:10.5px;letter-spacing:.16em;color:#6a7078">MODÈLE 3D · GLB</div>
       <div class="car-ctrls" style="position:absolute;top:16px;right:16px;left:auto;display:flex;flex-direction:row;flex-wrap:wrap;justify-content:flex-end;width:140px;gap:7px;z-index:2">
@@ -280,13 +297,13 @@
       <p style="color:var(--text-2);font-size:18px;margin:16px 0 30px;line-height:1.5;font-weight:300">Une réédition hommage à l'EB110, produite à seulement 10 exemplaires. Le W16 quadri-turbo dans toute sa démesure hyper-exclusive.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
         <sc-for list="{{ specs2 }}" as="s" hint-placeholder-count="6">
-          <div style="background:linear-gradient(180deg,rgba(19,22,28,.92),rgba(10,12,15,.92));border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(122,162,255,.55);border-radius:14px;padding:15px 18px;transition:transform .2s,border-color .2s,background .2s" style-hover="border-color:rgba(122,162,255,.5);transform:translateY(-3px)">
+          <div style="background:linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(122,162,255,.55);border-radius:14px;padding:15px 18px;transition:transform .2s,border-color .2s,background .2s" style-hover="border-color:rgba(122,162,255,.5);transform:translateY(-3px)">
             <div style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#8a8f98;font-weight:600">{{ s.l }}</div>
             <div style="font-family:'Saira Condensed';font-weight:800;font-size:30px;line-height:1.05;margin-top:6px;color:#fff">{{ s.v }}<span style="font-size:14px;color:#8a8f98;margin-left:5px;font-family:'Saira';font-weight:400">{{ s.u }}</span></div>
           </div>
         </sc-for>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(122,162,255,.26),rgba(122,162,255,.05)),linear-gradient(180deg,rgba(10,10,12,.92),rgba(6,6,8,.92));border:1px solid rgba(122,162,255,.38);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 44%,rgba(255,255,255,.16) 50%,transparent 56%);background-size:240% 100%;animation:sheen 6s ease-in-out infinite;pointer-events:none"></span>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(122,162,255,.26),rgba(122,162,255,.05)),linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid rgba(122,162,255,.38);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 44%,rgba(255,255,255,.16) 50%,transparent 56%);background-size:240% 100%;animation:sheen 6s ease-in-out infinite;pointer-events:none"></span>
         <span style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#c8ccd2;font-weight:600">Prix indicatif</span>
         <span style="font-family:'Saira Condensed';font-weight:800;font-size:30px;color:#fff">8 000 000 €</span>
       </div>
@@ -509,7 +526,7 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{
   &quot;$preview&quot;: {&quot;width&quot;: &quot;100%&quot;, &quot;height&quot;: 900},
-  &quot;autoRotate&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Comportement 3D&quot;},
+  &quot;autoRotate&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Comportement 3D&quot;},
   &quot;particles&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Comportement 3D&quot;},
   &quot;gameSpeed&quot;: {&quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 18, &quot;min&quot;: 12, &quot;max&quot;: 28, &quot;step&quot;: 1, &quot;unit&quot;: &quot; u/s&quot;, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Mini-jeu&quot;}
 }">
@@ -722,9 +739,14 @@ class Component extends DCLogic {
     this.scenes.forEach(s=>io.observe(s.el));
 
     const ro = new IntersectionObserver((es)=>es.forEach(en=>{
-      if(en.isIntersecting){ en.target.style.opacity='1'; en.target.style.transform='none'; en.target.style.filter='none'; ro.unobserve(en.target); }
+      if(en.isIntersecting){
+        if(en.target.hasAttribute('data-reveal')){ en.target.style.opacity='1'; en.target.style.transform='none'; en.target.style.filter='none'; }
+        if(en.target.classList.contains('car-frame')){ en.target.classList.add('is-revealed'); }
+        ro.unobserve(en.target);
+      }
     }), {threshold:0.15});
     document.querySelectorAll('[data-reveal]').forEach(el=>ro.observe(el));
+    document.querySelectorAll('.car-frame').forEach(el=>ro.observe(el));
 
     this._onResize = ()=>this.scenes.forEach(s=>{
       const w=s.el.clientWidth, h=s.el.clientHeight;
@@ -933,7 +955,7 @@ class Component extends DCLogic {
       const sp = this._heroSpin;
       const boost = sp>0 ? (11*sp*sp) : 0;
       if(sp>0){ this._heroSpin = Math.max(0, sp - dt*0.75); }
-      if(this.props.autoRotate!==false || boost>0) car.rotation.y += dt*(0.32 + boost);
+      if(this.props.autoRotate===true || boost>0) car.rotation.y += dt*(0.32 + boost);
       car.scale.setScalar(1 + 0.07*Math.sin((1-sp)*Math.PI)*(sp>0?1:0));
       pts.rotation.y += dt*(0.02 + boost*0.22);
       pts.visible = this.props.particles!==false;
@@ -1001,7 +1023,7 @@ class Component extends DCLogic {
       haut:{pos:new T.Vector3(0.4,6.4,4.2), look:-0.1},
     };
     s.camera.position.copy(views.defaut.pos);
-    const ctrl = { auto: this.props.autoRotate!==false, resetting:false, dragging:false, car, baseRot,
+    const ctrl = { auto: this.props.autoRotate===true, resetting:false, dragging:false, car, baseRot,
       camTarget: views.defaut.pos.clone(), lookY: views.defaut.look, zoom:1, views };
     this.carCtrls[idx] = ctrl;
     s.update = (dt)=>{
