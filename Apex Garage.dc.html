@@ -72,8 +72,8 @@
   .hud-stats > div > div:last-child{font-size:16px!important}
   .hud-side{gap:6px!important}
   .hud-side > button,.hud-side > div{padding:6px 10px!important}
-  .car-ctrls{top:14px!important;left:auto!important;right:14px!important;bottom:auto!important;transform:none!important;flex-direction:row!important;flex-wrap:wrap!important;justify-content:flex-end!important;width:118px!important;gap:6px!important}
-  .car-ctrls button{width:34px!important;height:34px!important;border-radius:8px!important;font-size:13px!important}
+  .car-ctrls{top:12px!important;right:12px!important;width:112px!important;gap:6px!important;opacity:.5!important;transition:opacity .2s}
+  .car-ctrls button{width:32px!important;height:32px!important;border-radius:8px!important;font-size:12px!important}
   .hud-controls{max-width:290px!important}
   .hud-btn{width:56px!important;height:56px!important}
   .hud-boost{padding:0 14px!important;font-size:15px!important}
@@ -88,11 +88,12 @@
   .hud-boost{padding:0 10px!important;font-size:13px!important;letter-spacing:.06em!important}
  }
  @media (min-width:681px) and (hover:none) and (pointer:coarse){
+  .car-ctrls{width:172px!important}
   .car-ctrls button{width:46px!important;height:46px!important}
  }
 </style>
 </helmet>
-<div data-theme="{{ theme }}" style="min-height:100vh;background:var(--bg);overflow-x:hidden;position:relative;transition:background-color .5s ease">
+<div data-theme="{{ theme }}" style="min-height:100vh;background:var(--bg);color:var(--text-1);overflow-x:hidden;position:relative;transition:background-color .5s ease,color .5s ease">
 
   <div class="star-field">
     <span class="shoot-star" style="left:6%;animation-duration:6.5s;animation-delay:.2s"></span>
@@ -183,7 +184,7 @@
     <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 30% 10%, rgba(213,0,28,.30), transparent 58%), linear-gradient(180deg, rgba(8,9,11,.48), rgba(8,9,11,.86)), url('uploads/garage.png') center 46%/cover;border:1px solid rgba(255,255,255,.08);min-height:520px;box-shadow:0 40px 90px -50px rgba(213,0,28,.5)">
       <div ref="{{ carRef0 }}" style="position:absolute;inset:0"></div>
       <div style="position:absolute;top:16px;left:18px;font-family:monospace;font-size:10.5px;letter-spacing:.16em;color:#6a7078">MODÈLE 3D · GLB</div>
-      <div class="car-ctrls" style="position:absolute;top:50%;left:14px;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:2">
+      <div class="car-ctrls" style="position:absolute;top:16px;right:16px;left:auto;display:flex;flex-direction:row;flex-wrap:wrap;justify-content:flex-end;width:140px;gap:7px;z-index:2">
         <button onClick="{{ rot0 }}" title="Rotation automatique" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#d5001c;color:#fff;background:#14171ccc">⟲</button>
         <button onClick="{{ rst0 }}" title="Réinitialiser la vue" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:15px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#d5001c;color:#fff;background:#14171ccc">↺</button>
         <button onClick="{{ zin0 }}" title="Zoom avant" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#d5001c;color:#fff;background:#14171ccc">＋</button>
@@ -241,7 +242,7 @@
     <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 70% 10%, rgba(255,204,0,.26), transparent 58%), linear-gradient(180deg, rgba(8,9,11,.48), rgba(8,9,11,.86)), url('uploads/garage.png') center 46%/cover;border:1px solid rgba(255,255,255,.08);min-height:520px;order:1;box-shadow:0 40px 90px -50px rgba(255,204,0,.4)">
       <div ref="{{ carRef1 }}" style="position:absolute;inset:0"></div>
       <div style="position:absolute;top:16px;left:18px;font-family:monospace;font-size:10.5px;letter-spacing:.16em;color:#6a7078">MODÈLE 3D · GLB</div>
-      <div class="car-ctrls" style="position:absolute;top:50%;left:14px;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:2">
+      <div class="car-ctrls" style="position:absolute;top:16px;right:16px;left:auto;display:flex;flex-direction:row;flex-wrap:wrap;justify-content:flex-end;width:140px;gap:7px;z-index:2">
         <button onClick="{{ rot1 }}" title="Rotation automatique" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#ffcc00;color:#fff;background:#14171ccc">⟲</button>
         <button onClick="{{ rst1 }}" title="Réinitialiser la vue" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:15px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#ffcc00;color:#fff;background:#14171ccc">↺</button>
         <button onClick="{{ zin1 }}" title="Zoom avant" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#ffcc00;color:#fff;background:#14171ccc">＋</button>
@@ -259,7 +260,7 @@
     <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 30% 10%, rgba(122,162,255,.32), transparent 58%), linear-gradient(180deg, rgba(8,9,11,.48), rgba(8,9,11,.86)), url('uploads/garage.png') center 46%/cover;border:1px solid rgba(255,255,255,.08);min-height:520px;box-shadow:0 40px 90px -50px rgba(122,162,255,.55)">
       <div ref="{{ carRef2 }}" style="position:absolute;inset:0"></div>
       <div style="position:absolute;top:16px;left:18px;font-family:monospace;font-size:10.5px;letter-spacing:.16em;color:#6a7078">MODÈLE 3D · GLB</div>
-      <div class="car-ctrls" style="position:absolute;top:50%;left:14px;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:2">
+      <div class="car-ctrls" style="position:absolute;top:16px;right:16px;left:auto;display:flex;flex-direction:row;flex-wrap:wrap;justify-content:flex-end;width:140px;gap:7px;z-index:2">
         <button onClick="{{ rot2 }}" title="Rotation automatique" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#7aa2ff;color:#fff;background:#14171ccc">⟲</button>
         <button onClick="{{ rst2 }}" title="Réinitialiser la vue" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:15px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#7aa2ff;color:#fff;background:#14171ccc">↺</button>
         <button onClick="{{ zin2 }}" title="Zoom avant" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#7aa2ff;color:#fff;background:#14171ccc">＋</button>
