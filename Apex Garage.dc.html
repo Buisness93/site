@@ -15,22 +15,25 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
 <style>
- :root{
-  --bg:#08090b; --bg-rgb:8,9,11; --bg2:#0b0d12;
-  --accent:#7aa2ff; --accent-rgb:122,162,255; --accent-deep:#3a5fd0; --accent-light:#b9ccff; --accent-soft:#9db8ff; --accent-pale:#8fb0ff;
+ :root, [data-theme="obsidian"]{
+  --bg:#08090a; --bg-rgb:8,9,10; --bg2:#0d0e11;
+  --accent:#9fb4c7; --accent-rgb:159,180,199; --accent-deep:#4d6478; --accent-light:#e6edf2; --accent-soft:#c3d2dd; --accent-pale:#b3c4d1;
+  --text-1:#f4f6f8; --text-2:#c6ccd2; --text-3:#8b929b; --text-4:#565c64; --line-rgb:255,255,255;
  }
- [data-theme="ember"]{
-  --bg:#0c0605; --bg-rgb:12,6,5; --bg2:#130806;
-  --accent:#ff4d3d; --accent-rgb:255,77,61; --accent-deep:#b31a12; --accent-light:#ffb199; --accent-soft:#ff9270; --accent-pale:#ff7a52;
+ [data-theme="carmin"]{
+  --bg:#0c0605; --bg-rgb:12,6,5; --bg2:#150908;
+  --accent:#e2382c; --accent-rgb:226,56,44; --accent-deep:#8f1912; --accent-light:#ff9f80; --accent-soft:#ff7a5c; --accent-pale:#f2593f;
+  --text-1:#f6efe9; --text-2:#d8c9c2; --text-3:#9c8b84; --text-4:#5e514c; --line-rgb:255,240,235;
  }
- [data-theme="aurora"]{
-  --bg:#07050f; --bg-rgb:7,5,15; --bg2:#0b0818;
-  --accent:#39e6ff; --accent-rgb:57,230,255; --accent-deep:#7a3fff; --accent-light:#d3c2ff; --accent-soft:#8fe3ff; --accent-pale:#b18bff;
+ [data-theme="ivoire"]{
+  --bg:#f5efe2; --bg-rgb:245,239,226; --bg2:#efe5d2;
+  --accent:#b6863d; --accent-rgb:182,134,61; --accent-deep:#8a611f; --accent-light:#e6c17d; --accent-soft:#cf9f55; --accent-pale:#dcae66;
+  --text-1:#241d13; --text-2:#5c5140; --text-3:#8a7f6c; --text-4:#a89c86; --line-rgb:35,27,15;
  }
  *{box-sizing:border-box}
- html,body{margin:0;padding:0;background:var(--bg);color:#eef1f5;font-family:'Saira',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
- a{color:#c7ccd2;text-decoration:none;transition:color .2s}
- a:hover{color:#ffffff}
+ html,body{margin:0;padding:0;background:var(--bg);color:var(--text-1);font-family:'Saira',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;transition:background-color .5s ease,color .5s ease}
+ a{color:var(--text-2);text-decoration:none;transition:color .2s}
+ a:hover{color:var(--text-1)}
  button{font-family:inherit;transition:transform .12s cubic-bezier(.2,.7,.2,1),box-shadow .2s,background .2s,border-color .2s}
  button:active{transform:translateY(1px) scale(.97)!important}
  a{-webkit-tap-highlight-color:transparent}
@@ -53,18 +56,39 @@
  .shoot-star::after{content:'';position:absolute;top:0;right:0;width:130px;height:1px;background:linear-gradient(90deg,transparent,var(--accent-light))}
  .twinkle{position:absolute;border-radius:50%;background:#fff;animation:twinkle ease-in-out infinite}
  .flash-veil{position:fixed;inset:0;z-index:2;pointer-events:none;background:radial-gradient(60% 40% at 50% 0%,rgba(var(--accent-rgb),.5),transparent 70%);animation:flashSweep 9s ease-in-out infinite}
+ .material-veil{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.6;transition:opacity .5s ease;background:repeating-linear-gradient(115deg,rgba(255,255,255,.014) 0px,rgba(255,255,255,.014) 1px,transparent 1px,transparent 4px)}
+ [data-theme="carmin"] .material-veil{background:repeating-linear-gradient(45deg,rgba(255,255,255,.02) 0 2px,transparent 2px 7px),repeating-linear-gradient(-45deg,rgba(255,255,255,.015) 0 2px,transparent 2px 7px)}
+ [data-theme="ivoire"] .material-veil{opacity:1;background:radial-gradient(rgba(35,27,15,.06) 1px,transparent 1px);background-size:15px 15px}
+ [data-theme="ivoire"] .star-field,[data-theme="ivoire"] .flash-veil{display:none}
  [data-reveal]{will-change:opacity,transform,filter}
  @media (max-width:860px){ nav{padding:12px 16px!important} nav > div:last-child{gap:3px!important} nav > div:last-child a{padding:7px 10px!important;font-size:11px!important;letter-spacing:.06em!important} }
  @media (max-width:680px){
   #heroText{left:5vw!important;right:5vw!important;max-width:none!important;bottom:11%!important}
   #porsche,#lamborghini,#bugatti,#jeu{padding-left:5vw!important;padding-right:5vw!important;padding-top:80px!important;padding-bottom:80px!important}
-  #gameBox{height:min(72vh,540px)!important}
-  #hud{transform:scale(.82);transform-origin:top left}
+  #gameBox{height:min(70vh,560px)!important}
+  #hud{top:10px!important;left:10px!important;right:10px!important;gap:8px!important}
+  .hud-stats > div{padding:6px 9px!important}
+  .hud-stats > div > div:first-child{font-size:7.5px!important}
+  .hud-stats > div > div:last-child{font-size:16px!important}
+  .hud-side{gap:6px!important}
+  .hud-side > button,.hud-side > div{padding:6px 10px!important}
+  .car-ctrls{top:14px!important;left:auto!important;right:14px!important;bottom:auto!important;transform:none!important;flex-direction:row!important;flex-wrap:wrap!important;justify-content:flex-end!important;width:118px!important;gap:6px!important}
+  .car-ctrls button{width:34px!important;height:34px!important;border-radius:8px!important;font-size:13px!important}
+  .hud-controls{max-width:290px!important}
+  .hud-btn{width:56px!important;height:56px!important}
+  .hud-boost{padding:0 14px!important;font-size:15px!important}
+  .hud-hint{display:none!important}
  }
  @media (max-width:520px){
   nav > div:first-child > div:last-child{font-size:17px!important}
   #heroText h1{font-size:42px!important}
   #heroText p{font-size:14px!important}
+  .hud-speed,.hud-speed-sep{display:none!important}
+  .hud-btn{width:50px!important;height:50px!important;font-size:21px!important}
+  .hud-boost{padding:0 10px!important;font-size:13px!important;letter-spacing:.06em!important}
+ }
+ @media (min-width:681px) and (hover:none) and (pointer:coarse){
+  .car-ctrls button{width:46px!important;height:46px!important}
  }
 </style>
 </helmet>
@@ -87,8 +111,9 @@
     <span class="twinkle" style="left:64%;top:40%;width:2px;height:2px;animation-duration:3.3s;animation-delay:1.5s"></span>
   </div>
   <div class="flash-veil"></div>
+  <div class="material-veil"></div>
 
-  <nav style="position:fixed;top:0;left:0;right:0;z-index:60;display:flex;align-items:center;justify-content:space-between;padding:15px 34px;backdrop-filter:blur(16px);background:linear-gradient(rgba(var(--bg-rgb),.88),rgba(var(--bg-rgb),0));border-bottom:1px solid rgba(255,255,255,.06)">
+  <nav style="position:fixed;top:0;left:0;right:0;z-index:60;display:flex;align-items:center;justify-content:space-between;padding:15px 34px;backdrop-filter:blur(16px);background:linear-gradient(rgba(var(--bg-rgb),.88),rgba(var(--bg-rgb),0));border-bottom:1px solid rgba(var(--line-rgb),.08)">
     <div style="display:flex;align-items:center;gap:12px">
       <div style="width:36px;height:36px;border-radius:11px;background:linear-gradient(150deg,var(--accent-pale),var(--accent-deep));display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px -8px var(--accent);position:relative;overflow:hidden">
         <span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 40%,rgba(255,255,255,.45) 50%,transparent 60%);background-size:220% 100%;animation:sheen 5s ease-in-out infinite"></span>
@@ -100,27 +125,27 @@
       </div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;font-size:12.5px;letter-spacing:.16em;text-transform:uppercase">
-      <a href="#porsche" style="padding:8px 14px;border-radius:8px" style-hover="background:rgba(255,255,255,.06)">Collection</a>
-      <a onClick="{{ openBoard }}" style="cursor:pointer;padding:8px 14px;border-radius:8px" style-hover="background:rgba(255,255,255,.06)">🏆 Classement</a>
+      <a href="#porsche" style="padding:8px 14px;border-radius:8px" style-hover="background:rgba(var(--line-rgb),.06)">Collection</a>
+      <a onClick="{{ openBoard }}" style="cursor:pointer;padding:8px 14px;border-radius:8px" style-hover="background:rgba(var(--line-rgb),.06)">🏆 Classement</a>
       <div style="position:relative">
-        <button onClick="{{ toggleThemeMenu }}" title="Changer de thème" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:#fff;font-family:inherit;font-size:12.5px;letter-spacing:.16em;text-transform:uppercase" style-hover="border-color:rgba(255,255,255,.32);background:rgba(255,255,255,.08)">
+        <button onClick="{{ toggleThemeMenu }}" title="Changer de thème" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;border:1px solid rgba(var(--line-rgb),.16);background:rgba(var(--line-rgb),.05);color:var(--text-1);font-family:inherit;font-size:12.5px;letter-spacing:.16em;text-transform:uppercase" style-hover="border-color:rgba(var(--line-rgb),.34);background:rgba(var(--line-rgb),.09)">
           <span style="width:13px;height:13px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-deep));box-shadow:0 0 8px rgba(var(--accent-rgb),.75)"></span>Thème
         </button>
         <sc-if value="{{ themeMenuOpen }}" hint-placeholder-val="{{ false }}">
-          <div style="position:absolute;top:calc(100% + 10px);right:0;background:#0d0f14ee;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:180px;backdrop-filter:blur(14px);box-shadow:0 24px 60px -20px rgba(0,0,0,.75);text-transform:none;letter-spacing:normal">
-            <button onClick="{{ setThemeNocturne }}" style="cursor:pointer;display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:10px;border:1px solid transparent;background:transparent;color:#fff;font-family:'Saira Condensed';font-weight:700;font-size:14px" style-hover="background:rgba(255,255,255,.06)">
-              <span style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#7aa2ff,#3a5fd0);border:{{ ringNocturne }}"></span>Nocturne
+          <div style="position:absolute;top:calc(100% + 10px);right:0;background:#0d0f14ee;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:190px;backdrop-filter:blur(14px);box-shadow:0 24px 60px -20px rgba(0,0,0,.75);text-transform:none;letter-spacing:normal">
+            <button onClick="{{ setThemeObsidian }}" style="cursor:pointer;display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:10px;border:1px solid transparent;background:transparent;color:#fff;font-family:'Saira Condensed';font-weight:700;font-size:14px" style-hover="background:rgba(255,255,255,.06)">
+              <span style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#e6edf2,#4d6478);border:{{ ringObsidian }}"></span>Obsidian
             </button>
-            <button onClick="{{ setThemeEmber }}" style="cursor:pointer;display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:10px;border:1px solid transparent;background:transparent;color:#fff;font-family:'Saira Condensed';font-weight:700;font-size:14px" style-hover="background:rgba(255,255,255,.06)">
-              <span style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#ff4d3d,#b31a12);border:{{ ringEmber }}"></span>Ember
+            <button onClick="{{ setThemeIvoire }}" style="cursor:pointer;display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:10px;border:1px solid transparent;background:transparent;color:#fff;font-family:'Saira Condensed';font-weight:700;font-size:14px" style-hover="background:rgba(255,255,255,.06)">
+              <span style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#e6c17d,#8a611f);border:{{ ringIvoire }}"></span>Ivoire
             </button>
-            <button onClick="{{ setThemeAurora }}" style="cursor:pointer;display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:10px;border:1px solid transparent;background:transparent;color:#fff;font-family:'Saira Condensed';font-weight:700;font-size:14px" style-hover="background:rgba(255,255,255,.06)">
-              <span style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#39e6ff,#7a3fff);border:{{ ringAurora }}"></span>Aurora
+            <button onClick="{{ setThemeCarmin }}" style="cursor:pointer;display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:10px;border:1px solid transparent;background:transparent;color:#fff;font-family:'Saira Condensed';font-weight:700;font-size:14px" style-hover="background:rgba(255,255,255,.06)">
+              <span style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#ff9f80,#8f1912);border:{{ ringCarmin }}"></span>Carmin
             </button>
           </div>
         </sc-if>
       </div>
-      <a href="#jeu" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px;padding:10px 20px;border:1px solid var(--accent);border-radius:999px;color:#fff;background:rgba(var(--accent-rgb),.12);box-shadow:0 0 24px -8px rgba(var(--accent-rgb),.7);animation:premPulse 3s ease-in-out infinite;position:relative;overflow:hidden" style-hover="background:rgba(var(--accent-rgb),.28)"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 42%,rgba(255,255,255,.4) 50%,transparent 58%);background-size:240% 100%;animation:sheen 5s ease-in-out infinite;pointer-events:none"></span>▶ Jouer</a>
+      <a href="#jeu" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px;padding:10px 20px;border:1px solid var(--accent);border-radius:999px;color:var(--text-1);background:rgba(var(--accent-rgb),.12);box-shadow:0 0 24px -8px rgba(var(--accent-rgb),.7);animation:premPulse 3s ease-in-out infinite;position:relative;overflow:hidden" style-hover="background:rgba(var(--accent-rgb),.28)"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 42%,rgba(255,255,255,.4) 50%,transparent 58%);background-size:240% 100%;animation:sheen 5s ease-in-out infinite;pointer-events:none"></span>▶ Jouer</a>
     </div>
   </nav>
   <div id="scrollBar" style="position:fixed;top:0;left:0;height:3px;width:0;z-index:61;background:linear-gradient(90deg,var(--accent-deep),var(--accent));box-shadow:0 0 14px var(--accent);pointer-events:none"></div>
@@ -130,7 +155,7 @@
     <div style="position:absolute;left:80%;bottom:24%;transform:translateX(-50%);font-family:monospace;font-size:10.5px;letter-spacing:.24em;color:var(--accent-soft);text-transform:uppercase;animation:hintpulse 2.6s ease-in-out infinite;pointer-events:none">↻ cliquez la voiture</div>
     <div style="position:absolute;inset:0;background:radial-gradient(80% 62% at 50% 44%, transparent 28%, var(--bg) 88%);pointer-events:none"></div>
 
-    <div style="position:absolute;top:96px;right:34px;text-align:right;font-family:monospace;font-size:11px;letter-spacing:.14em;color:#4a5058;pointer-events:none;line-height:1.9">
+    <div style="position:absolute;top:96px;right:34px;text-align:right;font-family:monospace;font-size:11px;letter-spacing:.14em;color:var(--text-4);pointer-events:none;line-height:1.9">
       <div>N°001 — 003 · COLLECTION 2026</div>
       <div>48.8566° N / 2.3522° E</div>
     </div>
@@ -138,27 +163,27 @@
     <div id="heroText" style="position:absolute;left:6vw;right:auto;bottom:15%;max-width:600px;text-align:left;padding:0;pointer-events:none;will-change:transform,opacity">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;justify-content:flex-start;animation:heroUp .7s cubic-bezier(.2,.7,.2,1) both">
         <span style="width:42px;height:1px;background:var(--accent)"></span>
-        <span style="font-size:13px;letter-spacing:.42em;text-transform:uppercase;color:#9aa1ab">Showroom 3D · Supercars d'exception</span>
+        <span style="font-size:13px;letter-spacing:.42em;text-transform:uppercase;color:var(--text-3)">Showroom 3D · Supercars d'exception</span>
       </div>
       <h1 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(42px,7.6vw,120px);line-height:.9;margin:0;text-transform:uppercase;letter-spacing:-.015em;transition:filter .3s,letter-spacing .3s;animation:heroUp .85s .12s cubic-bezier(.2,.7,.2,1) both" style-hover="filter:brightness(1.12);letter-spacing:.005em">L'art de la<br><span style="background:linear-gradient(100deg,#ffffff 8%,var(--accent-light) 38%,#ffffff 58%,var(--accent) 100%);background-size:220% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 7s linear infinite">performance</span></h1>
-      <p style="max-width:520px;font-size:clamp(15px,1.4vw,19px);color:#b6bcc4;line-height:1.55;font-weight:300;animation:heroUp .9s .26s cubic-bezier(.2,.7,.2,1) both;margin:26px 0 0 0">Trois machines d'exception, modélisées en 3D haute-fidélité. Explorez chaque bolide sous tous les angles, puis prenez le volant dans notre course de réflexes.</p>
+      <p style="max-width:520px;font-size:clamp(15px,1.4vw,19px);color:var(--text-2);line-height:1.55;font-weight:300;animation:heroUp .9s .26s cubic-bezier(.2,.7,.2,1) both;margin:26px 0 0 0">Trois machines d'exception, modélisées en 3D haute-fidélité. Explorez chaque bolide sous tous les angles, puis prenez le volant dans notre course de réflexes.</p>
       <div style="display:flex;gap:14px;margin-top:34px;pointer-events:auto;flex-wrap:wrap;justify-content:flex-start;animation:heroUp .95s .4s cubic-bezier(.2,.7,.2,1) both">
-        <a href="#porsche" style="display:inline-flex;align-items:center;gap:10px;padding:16px 32px;border-radius:12px;background:#fff;color:#0a0b0d;font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 14px 40px -14px rgba(255,255,255,.5);position:relative;overflow:hidden" style-hover="transform:translateY(-3px);box-shadow:0 22px 50px -14px rgba(255,255,255,.6);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 42%,rgba(255,255,255,.55) 50%,transparent 58%);background-size:220% 100%;animation:sheen 4.5s ease-in-out infinite;pointer-events:none"></span>Découvrir la collection →</a>
-        <a href="#jeu" style="display:inline-flex;align-items:center;gap:10px;padding:16px 30px;border-radius:12px;border:1px solid rgba(255,255,255,.25);color:#fff;font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase" style-hover="border-color:#fff;background:rgba(255,255,255,.12);transform:translateY(-3px)">▶ Lancer le jeu</a>
+        <a href="#porsche" style="display:inline-flex;align-items:center;gap:10px;padding:16px 32px;border-radius:12px;background:var(--text-1);color:var(--bg);font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 14px 40px -14px rgba(var(--line-rgb),.5);position:relative;overflow:hidden" style-hover="transform:translateY(-3px);box-shadow:0 22px 50px -14px rgba(var(--line-rgb),.6);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 42%,rgba(255,255,255,.55) 50%,transparent 58%);background-size:220% 100%;animation:sheen 4.5s ease-in-out infinite;pointer-events:none"></span>Découvrir la collection →</a>
+        <a href="#jeu" style="display:inline-flex;align-items:center;gap:10px;padding:16px 30px;border-radius:12px;border:1px solid rgba(var(--line-rgb),.28);color:var(--text-1);font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase" style-hover="border-color:var(--text-1);background:rgba(var(--line-rgb),.1);transform:translateY(-3px)">▶ Lancer le jeu</a>
       </div>
     </div>
 
-    <div style="position:absolute;left:8vw;right:8vw;bottom:34px;display:flex;align-items:center;justify-content:space-between;gap:20px;font-family:'Saira Condensed';font-weight:700;font-size:13px;letter-spacing:.28em;color:#5a616b;text-transform:uppercase;pointer-events:none;border-top:1px solid rgba(255,255,255,.06);padding-top:16px">
-      <span>Porsche</span><span style="color:#2a2f36">/</span><span>Lamborghini</span><span style="color:#2a2f36">/</span><span>Bugatti</span><span style="flex:1"></span><span style="color:#4a5058">Glissez pour explorer</span>
+    <div style="position:absolute;left:8vw;right:8vw;bottom:34px;display:flex;align-items:center;justify-content:space-between;gap:20px;font-family:'Saira Condensed';font-weight:700;font-size:13px;letter-spacing:.28em;color:var(--text-4);text-transform:uppercase;pointer-events:none;border-top:1px solid rgba(var(--line-rgb),.08);padding-top:16px">
+      <span>Porsche</span><span style="color:var(--text-4);opacity:.5">/</span><span>Lamborghini</span><span style="color:var(--text-4);opacity:.5">/</span><span>Bugatti</span><span style="flex:1"></span><span style="color:var(--text-4)">Glissez pour explorer</span>
     </div>
   </section>
 
-  <section id="porsche" style="position:relative;padding:120px 6vw;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:56px;align-items:center;border-top:1px solid rgba(255,255,255,.05)">
-    <div style="position:absolute;top:40px;left:5vw;font-family:'Saira Condensed';font-weight:900;font-size:clamp(120px,20vw,300px);line-height:.8;color:rgba(255,255,255,.03);pointer-events:none;z-index:0" data-para="-1">01</div>
+  <section id="porsche" style="position:relative;padding:120px 6vw;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:56px;align-items:center;border-top:1px solid rgba(var(--line-rgb),.07)">
+    <div style="position:absolute;top:40px;left:5vw;font-family:'Saira Condensed';font-weight:900;font-size:clamp(120px,20vw,300px);line-height:.8;color:rgba(var(--line-rgb),.035);pointer-events:none;z-index:0" data-para="-1">01</div>
     <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 30% 10%, rgba(213,0,28,.30), transparent 58%), linear-gradient(180deg, rgba(8,9,11,.48), rgba(8,9,11,.86)), url('uploads/garage.png') center 46%/cover;border:1px solid rgba(255,255,255,.08);min-height:520px;box-shadow:0 40px 90px -50px rgba(213,0,28,.5)">
       <div ref="{{ carRef0 }}" style="position:absolute;inset:0"></div>
       <div style="position:absolute;top:16px;left:18px;font-family:monospace;font-size:10.5px;letter-spacing:.16em;color:#6a7078">MODÈLE 3D · GLB</div>
-      <div style="position:absolute;top:50%;left:14px;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:2">
+      <div class="car-ctrls" style="position:absolute;top:50%;left:14px;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:2">
         <button onClick="{{ rot0 }}" title="Rotation automatique" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#d5001c;color:#fff;background:#14171ccc">⟲</button>
         <button onClick="{{ rst0 }}" title="Réinitialiser la vue" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:15px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#d5001c;color:#fff;background:#14171ccc">↺</button>
         <button onClick="{{ zin0 }}" title="Zoom avant" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#d5001c;color:#fff;background:#14171ccc">＋</button>
@@ -175,7 +200,7 @@
         <span style="height:1px;flex:1;background:linear-gradient(90deg,#d5001c,transparent)"></span>
       </div>
       <h2 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(42px,5.5vw,80px);margin:0;line-height:.92;text-transform:uppercase;transition:letter-spacing .3s,text-shadow .3s;cursor:default" style-hover="letter-spacing:.03em;text-shadow:0 0 36px rgba(213,0,28,.7)">911 GT3</h2>
-      <p style="color:#c1c7cf;font-size:18px;margin:16px 0 30px;line-height:1.5;font-weight:300">La précision allemande à l'état pur. Un Flat-6 atmosphérique qui grimpe à 9 000 tr/min, châssis 992 taillé pour le circuit.</p>
+      <p style="color:var(--text-2);font-size:18px;margin:16px 0 30px;line-height:1.5;font-weight:300">La précision allemande à l'état pur. Un Flat-6 atmosphérique qui grimpe à 9 000 tr/min, châssis 992 taillé pour le circuit.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
         <sc-for list="{{ specs0 }}" as="s" hint-placeholder-count="6">
           <div style="background:linear-gradient(180deg,rgba(19,22,28,.92),rgba(10,12,15,.92));border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(213,0,28,.55);border-radius:14px;padding:15px 18px;transition:transform .2s,border-color .2s,background .2s" style-hover="border-color:rgba(213,0,28,.5);transform:translateY(-3px)">
@@ -184,22 +209,22 @@
           </div>
         </sc-for>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(213,0,28,.18),rgba(213,0,28,0));border:1px solid rgba(213,0,28,.32);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 44%,rgba(255,255,255,.14) 50%,transparent 56%);background-size:240% 100%;animation:sheen 6s ease-in-out infinite;pointer-events:none"></span>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(213,0,28,.24),rgba(213,0,28,.05)),linear-gradient(180deg,rgba(10,10,12,.92),rgba(6,6,8,.92));border:1px solid rgba(213,0,28,.35);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 44%,rgba(255,255,255,.14) 50%,transparent 56%);background-size:240% 100%;animation:sheen 6s ease-in-out infinite;pointer-events:none"></span>
         <span style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#c8ccd2;font-weight:600">Prix indicatif</span>
         <span style="font-family:'Saira Condensed';font-weight:800;font-size:30px;color:#fff">189 000 €</span>
       </div>
     </div>
   </section>
 
-  <section id="lamborghini" style="position:relative;padding:120px 6vw;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:56px;align-items:center;border-top:1px solid rgba(255,255,255,.05)">
-    <div style="position:absolute;top:40px;right:5vw;font-family:'Saira Condensed';font-weight:900;font-size:clamp(120px,20vw,300px);line-height:.8;color:rgba(255,255,255,.03);pointer-events:none;z-index:0" data-para="1">02</div>
+  <section id="lamborghini" style="position:relative;padding:120px 6vw;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:56px;align-items:center;border-top:1px solid rgba(var(--line-rgb),.07)">
+    <div style="position:absolute;top:40px;right:5vw;font-family:'Saira Condensed';font-weight:900;font-size:clamp(120px,20vw,300px);line-height:.8;color:rgba(var(--line-rgb),.035);pointer-events:none;z-index:0" data-para="1">02</div>
     <div data-reveal style="position:relative;z-index:1;opacity:0;transform:translateY(40px);filter:blur(9px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1),filter .8s cubic-bezier(.2,.7,.2,1);order:2">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
         <span style="font-family:'Saira Condensed';font-weight:800;font-size:15px;color:#ffcc00;letter-spacing:.14em">LAMBORGHINI</span>
         <span style="height:1px;flex:1;background:linear-gradient(90deg,#ffcc00,transparent)"></span>
       </div>
       <h2 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(42px,5.5vw,80px);margin:0;line-height:.92;text-transform:uppercase;transition:letter-spacing .3s,text-shadow .3s;cursor:default" style-hover="letter-spacing:.03em;text-shadow:0 0 36px rgba(255,204,0,.6)">Aventador SVJ</h2>
-      <p style="color:#c1c7cf;font-size:18px;margin:16px 0 30px;line-height:1.5;font-weight:300">La fureur d'un V12 atmosphérique italien. Des lignes tranchantes, une agressivité brute, un hurlement de 8 500 tr/min.</p>
+      <p style="color:var(--text-2);font-size:18px;margin:16px 0 30px;line-height:1.5;font-weight:300">La fureur d'un V12 atmosphérique italien. Des lignes tranchantes, une agressivité brute, un hurlement de 8 500 tr/min.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
         <sc-for list="{{ specs1 }}" as="s" hint-placeholder-count="6">
           <div style="background:linear-gradient(180deg,rgba(19,22,28,.92),rgba(10,12,15,.92));border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(255,204,0,.55);border-radius:14px;padding:15px 18px;transition:transform .2s,border-color .2s,background .2s" style-hover="border-color:rgba(255,204,0,.5);transform:translateY(-3px)">
@@ -208,7 +233,7 @@
           </div>
         </sc-for>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(255,204,0,.18),rgba(255,204,0,0));border:1px solid rgba(255,204,0,.32);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 44%,rgba(255,255,255,.14) 50%,transparent 56%);background-size:240% 100%;animation:sheen 6s ease-in-out infinite;pointer-events:none"></span>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(255,204,0,.24),rgba(255,204,0,.05)),linear-gradient(180deg,rgba(10,10,12,.92),rgba(6,6,8,.92));border:1px solid rgba(255,204,0,.35);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 44%,rgba(255,255,255,.14) 50%,transparent 56%);background-size:240% 100%;animation:sheen 6s ease-in-out infinite;pointer-events:none"></span>
         <span style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#c8ccd2;font-weight:600">Prix indicatif</span>
         <span style="font-family:'Saira Condensed';font-weight:800;font-size:30px;color:#fff">450 000 €</span>
       </div>
@@ -216,7 +241,7 @@
     <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 70% 10%, rgba(255,204,0,.26), transparent 58%), linear-gradient(180deg, rgba(8,9,11,.48), rgba(8,9,11,.86)), url('uploads/garage.png') center 46%/cover;border:1px solid rgba(255,255,255,.08);min-height:520px;order:1;box-shadow:0 40px 90px -50px rgba(255,204,0,.4)">
       <div ref="{{ carRef1 }}" style="position:absolute;inset:0"></div>
       <div style="position:absolute;top:16px;left:18px;font-family:monospace;font-size:10.5px;letter-spacing:.16em;color:#6a7078">MODÈLE 3D · GLB</div>
-      <div style="position:absolute;top:50%;left:14px;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:2">
+      <div class="car-ctrls" style="position:absolute;top:50%;left:14px;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:2">
         <button onClick="{{ rot1 }}" title="Rotation automatique" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#ffcc00;color:#fff;background:#14171ccc">⟲</button>
         <button onClick="{{ rst1 }}" title="Réinitialiser la vue" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:15px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#ffcc00;color:#fff;background:#14171ccc">↺</button>
         <button onClick="{{ zin1 }}" title="Zoom avant" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#ffcc00;color:#fff;background:#14171ccc">＋</button>
@@ -229,12 +254,12 @@
     </div>
   </section>
 
-  <section id="bugatti" style="position:relative;padding:120px 6vw;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:56px;align-items:center;border-top:1px solid rgba(255,255,255,.05)">
-    <div style="position:absolute;top:40px;left:5vw;font-family:'Saira Condensed';font-weight:900;font-size:clamp(120px,20vw,300px);line-height:.8;color:rgba(255,255,255,.03);pointer-events:none;z-index:0" data-para="-1">03</div>
+  <section id="bugatti" style="position:relative;padding:120px 6vw;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:56px;align-items:center;border-top:1px solid rgba(var(--line-rgb),.07)">
+    <div style="position:absolute;top:40px;left:5vw;font-family:'Saira Condensed';font-weight:900;font-size:clamp(120px,20vw,300px);line-height:.8;color:rgba(var(--line-rgb),.035);pointer-events:none;z-index:0" data-para="-1">03</div>
     <div style="position:relative;z-index:1;border-radius:22px;overflow:hidden;background:radial-gradient(120% 90% at 30% 10%, rgba(122,162,255,.32), transparent 58%), linear-gradient(180deg, rgba(8,9,11,.48), rgba(8,9,11,.86)), url('uploads/garage.png') center 46%/cover;border:1px solid rgba(255,255,255,.08);min-height:520px;box-shadow:0 40px 90px -50px rgba(122,162,255,.55)">
       <div ref="{{ carRef2 }}" style="position:absolute;inset:0"></div>
       <div style="position:absolute;top:16px;left:18px;font-family:monospace;font-size:10.5px;letter-spacing:.16em;color:#6a7078">MODÈLE 3D · GLB</div>
-      <div style="position:absolute;top:50%;left:14px;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:2">
+      <div class="car-ctrls" style="position:absolute;top:50%;left:14px;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:2">
         <button onClick="{{ rot2 }}" title="Rotation automatique" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#7aa2ff;color:#fff;background:#14171ccc">⟲</button>
         <button onClick="{{ rst2 }}" title="Réinitialiser la vue" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:15px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#7aa2ff;color:#fff;background:#14171ccc">↺</button>
         <button onClick="{{ zin2 }}" title="Zoom avant" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0f1216cc;color:#c7ccd2;cursor:pointer;font-size:17px;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center" style-hover="border-color:#7aa2ff;color:#fff;background:#14171ccc">＋</button>
@@ -251,7 +276,7 @@
         <span style="height:1px;flex:1;background:linear-gradient(90deg,#7aa2ff,transparent)"></span>
       </div>
       <h2 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(42px,5.5vw,80px);margin:0;line-height:.92;text-transform:uppercase;transition:letter-spacing .3s,text-shadow .3s;cursor:default" style-hover="letter-spacing:.03em;text-shadow:0 0 40px rgba(122,162,255,.75)">Centodieci</h2>
-      <p style="color:#c1c7cf;font-size:18px;margin:16px 0 30px;line-height:1.5;font-weight:300">Une réédition hommage à l'EB110, produite à seulement 10 exemplaires. Le W16 quadri-turbo dans toute sa démesure hyper-exclusive.</p>
+      <p style="color:var(--text-2);font-size:18px;margin:16px 0 30px;line-height:1.5;font-weight:300">Une réédition hommage à l'EB110, produite à seulement 10 exemplaires. Le W16 quadri-turbo dans toute sa démesure hyper-exclusive.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
         <sc-for list="{{ specs2 }}" as="s" hint-placeholder-count="6">
           <div style="background:linear-gradient(180deg,rgba(19,22,28,.92),rgba(10,12,15,.92));border:1px solid rgba(255,255,255,.08);border-top:2px solid rgba(122,162,255,.55);border-radius:14px;padding:15px 18px;transition:transform .2s,border-color .2s,background .2s" style-hover="border-color:rgba(122,162,255,.5);transform:translateY(-3px)">
@@ -260,29 +285,29 @@
           </div>
         </sc-for>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(122,162,255,.2),rgba(122,162,255,0));border:1px solid rgba(122,162,255,.34);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 44%,rgba(255,255,255,.16) 50%,transparent 56%);background-size:240% 100%;animation:sheen 6s ease-in-out infinite;pointer-events:none"></span>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:18px 24px;border-radius:14px;background:linear-gradient(90deg,rgba(122,162,255,.26),rgba(122,162,255,.05)),linear-gradient(180deg,rgba(10,10,12,.92),rgba(6,6,8,.92));border:1px solid rgba(122,162,255,.38);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 44%,rgba(255,255,255,.16) 50%,transparent 56%);background-size:240% 100%;animation:sheen 6s ease-in-out infinite;pointer-events:none"></span>
         <span style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#c8ccd2;font-weight:600">Prix indicatif</span>
         <span style="font-family:'Saira Condensed';font-weight:800;font-size:30px;color:#fff">8 000 000 €</span>
       </div>
     </div>
   </section>
 
-  <section id="jeu" style="padding:120px 6vw 130px;background:linear-gradient(var(--bg),var(--bg2));border-top:1px solid rgba(255,255,255,.05)">
+  <section id="jeu" style="padding:120px 6vw 130px;background:linear-gradient(var(--bg),var(--bg2));border-top:1px solid rgba(var(--line-rgb),.07)">
     <div data-reveal style="opacity:0;transform:translateY(40px);filter:blur(9px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1),filter .8s cubic-bezier(.2,.7,.2,1);max-width:760px">
       <div style="display:flex;align-items:center;gap:12px">
         <span style="width:36px;height:1px;background:var(--accent)"></span>
-        <span style="font-size:12px;letter-spacing:.36em;text-transform:uppercase;color:#9aa1ab">Mini-jeu · Time attack</span>
+        <span style="font-size:12px;letter-spacing:.36em;text-transform:uppercase;color:var(--text-3)">Mini-jeu · Time attack</span>
       </div>
       <h2 style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(38px,6vw,76px);margin:12px 0 0;text-transform:uppercase;line-height:.94">Course de réflexes</h2>
-      <p style="color:#b6bcc4;font-size:17px;margin:16px 0 0;line-height:1.55;font-weight:300">Prenez le volant d'un des trois bolides, changez de voie et évitez les obstacles. La vitesse ne cesse d'augmenter — chaque évitement au ras rapporte un bonus.</p>
+      <p style="color:var(--text-2);font-size:17px;margin:16px 0 0;line-height:1.55;font-weight:300">Prenez le volant d'un des trois bolides, changez de voie et évitez les obstacles. La vitesse ne cesse d'augmenter — chaque évitement au ras rapporte un bonus.</p>
     </div>
 
     <div style="position:relative;margin-top:34px;border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,.09);background:radial-gradient(135% 78% at 50% 60%, rgba(var(--accent-rgb),.24), transparent 52%), linear-gradient(#070812 0%, #100c26 58%, #060509 100%);height:min(76vh,640px);box-shadow:0 50px 120px -60px rgba(var(--accent-rgb),.45)" id="gameBox">
       <div ref="{{ gameRef }}" style="position:absolute;inset:0"></div>
 
       <sc-if value="{{ isPlaying }}" hint-placeholder-val="{{ true }}">
-        <div id="hud" style="position:absolute;top:16px;left:16px;right:16px;display:flex;gap:10px;justify-content:space-between;align-items:flex-start;pointer-events:none">
-          <div style="display:flex;align-items:stretch;background:rgba(11,13,19,.62);border:1px solid rgba(255,255,255,.12);border-radius:14px;backdrop-filter:blur(12px);overflow:hidden">
+        <div id="hud" style="position:absolute;top:16px;left:16px;right:16px;display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;pointer-events:none">
+          <div class="hud-stats" style="display:flex;align-items:stretch;background:rgba(11,13,19,.62);border:1px solid rgba(255,255,255,.12);border-radius:14px;backdrop-filter:blur(12px);overflow:hidden">
             <div style="padding:8px 15px">
               <div style="font-size:9px;letter-spacing:.22em;color:#8a8f98;font-weight:700">TEMPS</div>
               <div style="font-family:'Saira Condensed';font-weight:800;font-size:22px;color:#fff"><span ref="{{ timeRef }}">0.0</span>s</div>
@@ -292,13 +317,13 @@
               <div style="font-size:9px;letter-spacing:.22em;color:#8a8f98;font-weight:700">SCORE</div>
               <div style="font-family:'Saira Condensed';font-weight:800;font-size:22px;color:var(--accent)"><span ref="{{ scoreLiveRef }}">0</span></div>
             </div>
-            <div style="width:1px;background:rgba(255,255,255,.1)"></div>
-            <div style="padding:8px 15px">
+            <div class="hud-speed-sep" style="width:1px;background:rgba(255,255,255,.1)"></div>
+            <div class="hud-speed" style="padding:8px 15px">
               <div style="font-size:9px;letter-spacing:.22em;color:#8a8f98;font-weight:700">VITESSE</div>
               <div style="font-family:'Saira Condensed';font-weight:800;font-size:22px;color:#fff"><span ref="{{ speedRef }}">0</span><span style="font-size:11px;color:#8a8f98;margin-left:2px;font-family:'Saira';font-weight:400">km/h</span></div>
             </div>
           </div>
-          <div style="display:flex;gap:8px;align-items:stretch;pointer-events:auto">
+          <div class="hud-side" style="display:flex;gap:8px;align-items:stretch;pointer-events:auto">
             <button onClick="{{ cycleCam }}" title="Changer de caméra" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(11,13,19,.62);color:#fff;cursor:pointer;backdrop-filter:blur(12px)" style-hover="border-color:var(--accent)">
               <span style="font-size:16px">🎥</span><span style="font-size:9px;letter-spacing:.12em;color:var(--accent-light);font-weight:700">{{ camLabel }}</span>
             </button>
@@ -308,17 +333,17 @@
             </div>
           </div>
         </div>
-        <div style="position:absolute;bottom:18px;left:16px;right:16px;display:flex;justify-content:flex-end;align-items:flex-end;pointer-events:none">
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:9px">
+        <div style="position:absolute;bottom:14px;left:12px;right:12px;display:flex;justify-content:center;align-items:flex-end;pointer-events:none">
+          <div class="hud-controls" style="display:flex;flex-direction:column;align-items:center;gap:9px;width:100%;max-width:320px">
             <div style="width:100%;height:8px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden;border:1px solid rgba(255,255,255,.12)">
               <div ref="{{ boostRef }}" style="height:100%;width:100%;background:linear-gradient(90deg,var(--accent-deep),var(--accent-light));transition:width .05s linear"></div>
             </div>
-            <div style="display:flex;gap:10px;pointer-events:auto">
-              <button onPointerDown="{{ moveLeft }}" style="width:64px;height:64px;border-radius:16px;border:1px solid rgba(255,255,255,.16);background:rgba(11,13,19,.62);color:#fff;font-size:25px;cursor:pointer;backdrop-filter:blur(12px);touch-action:none;transition:transform .1s,background .2s,border-color .2s" style-hover="border-color:var(--accent);background:rgba(var(--accent-rgb),.22)" style-active="transform:scale(.9)">◀</button>
-              <button onPointerDown="{{ moveRight }}" style="width:64px;height:64px;border-radius:16px;border:1px solid rgba(255,255,255,.16);background:rgba(11,13,19,.62);color:#fff;font-size:25px;cursor:pointer;backdrop-filter:blur(12px);touch-action:none;transition:transform .1s,background .2s,border-color .2s" style-hover="border-color:var(--accent);background:rgba(var(--accent-rgb),.22)" style-active="transform:scale(.9)">▶</button>
-              <button onPointerDown="{{ boostDown }}" onPointerUp="{{ boostUp }}" onPointerLeave="{{ boostUp }}" style="height:64px;padding:0 28px;border-radius:16px;border:1px solid rgba(var(--accent-rgb),.55);background:linear-gradient(180deg,rgba(var(--accent-rgb),.34),rgba(var(--accent-rgb),.1));color:#fff;font-family:'Saira Condensed';font-weight:900;font-size:18px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;backdrop-filter:blur(12px);touch-action:none;animation:premPulse 2.6s ease-in-out infinite;transition:transform .1s,background .2s;position:relative;overflow:hidden" style-active="background:rgba(var(--accent-rgb),.55);transform:scale(.95)"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 42%,rgba(255,255,255,.4) 50%,transparent 58%);background-size:240% 100%;animation:sheen 3.5s ease-in-out infinite;pointer-events:none"></span>⚡ Boost</button>
+            <div style="display:flex;gap:10px;pointer-events:auto;width:100%;justify-content:center">
+              <button onPointerDown="{{ moveLeft }}" class="hud-btn" style="width:64px;height:64px;flex:0 0 auto;border-radius:16px;border:1px solid rgba(255,255,255,.16);background:rgba(11,13,19,.62);color:#fff;font-size:25px;cursor:pointer;backdrop-filter:blur(12px);touch-action:none;transition:transform .1s,background .2s,border-color .2s" style-hover="border-color:var(--accent);background:rgba(var(--accent-rgb),.22)" style-active="transform:scale(.9)">◀</button>
+              <button onPointerDown="{{ moveRight }}" class="hud-btn" style="width:64px;height:64px;flex:0 0 auto;border-radius:16px;border:1px solid rgba(255,255,255,.16);background:rgba(11,13,19,.62);color:#fff;font-size:25px;cursor:pointer;backdrop-filter:blur(12px);touch-action:none;transition:transform .1s,background .2s,border-color .2s" style-hover="border-color:var(--accent);background:rgba(var(--accent-rgb),.22)" style-active="transform:scale(.9)">▶</button>
+              <button onPointerDown="{{ boostDown }}" onPointerUp="{{ boostUp }}" onPointerLeave="{{ boostUp }}" class="hud-btn hud-boost" style="height:64px;flex:1 1 auto;padding:0 20px;border-radius:16px;border:1px solid rgba(var(--accent-rgb),.55);background:linear-gradient(180deg,rgba(var(--accent-rgb),.34),rgba(var(--accent-rgb),.1));color:#fff;font-family:'Saira Condensed';font-weight:900;font-size:18px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;backdrop-filter:blur(12px);touch-action:none;animation:premPulse 2.6s ease-in-out infinite;transition:transform .1s,background .2s;position:relative;overflow:hidden;white-space:nowrap" style-active="background:rgba(var(--accent-rgb),.55);transform:scale(.95)"><span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 42%,rgba(255,255,255,.4) 50%,transparent 58%);background-size:240% 100%;animation:sheen 3.5s ease-in-out infinite;pointer-events:none"></span>⚡ Boost</button>
             </div>
-            <div style="font-family:monospace;font-size:10px;color:#8a8f98;letter-spacing:.06em">ESPACE / MAJ · ← → A/D · C caméra</div>
+            <div class="hud-hint" style="font-family:monospace;font-size:10px;color:#8a8f98;letter-spacing:.06em">ESPACE / MAJ · ← → A/D · C caméra</div>
           </div>
         </div>
       </sc-if>
@@ -461,8 +486,8 @@
     </div>
   </section>
 
-  <footer data-reveal style="opacity:0;transform:translateY(24px);filter:blur(9px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1),filter .8s cubic-bezier(.2,.7,.2,1);padding:44px 6vw;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;align-items:center;color:#6a7078;font-size:12.5px;letter-spacing:.08em">
-    <div style="font-family:'Saira Condensed';font-weight:900;letter-spacing:.16em;color:#c7ccd2;font-size:16px">DEYLO<span style="color:var(--accent)">·</span>GARAGE</div>
+  <footer data-reveal style="opacity:0;transform:translateY(24px);filter:blur(9px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1),filter .8s cubic-bezier(.2,.7,.2,1);padding:44px 6vw;border-top:1px solid rgba(var(--line-rgb),.08);display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;align-items:center;color:var(--text-4);font-size:12.5px;letter-spacing:.08em">
+    <div style="font-family:'Saira Condensed';font-weight:900;letter-spacing:.16em;color:var(--text-2);font-size:16px">DEYLO<span style="color:var(--accent)">·</span>GARAGE</div>
     <div>Showroom 3D · WebGL · Modèles 3D fournis par l'utilisateur · Marques citées à titre illustratif.</div>
   </footer>
 
@@ -472,10 +497,10 @@
         <div style="width:46px;height:46px;border-radius:14px;background:linear-gradient(150deg,var(--accent-pale),var(--accent-deep));display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -8px var(--accent)"><span style="font-family:'Saira Condensed';font-weight:900;font-size:28px;color:#080a10;letter-spacing:-.03em">D</span></div>
         <div style="font-family:'Saira Condensed';font-weight:900;font-size:26px;letter-spacing:.18em">DEYLO GARAGE</div>
       </div>
-      <div style="width:min(340px,70vw);height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden">
+      <div style="width:min(340px,70vw);height:3px;background:rgba(var(--line-rgb),.16);border-radius:2px;overflow:hidden">
         <div style="height:100%;width:{{ loadPct }}%;background:linear-gradient(90deg,var(--accent),var(--accent-light));border-radius:2px;transition:width .3s"></div>
       </div>
-      <div style="font-family:monospace;font-size:12px;letter-spacing:.18em;color:#6a7078">CHARGEMENT DES MODÈLES 3D · {{ loadPct }}%</div>
+      <div style="font-family:monospace;font-size:12px;letter-spacing:.18em;color:var(--text-4)">CHARGEMENT DES MODÈLES 3D · {{ loadPct }}%</div>
     </div>
   </sc-if>
 
@@ -487,6 +512,11 @@
   &quot;particles&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Comportement 3D&quot;},
   &quot;gameSpeed&quot;: {&quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 18, &quot;min&quot;: 12, &quot;max&quot;: 28, &quot;step&quot;: 1, &quot;unit&quot;: &quot; u/s&quot;, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Mini-jeu&quot;}
 }">
+// Classement en ligne (Supabase)
+const SUPABASE_URL = 'https://uzzlhtaeoybonwljjgge.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_743-QuJyPStJRpC7s61Y1w_4KSRT6YT';
+const SUPABASE_READY = !SUPABASE_URL.includes('YOUR-PROJECT');
+
 class Component extends DCLogic {
   constructor(props){
     super(props);
@@ -501,11 +531,11 @@ class Component extends DCLogic {
     this.models = [null, null, null];
     this._last = performance.now();
     this._heroTarget = {x:0, y:0};
-    let best = 0, username='', board=[], theme='nocturne';
+    let best = 0, username='', board=[], theme='obsidian';
     try { best = parseInt(localStorage.getItem('apex_best')||'0',10) || 0; } catch(e){}
     try { username = (localStorage.getItem('apex_user')||'').slice(0,16); } catch(e){}
     try { const b=JSON.parse(localStorage.getItem('apex_board_v2')||'[]'); if(Array.isArray(b)) board=b; } catch(e){}
-    try { const t=localStorage.getItem('apex_theme'); if(t==='nocturne'||t==='ember'||t==='aurora') theme=t; } catch(e){}
+    try { const t=localStorage.getItem('apex_theme'); if(t==='obsidian'||t==='ivoire'||t==='carmin') theme=t; } catch(e){}
     this._board = board;
     this.nameInputRef = React.createRef();
     this.brandColors = ['#d5001c','#ffcc00','#7aa2ff'];
@@ -551,17 +581,17 @@ class Component extends DCLogic {
       boardFull: this.boardView(25),
       boardEmpty: this.boardEntries().length===0,
       isBoardOpen: this.state.boardOpen,
-      openBoard: ()=>this.setState({ boardOpen:true }),
+      openBoard: ()=>{ this.setState({ boardOpen:true }); this.fetchBoard(); },
       closeBoard: ()=>this.setState({ boardOpen:false }),
       theme: this.state.theme,
       themeMenuOpen: this.state.themeMenuOpen,
       toggleThemeMenu: ()=>this.setState({ themeMenuOpen:!this.state.themeMenuOpen }),
-      setThemeNocturne: ()=>this.setTheme('nocturne'),
-      setThemeEmber: ()=>this.setTheme('ember'),
-      setThemeAurora: ()=>this.setTheme('aurora'),
-      ringNocturne: this.state.theme==='nocturne' ? '2px solid #fff' : '2px solid rgba(255,255,255,.2)',
-      ringEmber: this.state.theme==='ember' ? '2px solid #fff' : '2px solid rgba(255,255,255,.2)',
-      ringAurora: this.state.theme==='aurora' ? '2px solid #fff' : '2px solid rgba(255,255,255,.2)',
+      setThemeObsidian: ()=>this.setTheme('obsidian'),
+      setThemeIvoire: ()=>this.setTheme('ivoire'),
+      setThemeCarmin: ()=>this.setTheme('carmin'),
+      ringObsidian: this.state.theme==='obsidian' ? '2px solid #fff' : '2px solid rgba(255,255,255,.2)',
+      ringIvoire: this.state.theme==='ivoire' ? '2px solid #fff' : '2px solid rgba(255,255,255,.2)',
+      ringCarmin: this.state.theme==='carmin' ? '2px solid #fff' : '2px solid rgba(255,255,255,.2)',
       isRecord: this.state.isRecord,
       submitName: ()=>this.submitName(),
       editName: ()=>this.editName(),
@@ -589,6 +619,35 @@ class Component extends DCLogic {
     this._mounted = true;
     const wait = ()=>{ if(!this._mounted) return; if(window.THREE && window.THREE.GLTFLoader){ this.init(); } else setTimeout(wait, 80); };
     wait();
+    this.fetchBoard();
+  }
+
+  async fetchBoard(){
+    if(!SUPABASE_READY) return;
+    try{
+      const url = `${SUPABASE_URL}/rest/v1/leaderboard?select=name,score,car&order=score.desc&limit=100`;
+      const res = await fetch(url, { headers:{ apikey:SUPABASE_ANON_KEY, Authorization:'Bearer '+SUPABASE_ANON_KEY } });
+      if(!res.ok) return;
+      const rows = await res.json();
+      if(Array.isArray(rows)){
+        this._board = rows.map(r=>({ name:r.name, score:r.score, car:r.car }));
+        try { localStorage.setItem('apex_board_v2', JSON.stringify(this._board)); } catch(e){}
+        if(this._mounted) this.setState({});
+      }
+    } catch(e){}
+  }
+
+  async submitScore(name, score, car){
+    if(!SUPABASE_READY) return;
+    try{
+      const url = `${SUPABASE_URL}/rest/v1/rpc/submit_score`;
+      await fetch(url, {
+        method:'POST',
+        headers:{ apikey:SUPABASE_ANON_KEY, Authorization:'Bearer '+SUPABASE_ANON_KEY, 'Content-Type':'application/json' },
+        body: JSON.stringify({ p_name:name, p_score:score, p_car:car })
+      });
+    } catch(e){}
+    this.fetchBoard();
   }
   componentWillUnmount(){
     this._mounted = false;
@@ -903,8 +962,9 @@ class Component extends DCLogic {
   }
   boardView(limit){
     const rc=['#ffcc00','#cfd6df','#d98a52'];
+    const rankColorFor = (i)=> rc[i] || (i<10 ? '#9fb4c7' : '#8a8f98');
     return this.boardEntries().slice(0,limit).map((e,i)=>({
-      rankLabel:String(i+1), rankColor:rc[i]||'#8a8f98',
+      rankLabel:String(i+1), rankColor:rankColorFor(i),
       carColor:this.brandColors[e.car]||'#7aa2ff',
       carName:(this.cars[e.car]||{}).name||'—',
       name:e.name||'Pilote', score:e.score,
@@ -1098,7 +1158,7 @@ class Component extends DCLogic {
     if(!this._playing) return;
 
     this._time += dt;
-    this._speed += dt * (0.85 + this._time*0.03);
+    this._speed += dt * (0.8 + this._time*0.024);
     this._dist += scroll;
 
     const targetX = this._lanes[this._lane];
@@ -1110,11 +1170,11 @@ class Component extends DCLogic {
     }
 
     this._spawnT -= dt;
-    const interval = Math.max(0.24, 1.05 - this._time*0.03);
+    const interval = Math.max(0.32, 1.1 - this._time*0.026);
     if(this._spawnT <= 0){
       this._spawnT = interval;
       const l1 = this.spawnObstacle();
-      if(this._time>14 && Math.random() < Math.min(0.6,(this._time-14)*0.025)){
+      if(this._time>17 && Math.random() < Math.min(0.5,(this._time-17)*0.02)){
         let l2 = Math.floor(Math.random()*4); if(l2===l1) l2=(l1+1)%4;
         this.spawnObstacle(l2);
       }
@@ -1143,11 +1203,13 @@ class Component extends DCLogic {
     const isRecord = total > prevBest;
     let best = isRecord ? total : prevBest;
     if(isRecord){ try { localStorage.setItem('apex_best', String(best)); } catch(e){} }
-    this._board = (this._board||[]).concat([{ name:this.state.username||'Pilote', score:total, car:this.state.selectedCar, t:Date.now() }]);
+    const name = this.state.username||'Pilote';
+    this._board = (this._board||[]).concat([{ name, score:total, car:this.state.selectedCar, t:Date.now() }]);
     const map={};
     for(const e of this._board){ if(!map[e.name] || e.score>map[e.name].score) map[e.name]=e; }
-    this._board = Object.keys(map).map(k=>map[k]).sort((a,b)=>b.score-a.score).slice(0,50);
+    this._board = Object.keys(map).map(k=>map[k]).sort((a,b)=>b.score-a.score).slice(0,100);
     try { localStorage.setItem('apex_board_v2', JSON.stringify(this._board)); } catch(e){}
+    this.submitScore(name, total, this.state.selectedCar);
     this.setState({ gameState:'over', score:total, best, isRecord });
   }
 }
