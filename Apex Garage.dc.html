@@ -18,7 +18,7 @@
  :root, [data-theme="obsidian"]{
   --bg:#05070a; --bg-rgb:5,7,10; --bg2:#0a0d12;
   --accent:#9fb4c7; --accent-rgb:159,180,199; --accent-deep:#4d6478; --accent-light:#e6edf2; --accent-soft:#c3d2dd; --accent-pale:#b3c4d1;
-  --accent2-rgb:150,215,255;
+  --accent2-rgb:150,215,255; --flash-rgb:225,238,255;
   --text-1:#f4f6f8; --text-2:#c6ccd2; --text-3:#8b929b; --text-4:#565c64; --line-rgb:255,255,255;
   --card-1:rgba(15,19,25,.94); --card-2:rgba(7,9,13,.94);
   --veil-op:.6; --veil-bg:repeating-linear-gradient(115deg,rgba(200,220,255,.018) 0px,rgba(200,220,255,.018) 1px,transparent 1px,transparent 4px);
@@ -27,7 +27,7 @@
  [data-theme="carmin"]{
   --bg:#120705; --bg-rgb:18,7,5; --bg2:#1d0c09;
   --accent:#e2382c; --accent-rgb:226,56,44; --accent-deep:#7a140e; --accent-light:#ffb28f; --accent-soft:#ff8a63; --accent-pale:#f2593f;
-  --accent2-rgb:230,180,110;
+  --accent2-rgb:230,180,110; --flash-rgb:255,214,190;
   --text-1:#f8efe6; --text-2:#ddc9bd; --text-3:#a58f83; --text-4:#63514a; --line-rgb:255,235,222;
   --card-1:rgba(30,16,13,.94); --card-2:rgba(15,8,6,.94);
   --veil-op:.7; --veil-bg:repeating-linear-gradient(45deg,rgba(255,150,110,.03) 0 2px,transparent 2px 7px),repeating-linear-gradient(-45deg,rgba(255,100,70,.022) 0 2px,transparent 2px 7px);
@@ -36,7 +36,7 @@
  [data-theme="ivoire"]{
   --bg:#f5efe2; --bg-rgb:245,239,226; --bg2:#efe5d2;
   --accent:#b6863d; --accent-rgb:182,134,61; --accent-deep:#8a611f; --accent-light:#e6c17d; --accent-soft:#cf9f55; --accent-pale:#dcae66;
-  --accent2-rgb:150,110,80;
+  --accent2-rgb:150,110,80; --flash-rgb:255,246,228;
   --text-1:#241d13; --text-2:#5c5140; --text-3:#8a7f6c; --text-4:#a89c86; --line-rgb:35,27,15;
   --card-1:rgba(28,22,15,.94); --card-2:rgba(14,10,7,.94);
   --veil-op:1; --veil-bg:radial-gradient(rgba(35,27,15,.06) 1px,transparent 1px); --veil-size:15px 15px;
@@ -72,10 +72,14 @@
  .theme-vignette{position:fixed;inset:0;z-index:1;pointer-events:none;transition:background 1s ease;background:var(--vignette)}
  [data-theme="ivoire"] .star-field,[data-theme="ivoire"] .flash-veil{display:none}
  [data-reveal]{will-change:opacity,transform,filter}
- .car-frame{opacity:0;transform:scale(.93) translateY(30px);filter:brightness(.7) saturate(.65);clip-path:inset(7% 7% 7% 7% round 22px);transition:opacity 1.1s cubic-bezier(.16,1,.3,1),transform 1.2s cubic-bezier(.16,1,.3,1),filter 1.1s ease,clip-path 1.2s cubic-bezier(.16,1,.3,1);will-change:opacity,transform,filter,clip-path}
- .car-frame.is-revealed{opacity:1;transform:scale(1) translateY(0);filter:brightness(1) saturate(1);clip-path:inset(0% 0% 0% 0% round 22px)}
+ .car-frame{opacity:0;transform:scale(.93) translateY(30px);filter:brightness(.7) saturate(.65);clip-path:inset(7% 7% 7% 7% round 22px);transition:opacity 1.1s cubic-bezier(.16,1,.3,1),filter 1.1s ease,clip-path 1.2s cubic-bezier(.16,1,.3,1);will-change:opacity,transform,filter,clip-path}
+ .car-frame.is-revealed{opacity:1;filter:brightness(1) saturate(1);clip-path:inset(0% 0% 0% 0% round 22px);animation:carPunch 1.15s cubic-bezier(.16,1,.3,1) both}
+ @keyframes carPunch{0%{transform:scale(.93) translateY(30px)}70%{transform:scale(1.02) translateY(0)}100%{transform:scale(1) translateY(0)}}
+ .car-frame::before{content:'';position:absolute;inset:0;z-index:6;pointer-events:none;border-radius:inherit;mix-blend-mode:screen;opacity:0;transform:scale(.25);background:radial-gradient(circle at 50% 44%, rgba(var(--flash-rgb),1), rgba(var(--flash-rgb),.65) 32%, transparent 70%)}
+ .car-frame.is-revealed::before{animation:carFlash .8s cubic-bezier(.2,.85,.2,1) both}
+ @keyframes carFlash{0%{opacity:0;transform:scale(.35)}6%{opacity:1;transform:scale(.75)}16%{opacity:1;transform:scale(1.15)}42%{opacity:.4;transform:scale(1.5)}100%{opacity:0;transform:scale(2.1)}}
  .car-frame::after{content:'';position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:inherit;background:linear-gradient(115deg,transparent 34%,rgba(255,255,255,.55) 49%,transparent 64%);background-size:220% 100%;background-position:160% 0;opacity:0}
- .car-frame.is-revealed::after{animation:carSweep 1.3s .2s cubic-bezier(.4,0,.2,1) both}
+ .car-frame.is-revealed::after{animation:carSweep 1.3s .28s cubic-bezier(.4,0,.2,1) both}
  @keyframes carSweep{0%{opacity:0;background-position:160% 0}18%{opacity:.85}55%{opacity:.4}100%{opacity:0;background-position:-60% 0}}
  @media (max-width:860px){ nav{padding:12px 16px!important} nav > div:last-child{gap:3px!important} nav > div:last-child a{padding:7px 10px!important;font-size:11px!important;letter-spacing:.06em!important} }
  @media (max-width:680px){
