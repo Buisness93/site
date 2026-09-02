@@ -50,6 +50,16 @@
       return data;
     },
 
+    async signInWithDiscord(){
+      await DG.ready;
+      if(!DG.supabase) throw new Error('Service indisponible');
+      const { error } = await DG.supabase.auth.signInWithOAuth({
+        provider: 'discord',
+        options: { redirectTo: window.location.href.split('#')[0] }
+      });
+      if(error) throw error;
+    },
+
     async signOut(){
       await DG.ready;
       if(!DG.supabase) return;
@@ -66,7 +76,8 @@
     },
 
     isLoggedIn(){ return !!this.user; },
-    displayName(){ return (this.profile && this.profile.username) || (this.user && this.user.email) || 'Pilote'; }
+    displayName(){ return (this.profile && this.profile.username) || (this.user && this.user.email) || 'Pilote'; },
+    avatarUrl(){ return this.profile && this.profile.avatar_url; }
   };
 
   DG.Auth = Auth;

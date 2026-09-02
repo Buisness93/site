@@ -53,6 +53,7 @@
           '<a href="game/index.html" class="nav-cta">▶ Jouer</a>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:10px">' +
+          '<a href="compte.html" id="dgAvatar" style="display:none;width:32px;height:32px;border-radius:50%;overflow:hidden;border:1px solid rgba(var(--line-rgb),.2)"><img src="" alt="" style="width:100%;height:100%;object-fit:cover"></a>' +
           '<div class="nav-money" id="dgMoney" title="Crédits">🪙 —</div>' +
           '<button class="nav-burger" id="dgBurger">☰</button>' +
         '</div>' +
@@ -72,6 +73,14 @@
     const moneyEl = document.getElementById('dgMoney');
     if(window.DG && DG.Economy){
       DG.Economy.onChange((state)=>{ moneyEl.textContent = '🪙 ' + state.money.toLocaleString('fr-FR'); });
+    }
+    if(window.DG && DG.Auth){
+      DG.Auth.onChange(()=>{
+        const avatarEl = document.getElementById('dgAvatar');
+        const url = DG.Auth.avatarUrl && DG.Auth.avatarUrl();
+        if(url){ avatarEl.querySelector('img').src = url; avatarEl.style.display = 'block'; }
+        else { avatarEl.style.display = 'none'; }
+      });
     }
   }
 

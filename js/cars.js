@@ -18,7 +18,7 @@
   // speed = vitesse de pointe atteignable en jeu, accel = vitesse pour l'atteindre,
   // handling = vivacité des changements de voie, boost = efficacité du nitro.
   const CARS = [
-    { id:'citadine',       brand:'Peugeot',     name:'405 GLX',           tier:'debutant',      price:0,      model:'uploads/peugeot-405.glb',            rotY:Math.PI, glow:0x9fb4c7, body:0x2b3038, stats:{speed:2, accel:2, handling:4, boost:2} },
+    { id:'citadine',       brand:'Peugeot',     name:'405 GLX',           tier:'debutant',      price:0,      model:'uploads/peugeot-405.glb',            rotY:-Math.PI/2, glow:0x9fb4c7, body:0x2b3038, stats:{speed:2, accel:2, handling:4, boost:2} },
     { id:'kart',           brand:'Loisir',      name:'Kart Sunday',       tier:'debutant',      price:800,    model:'uploads/kart-oobi.glb',              rotY:Math.PI, glow:0x66ff9f, body:0x1c3d2a, stats:{speed:3, accel:6, handling:9, boost:5} },
     { id:'compacte-sport', brand:'Volko',       name:'GTI Compacte',      tier:'intermediaire', price:2500,   model:'uploads/hatchback-sports.glb',       rotY:Math.PI, glow:0xff5a5a, body:0x241417, stats:{speed:5, accel:6, handling:7, boost:5} },
     { id:'berline-sport',  brand:'Stellar',     name:'Berline Sport',     tier:'intermediaire', price:5000,   model:'uploads/sedan-sports.glb',           rotY:Math.PI, glow:0x7aa2ff, body:0x121826, stats:{speed:6, accel:6, handling:6, boost:6} },

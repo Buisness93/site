@@ -12,6 +12,7 @@ create table if not exists public.profiles (
   is_admin boolean not null default false,
   created_at timestamptz not null default now()
 );
+alter table public.profiles add column if not exists avatar_url text;
 
 alter table public.profiles enable row level security;
 
@@ -32,15 +33,33 @@ returns trigger
 language plpgsql
 security definer set search_path = public
 as $$
+declare
+  v_username text;
+  v_avatar text;
 begin
-  insert into public.profiles (id, username, money)
-  values (
-    new.id,
-    coalesce(new.raw_user_meta_data->>'username', 'Pilote' || substr(new.id::text, 1, 4)),
-    500
-  )
+  -- Discord (et les autres fournisseurs OAuth) exposent le pseudo/avatar via
+  -- raw_user_meta_data ; on retombe sur un pseudo genere si rien n'est fourni
+  -- (ex: inscription email/mot de passe classique).
+  v_username := left(coalesce(
+    new.raw_user_meta_data->>'username',
+    new.raw_user_meta_data->>'preferred_username',
+    new.raw_user_meta_data->>'full_name',
+    new.raw_user_meta_data->>'name',
+    'Pilote' || substr(new.id::text, 1, 4)
+  ), 16);
+  v_avatar := new.raw_user_meta_data->>'avatar_url';
+
+  insert into public.profiles (id, username, money, avatar_url)
+  values (new.id, v_username, 500, v_avatar)
   on conflict (id) do nothing;
   return new;
+exception
+  when unique_violation then
+    -- Pseudo deja pris (collision Discord) : on ajoute un suffixe court.
+    insert into public.profiles (id, username, money, avatar_url)
+    values (new.id, left(v_username, 11) || '_' || substr(new.id::text, 1, 4), 500, v_avatar)
+    on conflict (id) do nothing;
+    return new;
 end;
 $$;
 
