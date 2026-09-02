@@ -73,6 +73,46 @@
     return g;
   }
 
+  function guardrail(T, x, z, side){
+    const g = new T.Group();
+    const railMat = new T.MeshStandardMaterial({ color:0x9aa4ad, metalness:0.75, roughness:0.35 });
+    const rail = new T.Mesh(new T.BoxGeometry(0.09, 0.32, 6.6), railMat);
+    rail.position.y = 0.62; g.add(rail);
+    const postMat = new T.MeshStandardMaterial({ color:0x2a2e35, metalness:0.5, roughness:0.6 });
+    for(let k=-1;k<=1;k++){
+      const post = new T.Mesh(new T.BoxGeometry(0.08,0.7,0.08), postMat);
+      post.position.set(0, 0.35, k*2.2); g.add(post);
+    }
+    const reflector = new T.Mesh(new T.SphereGeometry(0.045,6,6), new T.MeshBasicMaterial({ color: side<0 ? 0xff5a3d : 0xffe27a }));
+    reflector.position.set(0.08, 0.62, 0); g.add(reflector);
+    g.position.set(x, 0, z);
+    return g;
+  }
+
+  function pineTree(T, x, z){
+    const g = new T.Group();
+    const trunk = new T.Mesh(new T.CylinderGeometry(0.13,0.18,1.3,6), new T.MeshStandardMaterial({ color:0x3a2c22, roughness:0.9 }));
+    trunk.position.y = 0.65; g.add(trunk);
+    const foliageMat = new T.MeshStandardMaterial({ color:0x14351f, roughness:0.85, flatShading:true });
+    const tiers = 3;
+    for(let i=0;i<tiers;i++){
+      const s = 1 - i*0.22;
+      const cone = new T.Mesh(new T.ConeGeometry(1.1*s, 1.6, 7), foliageMat);
+      cone.position.y = 1.5 + i*1.05;
+      g.add(cone);
+    }
+    g.position.set(x, 0, z);
+    g.scale.setScalar(0.85 + Math.random()*0.5);
+    return g;
+  }
+
+  function bush(T, x, z){
+    const m = new T.Mesh(new T.SphereGeometry(0.55,7,6), new T.MeshStandardMaterial({ color:0x1f3a22, roughness:0.95, flatShading:true }));
+    m.position.set(x, 0.45, z);
+    m.scale.set(1, 0.75, 1);
+    return m;
+  }
+
   function duneRidge(T, x, z, w, h, hex){
     const m = new T.Mesh(new T.ConeGeometry(w, h, 5, 1), new T.MeshStandardMaterial({ color:hex, roughness:1, flatShading:true }));
     m.rotation.y = Math.random()*Math.PI;
@@ -84,22 +124,36 @@
   const ROUTES = [
     {
       id:'autoroute-nuit', name:'Autoroute Nocturne', difficulty:'Standard', spacing:9,
-      fog:0x0b0a1a, fogNear:26, fogFar:120, ground:0x06070d,
-      road:0x050609, stripe:0x39404d, edge:0x1b2129, edgeEmissive:0x0a1a3a,
-      sky:{ top:0x05050f, bottom:0x1c1a35 },
-      light:{ key:0xcfd8ff, keyI:1.0, hemiSky:0x6a7fd6, hemiGround:0x05050a, hemiI:0.5, ambient:0xffffff, ambientI:0.22 },
+      fog:0x090b12, fogNear:30, fogFar:135, ground:0x05060a,
+      road:0x0b0d12, stripe:0xd8dee6, edge:0x1b2129, edgeEmissive:0x1a2a3a,
+      sky:{ top:0x020207, bottom:0x121a2e },
+      light:{ key:0xaebeda, keyI:0.9, hemiSky:0x2c3a5e, hemiGround:0x05050a, hemiI:0.45, ambient:0xffffff, ambientI:0.18 },
       buildDecor(T, scene, N){
         const items = [];
-        const lits = [0xffcf7a, 0x8fd0ff, 0xffb3e0];
         for(let i=0;i<N;i++){
           const side = i % 2 === 0 ? -1 : 1;
-          const h = 7 + Math.random()*24;
-          const lit = lits[i % lits.length];
-          const m = building(T, 3.4, h, 3.4, 0x0b0e16, lit);
-          m.position.set(side*(9 + Math.random()*7), h/2, -20 - i*9);
-          scene.add(m); items.push(m);
-          if(i % 2 === 0){
-            const sl = streetlight(T, side*5.7, -14 - i*9, 0xbcd4ff);
+          const z = -12 - i*9;
+
+          const rail = guardrail(T, side*4.35, z, side);
+          scene.add(rail); items.push(rail);
+
+          if(i % 3 === 0){
+            const t = pineTree(T, side*(6.4 + Math.random()*2.4), z + 2.5);
+            scene.add(t); items.push(t);
+          } else if(i % 3 === 1){
+            const b = bush(T, side*(5.6 + Math.random()*2), z + 1.5);
+            scene.add(b); items.push(b);
+          }
+
+          if(i % 4 === 2){
+            const h = 4 + Math.random()*6;
+            const m = building(T, 3, h, 3, 0x0a0d14, 0x8fa8d0);
+            m.position.set(side*(18 + Math.random()*12), h/2, z - 6);
+            scene.add(m); items.push(m);
+          }
+
+          if(i % 5 === 0){
+            const sl = streetlight(T, side*5.9, z - 3, 0xffc36b);
             scene.add(sl); items.push(sl);
           }
         }

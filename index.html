@@ -123,7 +123,7 @@
   }
 
   function renderTeaser(){
-    const picks = ['citadine', 'compacte-sport', 'gt3', 'laferrari'];
+    const picks = ['citadine', 'golf-r', 'rs6-abt', 'laferrari'];
     document.getElementById('teaserGrid').innerHTML = picks.map(id=>{
       const c = DG.carById(id);
       const color = (DG.TIERS[c.tier]||{}).color || '#9fb4c7';

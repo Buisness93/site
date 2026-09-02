@@ -317,6 +317,30 @@ $$;
 
 grant execute on function public.admin_stats() to authenticated;
 
+-- Liste des comptes joueurs pour l'admin. Ne renvoie jamais l'email ni le mot de
+-- passe : les mots de passe ne sont JAMAIS stockes en clair (Supabase Auth les hashe
+-- avec bcrypt), personne — y compris l'admin — ne peut les consulter. C'est voulu et
+-- protege les joueurs.
+create or replace function public.admin_list_players()
+returns table(id uuid, username text, money integer, is_admin boolean, created_at timestamptz, cars_unlocked bigint, best_score integer)
+language plpgsql stable security definer set search_path = public
+as $$
+declare v_is_admin boolean;
+begin
+  select p.is_admin into v_is_admin from public.profiles p where p.id = auth.uid();
+  if not coalesce(v_is_admin, false) then raise exception 'Acces refuse'; end if;
+  return query
+    select
+      p.id, p.username, p.money, p.is_admin, p.created_at,
+      (select count(*) from public.player_cars pc where pc.user_id = p.id),
+      (select max(l.score) from public.leaderboard l where l.user_id = p.id)
+    from public.profiles p
+    order by p.created_at desc;
+end;
+$$;
+
+grant execute on function public.admin_list_players() to authenticated;
+
 -- ============================================================
 -- 7. RADIO (pistes gerees par l'admin + suggestions des joueurs)
 -- ============================================================

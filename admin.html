@@ -62,6 +62,16 @@
         <h3 style="font-size:18px">Suggestions des joueurs</h3>
         <table style="margin-top:12px"><thead><tr><th>Titre</th><th>Artiste</th><th>Lien</th><th>De</th></tr></thead><tbody id="suggestionsBody"></tbody></table>
       </div>
+
+      <div class="card" style="margin-top:20px">
+        <h3 style="font-size:18px">Comptes joueurs</h3>
+        <p style="color:var(--text-3);font-size:13px">
+          Les mots de passe ne sont jamais visibles : Supabase Auth les stocke uniquement sous forme de hash (bcrypt),
+          irréversible et illisible même par un administrateur. Voici les données de profil disponibles.
+        </p>
+        <input type="text" id="playerSearch" placeholder="Rechercher un pseudo…" style="width:100%;max-width:320px;margin:10px 0;background:var(--card-1);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 12px;color:inherit;font-family:inherit">
+        <table style="margin-top:6px"><thead><tr><th>Pseudo</th><th>Argent</th><th>Voitures</th><th>Meilleur score</th><th>Admin</th><th>Créé le</th></tr></thead><tbody id="playersBody"></tbody></table>
+      </div>
     </div>
   </div>
 </main>
@@ -85,6 +95,7 @@
     loadStats();
     loadTracks();
     loadSuggestions();
+    loadPlayers();
   }
 
   async function loadStats(){
@@ -128,6 +139,25 @@
       '<tr><td>' + escapeHTML(s.title) + '</td><td>' + escapeHTML(s.artist) + '</td><td>' + (s.link?('<a href="'+escapeHTML(s.link)+'" target="_blank" rel="noopener">lien</a>'):'—') + '</td><td>' + escapeHTML(s.submitted_by||'anonyme') + '</td></tr>'
     )).join('') || '<tr><td colspan="4">Aucune suggestion pour le moment.</td></tr>';
   }
+
+  let allPlayers = [];
+  function renderPlayers(list){
+    document.getElementById('playersBody').innerHTML = list.map(p=>(
+      '<tr><td>' + escapeHTML(p.username||'—') + '</td><td>🪙 ' + p.money + '</td><td>' + p.cars_unlocked + '</td><td>' + (p.best_score!=null?p.best_score:'—') +
+      '</td><td>' + (p.is_admin?'✔':'—') + '</td><td>' + new Date(p.created_at).toLocaleDateString('fr-FR') + '</td></tr>'
+    )).join('') || '<tr><td colspan="6">Aucun joueur.</td></tr>';
+  }
+
+  async function loadPlayers(){
+    const { data, error } = await DG.supabase.rpc('admin_list_players');
+    allPlayers = (!error && data) ? data : [];
+    renderPlayers(allPlayers);
+  }
+
+  document.getElementById('playerSearch').addEventListener('input', (e)=>{
+    const q = e.target.value.trim().toLowerCase();
+    renderPlayers(!q ? allPlayers : allPlayers.filter(p=>(p.username||'').toLowerCase().includes(q)));
+  });
 
   document.getElementById('btnUpload').addEventListener('click', async ()=>{
     const msgEl = document.getElementById('uploadMsg');
