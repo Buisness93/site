@@ -5,6 +5,7 @@
   const LANES = [-3.3, -1.1, 1.1, 3.3];
   const NEAR_MISS_GAP = 0.85;
   const TRAFFIC_FILES = ['../uploads/police-a617b880.glb','../uploads/suv-9df31f6e.glb','../uploads/suv-luxury-9e2a79dc.glb','../uploads/taxi-38035397.glb','../uploads/truck-5e1bc66c.glb'];
+  const TRAFFIC_FILES_PLAIN = ['../uploads/traffic-car-pack.glb','../uploads/traffic-truck.glb'];
   const TRAFFIC_TINTS = [0xe23b3b,0x2f7bff,0x18c56b,0xf5b301,0xff7a00,0x9b5cff,0xeceff4,0x18324a,0x00c2ff];
 
   function GameEngine(container, cb){
@@ -14,9 +15,9 @@
     this.paused = false;
     this._camIndex = 1;
     this._camPresets = [
-      { name:'PROCHE', pos:[0,2.6,7.2], look:[0,0.85,-30] },
-      { name:'STANDARD', pos:[0,3.6,9.8], look:[0,1.1,-46] },
-      { name:'LARGE', pos:[0,4.9,13.2], look:[0,1.4,-62] },
+      { name:'PROCHE', pos:[0,2.9,8.4], look:[0,1.0,-30] },
+      { name:'STANDARD', pos:[0,4.2,11.4], look:[0,1.05,-46] },
+      { name:'LARGE', pos:[0,5.6,14.8], look:[0,1.35,-62] },
     ];
     this._stripes = [];
     this._decor = [];
@@ -96,8 +97,11 @@
 
   GameEngine.prototype._preloadTraffic = function(){
     this._trafficModels = [];
+    this._trafficModelsPlain = [];
     TRAFFIC_FILES.forEach(f=>DG.Loader.loadModel(f).then(m=>{ if(m) this._trafficModels.push(m); }));
-    DG.Loader.loadModel('../uploads/cone.glb').then(m=>{ this._coneModel = m; });
+    TRAFFIC_FILES_PLAIN.forEach(f=>DG.Loader.loadModel(f).then(m=>{ if(m) this._trafficModelsPlain.push(m); }));
+    DG.Loader.loadModel('../uploads/traffic-cone-new.glb').then(m=>{ this._coneModel = m; });
+    DG.Loader.loadModel('../uploads/traffic-signs.glb').then(m=>{ this._signModel = m; });
   };
 
   GameEngine.prototype._onResize = function(){
@@ -173,9 +177,10 @@
   GameEngine.prototype._statMultipliers = function(car){
     const s = car.stats;
     return {
-      baseSpeed: 13 + s.speed * 1.15,
-      accelRamp: 0.016 + s.accel * 0.0016,
-      handling: 7 + s.handling * 1.6,
+      baseSpeed: 17 + s.speed * 1.5,       // vitesse au demarrage : deja rapide des le depart
+      maxSpeed: 24 + s.speed * 4.8,        // plafond : une bonne voiture va bien plus loin
+      accelRamp: 2.2 + s.accel * 0.55,     // vitesse d'approche du plafond
+      handlingRate: 7 + s.handling * 1.1,  // reactivite des changements de voie
       boostDrain: Math.max(0.22, 0.5 - s.boost * 0.02),
       boostRecharge: 0.14 + s.boost * 0.01,
       boostPower: 1.55 + s.boost * 0.035,
@@ -235,10 +240,17 @@
     const lane = LANES[li];
     let mesh, w = 1.2;
     const r = Math.random();
-    if(r < 0.3 && this._coneModel){
+    const plain = this._trafficModelsPlain;
+    if(r < 0.22 && this._coneModel){
       mesh = DG.Loader.normalizeModel(T, this._coneModel, 1.0, 0);
-      DG.Loader.tintModel(T, mesh, [0xff7a00,0xff8c1a,0xff6600][Math.floor(Math.random()*3)], 0.5);
       w = 0.7;
+    } else if(r < 0.34 && this._signModel){
+      mesh = DG.Loader.normalizeModel(T, this._signModel, 1.6, 0);
+      w = 0.8;
+    } else if(plain && plain.length && Math.random() < 0.4){
+      const ti = Math.floor(Math.random()*plain.length);
+      mesh = DG.Loader.normalizeModel(T, plain[ti], 3.6, Math.PI);
+      w = 1.25;
     } else if(this._trafficModels && this._trafficModels.length){
       let ti = Math.floor(Math.random()*this._trafficModels.length);
       if(this._trafficModels.length > 1 && ti === this._lastTrafficIdx) ti = (ti+1) % this._trafficModels.length;
@@ -317,13 +329,13 @@
     if(!this.playing) return;
 
     this._time += dt;
-    this._speed += dt * (this.mult.accelRamp*40 + this._time*0.024);
+    this._speed += (this.mult.maxSpeed - this._speed) * Math.min(1, dt * this.mult.accelRamp * 0.4);
     this._dist += scroll;
 
     if(this._multiplierT > 0){ this._multiplierT -= dt; if(this._multiplierT <= 0){ this._multiplier = 1; if(this.cb.onPickup) this.cb.onPickup('multiplier-end'); } }
 
     const targetX = LANES[this._lane];
-    this._playerX += (targetX - this._playerX) * Math.min(1, dt * (this.mult.handling/7));
+    this._playerX += (targetX - this._playerX) * Math.min(1, dt * this.mult.handlingRate);
     if(this._player){
       this._player.position.x = this._playerX;
       this._player.position.y = Math.sin(now*0.02)*0.02;

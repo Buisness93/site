@@ -67,10 +67,17 @@ insert into public.cars_catalog (id, price) values
   ('compacte-sport', 2500),
   ('berline-sport', 5000),
   ('suv', 6500),
+  ('golf-r', 9500),
   ('suv-luxe', 12000),
+  ('audi-a8', 16000),
   ('gt3', 25000),
+  ('rs6-abt', 32000),
   ('aventador', 60000),
-  ('centodieci', 150000)
+  ('812-competizione', 75000),
+  ('pagani-huayra-r', 110000),
+  ('centodieci', 150000),
+  ('mclaren-p1', 180000),
+  ('laferrari', 220000)
 on conflict (id) do update set price = excluded.price;
 
 -- Voitures possedees par joueur (au-dela de la citadine offerte a tous)
