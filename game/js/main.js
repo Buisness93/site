@@ -10,7 +10,7 @@
     overScore:$('overScore'), overTime:$('overTime'), overCredits:$('overCredits'), overBoard:$('overBoard'), ovRecordBadge:$('ovRecordBadge'),
     btnRetry:$('btnRetry'), btnChangeCar:$('btnChangeCar'), btnWatchAd:$('btnWatchAd'),
     fullBoard:$('fullBoard'), btnBoardClose:$('btnBoardClose'),
-    btnLeft:$('btnLeft'), btnRight:$('btnRight'), btnBoost:$('btnBoost'), btnCam:$('btnCam'), btnPause:$('btnPause'), btnFullscreen:$('btnFullscreen'),
+    btnLeft:$('btnLeft'), btnRight:$('btnRight'), btnBoost:$('btnBoost'), btnCam:$('btnCam'), btnPause:$('btnPause'), btnFullscreen:$('btnFullscreen'), btnMusic:$('btnMusic'), bgAudio:$('bgAudio'),
   };
 
   const state = { username:null, selectedCar: DG.defaultCarId, selectedRoute: DG.defaultRouteId, screen:'loading' };
@@ -124,6 +124,7 @@
     if(state.username) goToChoosing(); else show('ovNaming');
 
     wireControls();
+    wireMusic();
   }
 
   els.btnNameOk.addEventListener('click', ()=>{
@@ -225,6 +226,33 @@
       els.btnFullscreen.textContent = isFs ? '⤡' : '⛶';
       els.btnFullscreen.title = isFs ? 'Quitter le plein écran' : 'Plein écran';
     }
+  }
+
+  function wireMusic(){
+    let tracks = [], current = -1, loaded = false;
+    async function loadTracks(){
+      if(loaded || !DG.supabase || !DG.SUPABASE_READY) return;
+      loaded = true;
+      const { data, error } = await DG.supabase.from('music_tracks').select('*').eq('active', true).order('added_at', { ascending:false });
+      tracks = (!error && data) ? data : [];
+    }
+    function playIndex(i){
+      if(!tracks.length) return;
+      current = (i + tracks.length) % tracks.length;
+      els.bgAudio.src = tracks[current].url;
+      els.bgAudio.play().catch(()=>{});
+    }
+    els.bgAudio.volume = 0.5;
+    els.bgAudio.addEventListener('ended', ()=>playIndex(current+1));
+    els.bgAudio.addEventListener('play', ()=>els.btnMusic.classList.add('active'));
+    els.bgAudio.addEventListener('pause', ()=>els.btnMusic.classList.remove('active'));
+    els.btnMusic.addEventListener('click', async ()=>{
+      await loadTracks();
+      if(!tracks.length){ popup('Aucune musique disponible pour le moment', '#8a8f98'); return; }
+      if(!els.bgAudio.paused){ els.bgAudio.pause(); return; }
+      if(current === -1) playIndex(Math.floor(Math.random()*tracks.length));
+      else els.bgAudio.play().catch(()=>{});
+    });
   }
 
   function waitThree(cb){ if(window.THREE && window.THREE.GLTFLoader) cb(); else setTimeout(()=>waitThree(cb), 60); }
