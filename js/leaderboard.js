@@ -24,8 +24,11 @@
     const car = DG.carById ? DG.carById(entry.car) : null;
     const rankColor = RANK_COLORS[i] || (i < 10 ? '#9fb4c7' : '#8a8f98');
     const time = entry.time_seconds != null ? Number(entry.time_seconds).toFixed(1) + 's' : '—';
+    const isTop3 = i < 3;
+    const cls = 'leaderboard-row' + (isTop3 ? ' top3 rank-' + (i+1) : '');
+    const bg = isTop3 ? '' : ' style="background:' + (i % 2 === 0 ? 'rgba(255,255,255,.035)' : 'rgba(255,255,255,.015)') + '"';
     return (
-      '<div class="leaderboard-row" style="background:' + (i % 2 === 0 ? 'rgba(255,255,255,.035)' : 'rgba(255,255,255,.015)') + '">' +
+      '<div class="' + cls + '"' + bg + '>' +
         '<span class="rank" style="color:' + rankColor + '">#' + (i+1) + '</span>' +
         '<span class="name">' + escapeHTML(entry.name || 'Pilote') + '</span>' +
         '<span class="meta">' + (car ? escapeHTML(car.name) : '—') + '</span>' +
