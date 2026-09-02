@@ -51,13 +51,23 @@
     this.camera = camera;
     this._look = new T.Vector3(0,1.1,-46);
 
-    scene.add(new T.AmbientLight(0xffffff, 0.28));
-    const key = new T.DirectionalLight(0xffffff, 1.1); key.position.set(6,10,7); scene.add(key);
-    scene.add(new T.HemisphereLight(0x8899ff, 0x060608, 0.45));
+    this.ambientLight = new T.AmbientLight(0xffffff, 0.28); scene.add(this.ambientLight);
+    this.keyLight = new T.DirectionalLight(0xffffff, 1.1); this.keyLight.position.set(6,10,7); scene.add(this.keyLight);
+    this.hemiLight = new T.HemisphereLight(0x8899ff, 0x060608, 0.45); scene.add(this.hemiLight);
+
+    this.groundMat = new T.MeshStandardMaterial({ color:0x050609, metalness:0.05, roughness:0.95 });
+    const ground = new T.Mesh(new T.PlaneGeometry(340, 320), this.groundMat);
+    ground.rotation.x = -Math.PI/2; ground.position.set(0, -0.03, -100); scene.add(ground);
 
     this.roadMat = new T.MeshStandardMaterial({ color:0x050609, metalness:0.35, roughness:0.7 });
     const road = new T.Mesh(new T.PlaneGeometry(14, 260), this.roadMat);
     road.rotation.x = -Math.PI/2; road.position.z = -100; scene.add(road);
+
+    this._skyDome = new T.Mesh(
+      new T.SphereGeometry(280, 20, 14),
+      new T.MeshBasicMaterial({ side:T.BackSide, fog:false, vertexColors:true })
+    );
+    scene.add(this._skyDome);
 
     this.stripeMat = new T.MeshBasicMaterial({ color:0x39404d });
     for(const lane of [-2.2, 0, 2.2]){
@@ -98,17 +108,54 @@
     this.camera.updateProjectionMatrix();
   };
 
+  GameEngine.prototype._applySkyGradient = function(topHex, bottomHex){
+    const T = window.THREE;
+    const geo = this._skyDome.geometry;
+    const pos = geo.attributes.position;
+    const colors = geo.attributes.color && geo.attributes.color.count === pos.count
+      ? geo.attributes.color
+      : new T.BufferAttribute(new Float32Array(pos.count*3), 3);
+    const top = new T.Color(topHex), bottom = new T.Color(bottomHex);
+    const c = new T.Color();
+    let minY = Infinity, maxY = -Infinity;
+    for(let i=0;i<pos.count;i++){ const y = pos.getY(i); if(y<minY) minY=y; if(y>maxY) maxY=y; }
+    const span = (maxY - minY) || 1;
+    for(let i=0;i<pos.count;i++){
+      const t = Math.max(0, Math.min(1, (pos.getY(i) - minY) / span));
+      c.copy(bottom).lerp(top, Math.pow(t, 0.7));
+      colors.setXYZ(i, c.r, c.g, c.b);
+    }
+    geo.setAttribute('color', colors);
+  };
+
   GameEngine.prototype.setRoute = function(routeId){
     const T = window.THREE;
     const route = DG.routeById(routeId);
     this.route = route;
-    this._decor.forEach(o=>this.scene.remove(o));
+    this._decor.forEach(o=>{
+      this.scene.remove(o);
+      o.traverse(n=>{
+        if(n.geometry) n.geometry.dispose();
+        if(n.material){
+          const mats = Array.isArray(n.material) ? n.material : [n.material];
+          mats.forEach(m=>{ if(m.emissiveMap) m.emissiveMap.dispose(); if(m.map) m.map.dispose(); m.dispose(); });
+        }
+      });
+    });
     this._decor = [];
     this.scene.fog = new T.Fog(route.fog, route.fogNear, route.fogFar);
     this.roadMat.color.setHex(route.road);
     this.stripeMat.color.setHex(route.stripe);
     this.edgeMat.color.setHex(route.edge);
     this.edgeMat.emissive.setHex(route.edgeEmissive);
+    this.groundMat.color.setHex(route.ground != null ? route.ground : route.road);
+    if(route.sky) this._applySkyGradient(route.sky.top, route.sky.bottom);
+    if(route.light){
+      const L = route.light;
+      this.keyLight.color.setHex(L.key); this.keyLight.intensity = L.keyI;
+      this.hemiLight.color.setHex(L.hemiSky); this.hemiLight.groundColor.setHex(L.hemiGround); this.hemiLight.intensity = L.hemiI;
+      this.ambientLight.color.setHex(L.ambient); this.ambientLight.intensity = L.ambientI;
+    }
     const DECOR_N = 16;
     this._decor = route.buildDecor(T, this.scene, DECOR_N) || [];
     this._decorWrap = (route.spacing || 8.5) * DECOR_N;
