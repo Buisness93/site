@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Classement — Deylo Garage</title>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Saira:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<div id="site-nav" data-active="classement.html"></div>
+<main>
+  <div class="container" style="padding-top:40px;padding-bottom:60px">
+    <div class="eyebrow"><span class="dash"></span>Classement mondial</div>
+    <h1 class="h1">Top 25 pilotes</h1>
+    <p class="lead">Mis à jour automatiquement à chaque partie terminée.</p>
+    <div class="card" style="margin-top:26px">
+      <div id="board" style="display:flex;flex-direction:column;gap:6px">
+        <div class="skeleton">Chargement du classement…</div>
+      </div>
+    </div>
+  </div>
+</main>
+<footer class="footer">
+  <div style="font-family:'Saira Condensed';font-weight:900;letter-spacing:.16em;color:var(--text-2);font-size:16px">DEYLO<span style="color:var(--accent)">·</span>GARAGE</div>
+  <a href="index.html">← Retour à l'accueil</a>
+</footer>
+<script src="js/supabase-client.js"></script>
+<script src="js/cars.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/economy.js"></script>
+<script src="js/leaderboard.js"></script>
+<script src="js/nav.js"></script>
+<script>
+(async function(){
+  await DG.ready;
+  const board = await DG.Leaderboard.fetchBoard(25);
+  document.getElementById('board').innerHTML = board.length
+    ? board.map((e,i)=>DG.Leaderboard.rowHTML(e,i)).join('')
+    : '<div style="text-align:center;color:var(--text-3);padding:30px">Aucun score encore — soyez le premier !</div>';
+})();
+</script>
+</body>
+</html>

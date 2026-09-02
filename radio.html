@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radio — Deylo Garage</title>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Saira:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/site.css">
+<style>
+ .player{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+ .disc{width:84px;height:84px;border-radius:50%;background:conic-gradient(var(--accent),var(--accent-deep),var(--accent));flex:0 0 auto;display:flex;align-items:center;justify-content:center;box-shadow:0 14px 40px -16px var(--accent)}
+ .disc::after{content:'';width:24px;height:24px;border-radius:50%;background:var(--bg)}
+ .disc.spin{animation:discspin 3s linear infinite}
+ @keyframes discspin{to{transform:rotate(360deg)}}
+ .track-title{font-family:'Saira Condensed';font-weight:800;font-size:20px}
+ .track-artist{color:var(--text-3);font-size:13px}
+ .transport{display:flex;gap:10px;margin-top:14px}
+ .transport button{width:48px;height:48px;border-radius:12px;border:1px solid rgba(var(--line-rgb),.16);background:rgba(var(--line-rgb),.06);color:var(--text-1);font-size:18px}
+ .transport button.play{background:var(--accent);color:#fff;border-color:transparent}
+ .playlist-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;cursor:pointer}
+ .playlist-row:hover{background:rgba(var(--line-rgb),.05)}
+ .playlist-row.active{background:rgba(var(--accent-rgb),.16)}
+</style>
+</head>
+<body>
+<div id="site-nav" data-active="radio.html"></div>
+<main>
+  <div class="container" style="padding-top:40px;padding-bottom:70px">
+    <div class="eyebrow"><span class="dash"></span>Radio Deylo</div>
+    <h1 class="h1">La radio du garage</h1>
+    <p class="lead">Écoutez la sélection du moment, ou proposez vos morceaux préférés ci-dessous.</p>
+
+    <div class="grid" style="grid-template-columns:1.2fr 1fr;margin-top:30px">
+      <div class="card">
+        <div class="player">
+          <div class="disc" id="disc"></div>
+          <div>
+            <div class="track-title" id="trackTitle">Aucun morceau</div>
+            <div class="track-artist" id="trackArtist">—</div>
+            <div class="transport">
+              <button id="btnPrev" title="Précédent">⏮</button>
+              <button id="btnPlay" class="play" title="Lecture/Pause">▶</button>
+              <button id="btnNext" title="Suivant">⏭</button>
+            </div>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:8px;min-width:140px">
+            <span>🔊</span><input type="range" id="volume" min="0" max="100" value="70" style="flex:1">
+          </div>
+        </div>
+        <audio id="audioEl" preload="none"></audio>
+        <div id="playlist" style="margin-top:20px;display:flex;flex-direction:column;gap:2px">
+          <div class="skeleton">Chargement de la playlist…</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:19px">Proposer un morceau</h3>
+        <p style="color:var(--text-3);font-size:13px;margin-top:6px">Vos suggestions sont transmises à l'équipe, qui choisit ensuite les morceaux ajoutés à la radio.</p>
+        <div id="suggestMsg"></div>
+        <form id="suggestForm">
+          <div class="field"><label>Titre</label><input type="text" id="sgTitle" required></div>
+          <div class="field"><label>Artiste</label><input type="text" id="sgArtist"></div>
+          <div class="field"><label>Lien (YouTube, Spotify…)</label><input type="url" id="sgLink" placeholder="https://"></div>
+          <div class="field"><label>Votre pseudo (optionnel)</label><input type="text" id="sgFrom" maxlength="24"></div>
+          <button class="btn btn-primary btn-block" type="submit">Envoyer la suggestion →</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</main>
+<footer class="footer">
+  <div style="font-family:'Saira Condensed';font-weight:900;letter-spacing:.16em;color:var(--text-2);font-size:16px">DEYLO<span style="color:var(--accent)">·</span>GARAGE</div>
+  <a href="index.html">← Retour à l'accueil</a>
+</footer>
+<script src="js/supabase-client.js"></script>
+<script src="js/cars.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/economy.js"></script>
+<script src="js/nav.js"></script>
+<script>
+(function(){
+  const audio = document.getElementById('audioEl');
+  const disc = document.getElementById('disc');
+  let tracks = [], current = -1;
+
+  async function loadTracks(){
+    await DG.ready;
+    if(!DG.supabase || !DG.SUPABASE_READY) return;
+    const { data, error } = await DG.supabase.from('music_tracks').select('*').eq('active', true).order('added_at', { ascending:false });
+    tracks = (!error && data) ? data : [];
+    renderPlaylist();
+  }
+
+  function renderPlaylist(){
+    const el = document.getElementById('playlist');
+    if(!tracks.length){ el.innerHTML = '<div class="skeleton">Aucun morceau pour le moment — proposez-en un !</div>'; return; }
+    el.innerHTML = tracks.map((t,i)=>(
+      '<div class="playlist-row' + (i===current?' active':'') + '" data-i="' + i + '">' +
+        '<span>' + (i===current && !audio.paused ? '▶' : (i+1)) + '</span>' +
+        '<div><div style="font-weight:700">' + escapeHTML(t.title) + '</div><div style="font-size:12px;color:var(--text-3)">' + escapeHTML(t.artist||'') + '</div></div>' +
+      '</div>'
+    )).join('');
+    el.querySelectorAll('[data-i]').forEach(row=>row.addEventListener('click', ()=>playIndex(parseInt(row.getAttribute('data-i'),10))));
+  }
+  function escapeHTML(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function playIndex(i){
+    if(!tracks.length) return;
+    current = (i + tracks.length) % tracks.length;
+    const t = tracks[current];
+    audio.src = t.url;
+    audio.play().catch(()=>{});
+    document.getElementById('trackTitle').textContent = t.title;
+    document.getElementById('trackArtist').textContent = t.artist || '';
+    renderPlaylist();
+  }
+
+  document.getElementById('btnPlay').addEventListener('click', ()=>{
+    if(current === -1){ playIndex(0); return; }
+    if(audio.paused) audio.play().catch(()=>{}); else audio.pause();
+  });
+  document.getElementById('btnNext').addEventListener('click', ()=>playIndex(current+1));
+  document.getElementById('btnPrev').addEventListener('click', ()=>playIndex(current-1));
+  audio.addEventListener('ended', ()=>playIndex(current+1));
+  audio.addEventListener('play', ()=>{ disc.classList.add('spin'); document.getElementById('btnPlay').textContent='⏸'; renderPlaylist(); });
+  audio.addEventListener('pause', ()=>{ disc.classList.remove('spin'); document.getElementById('btnPlay').textContent='▶'; renderPlaylist(); });
+  document.getElementById('volume').addEventListener('input', (e)=>{ audio.volume = e.target.value/100; });
+  audio.volume = 0.7;
+
+  document.getElementById('suggestForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const msgEl = document.getElementById('suggestMsg');
+    const title = document.getElementById('sgTitle').value.trim();
+    if(!title) return;
+    try {
+      await DG.ready;
+      const { error } = await DG.supabase.from('music_suggestions').insert({
+        title, artist: document.getElementById('sgArtist').value.trim() || null,
+        link: document.getElementById('sgLink').value.trim() || null,
+        submitted_by: document.getElementById('sgFrom').value.trim() || null,
+      });
+      if(error) throw error;
+      msgEl.innerHTML = '<div class="msg msg-ok">Merci ! Votre suggestion a été envoyée.</div>';
+      e.target.reset();
+    } catch(err){ msgEl.innerHTML = '<div class="msg msg-error">Envoi impossible pour le moment.</div>'; }
+  });
+
+  loadTracks();
+})();
+</script>
+</body>
+</html>

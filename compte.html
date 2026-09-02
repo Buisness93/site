@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compte — Deylo Garage</title>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Saira:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<div id="site-nav" data-active="compte.html"></div>
+<main>
+  <div class="container" style="padding-top:50px;padding-bottom:70px;max-width:520px">
+
+    <div id="loggedOutView">
+      <div class="eyebrow"><span class="dash"></span>Compte joueur</div>
+      <h1 class="h1" style="font-size:38px">Connexion</h1>
+      <p class="lead">Créez un compte pour sauvegarder votre progression (argent, voitures débloquées, records) sur tous vos appareils.</p>
+      <div class="tabs" style="display:flex;gap:8px;margin:24px 0 18px">
+        <button class="btn btn-ghost" id="tabLogin" style="flex:1">Connexion</button>
+        <button class="btn btn-ghost" id="tabSignup" style="flex:1">Créer un compte</button>
+      </div>
+      <div id="msgArea"></div>
+
+      <form id="loginForm" class="card">
+        <div class="field"><label>Email</label><input type="email" id="loginEmail" required></div>
+        <div class="field"><label>Mot de passe</label><input type="password" id="loginPassword" required></div>
+        <button class="btn btn-primary btn-block" type="submit">Se connecter →</button>
+      </form>
+
+      <form id="signupForm" class="card" style="display:none">
+        <div class="field"><label>Pseudo</label><input type="text" id="suUsername" maxlength="16" required></div>
+        <div class="field"><label>Email</label><input type="email" id="suEmail" required></div>
+        <div class="field"><label>Mot de passe (8 caractères min.)</label><input type="password" id="suPassword" minlength="8" required></div>
+        <button class="btn btn-primary btn-block" type="submit">Créer mon compte →</button>
+      </form>
+    </div>
+
+    <div id="loggedInView" style="display:none">
+      <div class="eyebrow"><span class="dash"></span>Mon profil</div>
+      <h1 class="h1" style="font-size:38px" id="welcomeName">Pilote</h1>
+      <div class="grid grid-auto" style="margin-top:26px">
+        <div class="card"><div style="font-size:11px;letter-spacing:.14em;color:var(--text-3);text-transform:uppercase">Crédits</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:30px;margin-top:6px" id="statMoney">—</div></div>
+        <div class="card"><div style="font-size:11px;letter-spacing:.14em;color:var(--text-3);text-transform:uppercase">Voitures débloquées</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:30px;margin-top:6px" id="statCars">—</div></div>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <div class="field"><label>Changer de pseudo</label><input type="text" id="newUsername" maxlength="16"></div>
+        <button class="btn btn-ghost btn-block" id="btnSaveUsername">Enregistrer</button>
+      </div>
+      <button class="btn btn-ghost btn-block" id="btnLogout" style="margin-top:14px">Se déconnecter</button>
+    </div>
+  </div>
+</main>
+<footer class="footer">
+  <div style="font-family:'Saira Condensed';font-weight:900;letter-spacing:.16em;color:var(--text-2);font-size:16px">DEYLO<span style="color:var(--accent)">·</span>GARAGE</div>
+  <a href="index.html">← Retour à l'accueil</a>
+</footer>
+<script src="js/supabase-client.js"></script>
+<script src="js/cars.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/economy.js"></script>
+<script src="js/nav.js"></script>
+<script>
+(function(){
+  const msgArea = document.getElementById('msgArea');
+  function msg(text, ok){ msgArea.innerHTML = '<div class="msg ' + (ok?'msg-ok':'msg-error') + '">' + text + '</div>'; }
+
+  document.getElementById('tabLogin').addEventListener('click', ()=>{ document.getElementById('loginForm').style.display='block'; document.getElementById('signupForm').style.display='none'; });
+  document.getElementById('tabSignup').addEventListener('click', ()=>{ document.getElementById('loginForm').style.display='none'; document.getElementById('signupForm').style.display='block'; });
+
+  document.getElementById('loginForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    try { await DG.Auth.signIn(document.getElementById('loginEmail').value, document.getElementById('loginPassword').value); }
+    catch(err){ msg(err.message || 'Connexion impossible', false); }
+  });
+
+  document.getElementById('signupForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    try {
+      await DG.Auth.signUp(document.getElementById('suEmail').value, document.getElementById('suPassword').value, document.getElementById('suUsername').value);
+      msg('Compte créé — vérifiez votre email si une confirmation est requise, puis connectez-vous.', true);
+    } catch(err){ msg(err.message || 'Inscription impossible', false); }
+  });
+
+  document.getElementById('btnLogout').addEventListener('click', ()=>DG.Auth.signOut());
+
+  document.getElementById('btnSaveUsername').addEventListener('click', async ()=>{
+    const v = document.getElementById('newUsername').value.trim();
+    if(!v) return;
+    try { await DG.Auth.updateUsername(v); render(); } catch(err){ alert(err.message); }
+  });
+
+  function render(){
+    const loggedIn = DG.Auth.isLoggedIn();
+    document.getElementById('loggedOutView').style.display = loggedIn ? 'none' : 'block';
+    document.getElementById('loggedInView').style.display = loggedIn ? 'block' : 'none';
+    if(loggedIn){
+      document.getElementById('welcomeName').textContent = 'Salut, ' + DG.Auth.displayName();
+      document.getElementById('statMoney').textContent = '🪙 ' + DG.Economy.money.toLocaleString('fr-FR');
+      document.getElementById('statCars').textContent = DG.Economy.unlocked.length + ' / ' + DG.CARS.length;
+      document.getElementById('newUsername').value = DG.Auth.displayName();
+    }
+  }
+  DG.Auth.onChange(render);
+  DG.Economy.onChange(render);
+})();
+</script>
+</body>
+</html>

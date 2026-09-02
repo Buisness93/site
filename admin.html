@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin — Deylo Garage</title>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Saira:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/site.css">
+<style>
+ .stat-card{background:linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 18px}
+ .stat-card .l{font-size:10.5px;letter-spacing:.16em;color:var(--text-3);text-transform:uppercase}
+ .stat-card .v{font-family:'Saira Condensed';font-weight:900;font-size:28px;margin-top:4px}
+ table{width:100%;border-collapse:collapse;font-size:13.5px}
+ th{text-align:left;color:var(--text-3);font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.1)}
+ td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.06)}
+</style>
+</head>
+<body>
+<div id="site-nav" data-active=""></div>
+<main>
+  <div class="container" style="padding-top:40px;padding-bottom:70px">
+    <div class="eyebrow"><span class="dash"></span>Espace privé</div>
+    <h1 class="h1" style="font-size:38px">Administration</h1>
+
+    <div id="deniedView" style="display:none" class="card">
+      Accès réservé à l'administrateur. Connectez-vous avec un compte disposant du statut admin
+      (à activer manuellement dans Supabase Studio : <code>update profiles set is_admin = true where id = '...';</code>).
+    </div>
+
+    <div id="adminView" style="display:none">
+      <div class="grid grid-auto" style="margin-top:24px" id="statGrid"></div>
+
+      <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:30px">
+        <div class="card">
+          <h3 style="font-size:18px">Voitures les plus jouées</h3>
+          <table id="carsUsageTable" style="margin-top:12px"><thead><tr><th>Voiture</th><th>Parties</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="card">
+          <h3 style="font-size:18px">Routes les plus jouées</h3>
+          <table id="routesUsageTable" style="margin-top:12px"><thead><tr><th>Route</th><th>Parties</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:24px">
+        <h3 style="font-size:18px">Ajouter un morceau à la radio</h3>
+        <p style="color:var(--text-3);font-size:13px">Choisissez un fichier MP3 : il est envoyé dans le stockage puis ajouté à la playlist publique.</p>
+        <div id="uploadMsg"></div>
+        <div class="field"><label>Titre</label><input type="text" id="trTitle"></div>
+        <div class="field"><label>Artiste</label><input type="text" id="trArtist"></div>
+        <div class="field"><label>Fichier MP3</label><input type="file" id="trFile" accept="audio/mpeg,.mp3"></div>
+        <button class="btn btn-primary" id="btnUpload">Envoyer et ajouter</button>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <h3 style="font-size:18px">Pistes actives</h3>
+        <table style="margin-top:12px"><thead><tr><th>Titre</th><th>Artiste</th><th>Statut</th><th></th></tr></thead><tbody id="tracksBody"></tbody></table>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <h3 style="font-size:18px">Suggestions des joueurs</h3>
+        <table style="margin-top:12px"><thead><tr><th>Titre</th><th>Artiste</th><th>Lien</th><th>De</th></tr></thead><tbody id="suggestionsBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="js/supabase-client.js"></script>
+<script src="js/cars.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/economy.js"></script>
+<script src="js/nav.js"></script>
+<script src="game/js/routes.js"></script>
+<script>
+(function(){
+  function escapeHTML(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  async function boot(){
+    await DG.Auth.init();
+    if(!DG.Auth.isLoggedIn() || !DG.Auth.profile || !DG.Auth.profile.is_admin){
+      document.getElementById('deniedView').style.display = 'block';
+      return;
+    }
+    document.getElementById('adminView').style.display = 'block';
+    loadStats();
+    loadTracks();
+    loadSuggestions();
+  }
+
+  async function loadStats(){
+    const { data, error } = await DG.supabase.rpc('admin_stats');
+    if(error || !data){ return; }
+    const cells = [
+      ['Joueurs inscrits', data.players], ['Nouveaux comptes (7j)', data.accounts_last_7d],
+      ['Parties jouées', data.games_played], ['Temps de jeu total', data.total_playtime_hours + ' h'],
+      ['Meilleur score', data.top_score], ['Suggestions en attente', data.music_suggestions_pending],
+    ];
+    document.getElementById('statGrid').innerHTML = cells.map(c=>'<div class="stat-card"><div class="l">' + c[0] + '</div><div class="v">' + c[1] + '</div></div>').join('');
+
+    document.querySelector('#carsUsageTable tbody').innerHTML = (data.cars_usage||[]).map(r=>{
+      const car = DG.carById(r.car_id);
+      return '<tr><td>' + (car?escapeHTML(car.name):escapeHTML(r.car_id)) + '</td><td>' + r.plays + '</td></tr>';
+    }).join('') || '<tr><td colspan="2">—</td></tr>';
+
+    document.querySelector('#routesUsageTable tbody').innerHTML = (data.routes_usage||[]).map(r=>{
+      const route = DG.routeById(r.route_id);
+      return '<tr><td>' + (route?escapeHTML(route.name):escapeHTML(r.route_id)) + '</td><td>' + r.plays + '</td></tr>';
+    }).join('') || '<tr><td colspan="2">—</td></tr>';
+  }
+
+  async function loadTracks(){
+    const { data, error } = await DG.supabase.from('music_tracks').select('*').order('added_at', { ascending:false });
+    const rows = (!error && data) ? data : [];
+    document.getElementById('tracksBody').innerHTML = rows.map(t=>(
+      '<tr><td>' + escapeHTML(t.title) + '</td><td>' + escapeHTML(t.artist) + '</td><td>' + (t.active?'Active':'Masquée') + '</td>' +
+      '<td><button class="btn btn-ghost btn-sm" data-toggle="' + t.id + '" data-active="' + t.active + '">' + (t.active?'Masquer':'Réactiver') + '</button></td></tr>'
+    )).join('') || '<tr><td colspan="4">Aucune piste.</td></tr>';
+    document.querySelectorAll('[data-toggle]').forEach(b=>b.addEventListener('click', async ()=>{
+      await DG.supabase.rpc('admin_set_track_active', { p_id: parseInt(b.getAttribute('data-toggle'),10), p_active: b.getAttribute('data-active') !== 'true' });
+      loadTracks();
+    }));
+  }
+
+  async function loadSuggestions(){
+    const { data, error } = await DG.supabase.rpc('admin_list_suggestions');
+    const rows = (!error && data) ? data : [];
+    document.getElementById('suggestionsBody').innerHTML = rows.map(s=>(
+      '<tr><td>' + escapeHTML(s.title) + '</td><td>' + escapeHTML(s.artist) + '</td><td>' + (s.link?('<a href="'+escapeHTML(s.link)+'" target="_blank" rel="noopener">lien</a>'):'—') + '</td><td>' + escapeHTML(s.submitted_by||'anonyme') + '</td></tr>'
+    )).join('') || '<tr><td colspan="4">Aucune suggestion pour le moment.</td></tr>';
+  }
+
+  document.getElementById('btnUpload').addEventListener('click', async ()=>{
+    const msgEl = document.getElementById('uploadMsg');
+    const file = document.getElementById('trFile').files[0];
+    const title = document.getElementById('trTitle').value.trim();
+    if(!file || !title){ msgEl.innerHTML = '<div class="msg msg-error">Titre et fichier requis.</div>'; return; }
+    msgEl.innerHTML = '<div class="msg msg-ok">Envoi en cours…</div>';
+    const path = Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const { error: upErr } = await DG.supabase.storage.from('radio').upload(path, file, { contentType:'audio/mpeg' });
+    if(upErr){ msgEl.innerHTML = '<div class="msg msg-error">Échec de l\'envoi : ' + escapeHTML(upErr.message) + '</div>'; return; }
+    const { data: pub } = DG.supabase.storage.from('radio').getPublicUrl(path);
+    const { error: rpcErr } = await DG.supabase.rpc('admin_add_track', { p_title:title, p_artist: document.getElementById('trArtist').value.trim() || null, p_url: pub.publicUrl });
+    if(rpcErr){ msgEl.innerHTML = '<div class="msg msg-error">' + escapeHTML(rpcErr.message) + '</div>'; return; }
+    msgEl.innerHTML = '<div class="msg msg-ok">Morceau ajouté à la radio !</div>';
+    document.getElementById('trTitle').value=''; document.getElementById('trArtist').value=''; document.getElementById('trFile').value='';
+    loadTracks();
+  });
+
+  boot();
+})();
+</script>
+</body>
+</html>

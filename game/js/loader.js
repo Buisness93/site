@@ -1,0 +1,85 @@
+// Chargement des modèles GLB pour le jeu (avec cache + décodeur meshopt).
+(function(){
+  window.DG = window.DG || {};
+  const cache = {};
+  let loader = null;
+
+  function getLoader(){
+    if(loader) return loader;
+    const T = window.THREE;
+    const mgr = new T.LoadingManager();
+    const c = document.createElement('canvas'); c.width = c.height = 4;
+    const x = c.getContext('2d'); x.fillStyle = '#33383f'; x.fillRect(0,0,4,4);
+    const ph = c.toDataURL();
+    mgr.setURLModifier((u)=>{ if(/colormap\.png$/i.test(u) || /Textures\//i.test(u)) return ph; return u; });
+    loader = new T.GLTFLoader(mgr);
+    if(window.MeshoptDecoder){
+      window.MeshoptDecoder.ready.then(()=>loader.setMeshoptDecoder(window.MeshoptDecoder)).catch(()=>{});
+    }
+    return loader;
+  }
+
+  function loadModel(url){
+    if(cache[url]) return cache[url];
+    cache[url] = new Promise((resolve)=>{
+      getLoader().load(url,
+        (g)=>resolve(g.scene || (g.scenes && g.scenes[0]) || null),
+        undefined,
+        (err)=>{ console.warn('GLB load failed', url, err); resolve(null); }
+      );
+    });
+    return cache[url];
+  }
+
+  function normalizeModel(T, src, targetLen, rotY){
+    const obj = src.clone(true);
+    obj.rotation.y = rotY || 0;
+    obj.updateMatrixWorld(true);
+    const box = new T.Box3().setFromObject(obj);
+    const size = new T.Vector3(); box.getSize(size);
+    const center = new T.Vector3(); box.getCenter(center);
+    const maxDim = Math.max(size.x, size.z) || 1;
+    const s = (targetLen || 4.4) / maxDim;
+    obj.position.set(-center.x, -box.min.y, -center.z);
+    const inner = new T.Group(); inner.add(obj); inner.scale.setScalar(s);
+    const wrap = new T.Group(); wrap.add(inner);
+    wrap.userData.len = maxDim * s;
+    return wrap;
+  }
+
+  function tintModel(T, root, color, emissiveI){
+    const c = new T.Color(color);
+    root.traverse(o=>{
+      if(o.isMesh && o.material){
+        const clone1 = (m)=>{
+          const nm = m.clone();
+          const lum = nm.color ? (nm.color.r+nm.color.g+nm.color.b)/3 : 1;
+          if(lum > 0.16){ nm.color.copy(c); nm.map = null; }
+          if(emissiveI && nm.emissive){ nm.emissive.copy(c); nm.emissiveIntensity = emissiveI; }
+          nm.needsUpdate = true;
+          return nm;
+        };
+        o.material = Array.isArray(o.material) ? o.material.map(clone1) : clone1(o.material);
+      }
+    });
+  }
+
+  function makeFallbackCar(T, opts){
+    opts = opts || {};
+    const g = new T.Group();
+    const bodyMat = new T.MeshStandardMaterial({ color: opts.body!=null?opts.body:0x161b23, metalness:0.7, roughness:0.35, emissive: opts.emissive!=null?opts.emissive:0x0a0e16, emissiveIntensity:0.4 });
+    const body = new T.Mesh(new T.BoxGeometry(1.9, 0.75, 4.2), bodyMat);
+    body.position.y = 0.55; g.add(body);
+    const cabin = new T.Mesh(new T.BoxGeometry(1.5, 0.55, 2.0), new T.MeshStandardMaterial({ color:0x05070c, metalness:0.4, roughness:0.15 }));
+    cabin.position.set(0, 1.05, -0.2); g.add(cabin);
+    const wheelGeo = new T.CylinderGeometry(0.42,0.42,0.35,16);
+    const wheelMat = new T.MeshStandardMaterial({ color:0x0a0a0b, metalness:0.3, roughness:0.7 });
+    [[-0.95,0.42,1.4],[0.95,0.42,1.4],[-0.95,0.42,-1.4],[0.95,0.42,-1.4]].forEach(p=>{
+      const w = new T.Mesh(wheelGeo, wheelMat); w.rotation.z = Math.PI/2; w.position.set(p[0],p[1],p[2]); g.add(w);
+    });
+    g.userData.len = 4.2;
+    return g;
+  }
+
+  DG.Loader = { loadModel, normalizeModel, tintModel, makeFallbackCar };
+})();

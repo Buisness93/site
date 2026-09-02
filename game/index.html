@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Deylo Garage — Course de réflexes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Saira:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+<div id="stage">
+  <div id="canvasHost"></div>
+
+  <div class="topbar" id="hudTop" style="display:none">
+    <div>
+      <div class="hud-stats">
+        <div class="cell"><div class="l">TEMPS</div><div class="v" id="hudTime">0.0s</div></div>
+        <div class="cell"><div class="l">SCORE</div><div class="v accent" id="hudScore">0</div></div>
+        <div class="cell" id="hudSpeedCell"><div class="l">VITESSE</div><div class="v" id="hudSpeed">0<span style="font-size:10px;color:#8a8f98"> km/h</span></div></div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div><button class="icon-btn" id="btnCam" title="Changer de caméra">🎥</button><div class="cam-label" id="camLabel">STANDARD</div></div>
+      <button class="icon-btn" id="btnPause" title="Pause">⏸</button>
+      <button class="icon-btn" id="btnFullscreen" title="Plein écran">⛶</button>
+    </div>
+  </div>
+
+  <div class="multiplier-badge" id="multBadge">×2 GAINS — <span id="multTime">8</span>s</div>
+  <div class="popups" id="popups"></div>
+
+  <div class="bottombar" id="hudBottom" style="display:none">
+    <div class="controls-wrap">
+      <div class="boost-bar"><div class="boost-fill" id="boostFill"></div></div>
+      <div class="controls-row">
+        <button class="btn-lane" id="btnLeft">◀</button>
+        <button class="btn-boost" id="btnBoost">⚡ Boost</button>
+        <button class="btn-lane" id="btnRight">▶</button>
+      </div>
+      <div class="kbd-hint">ESPACE boost · ← → déplacer · C caméra · P pause</div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ovLoading">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:44px;height:44px;border-radius:13px;background:linear-gradient(150deg,#e6edf2,#4d6478);display:flex;align-items:center;justify-content:center"><span style="font-family:'Saira Condensed';font-weight:900;font-size:26px;color:#080a10">D</span></div>
+      <div style="font-family:'Saira Condensed';font-weight:900;font-size:24px;letter-spacing:.16em">DEYLO GARAGE</div>
+    </div>
+    <div style="font-family:monospace;font-size:12px;letter-spacing:.14em;color:#8a8f98">CHARGEMENT DU CIRCUIT…</div>
+  </div>
+
+  <div class="overlay hidden" id="ovNaming">
+    <div class="panel">
+      <div style="font-size:11px;letter-spacing:.3em;color:#9fb4c7;text-transform:uppercase">Bienvenue</div>
+      <h2 style="font-size:26px;margin:6px 0 4px">Votre pseudo</h2>
+      <div style="font-size:13px;color:#9aa1ab;font-weight:300;margin-bottom:16px">Créez un compte pour le garder définitivement, ou jouez en invité.</div>
+      <input id="nameInput" maxlength="16" placeholder="Ex. SpeedX" />
+      <button class="btn btn-primary btn-block" id="btnNameOk" style="margin-top:14px">Continuer →</button>
+      <a href="../compte.html" style="display:block;margin-top:12px;font-size:12px;color:#8a8f98">Ou créez un compte pour sauvegarder votre progression →</a>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="ovChoosing">
+    <div class="wide-panel">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:11px;letter-spacing:.3em;color:#9fb4c7;text-transform:uppercase">Mode jeu · Time attack</div>
+          <div style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(28px,4.4vw,48px);text-transform:uppercase;line-height:.95;margin-top:6px">Choisissez votre bolide</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px;background:rgba(15,16,22,.7);border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:6px 6px 6px 14px">
+            <span style="font-size:10px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Pilote</span>
+            <span style="font-family:'Saira Condensed';font-weight:800;font-size:15px" id="pilotName">—</span>
+            <span style="font-size:10px;letter-spacing:.1em;color:#ffcc00;padding:5px 10px;border-radius:999px;background:rgba(255,204,0,.12)" id="pilotMoney">🪙 0</span>
+          </div>
+          <a href="../garage.html" style="font-size:11px;color:#8a8f98">🔧 Gérer le garage →</a>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:10px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase;margin-bottom:8px">Route</div>
+        <div class="tabs" id="routeTabs"></div>
+      </div>
+
+      <div class="car-grid" id="carGrid"></div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">
+        <button class="btn btn-ghost" id="btnStart" disabled>▶ Démarrer</button>
+        <button class="btn btn-ghost" id="btnBoardOpen">🏆 Classement — Top 25 →</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="ovPaused">
+    <div class="panel" style="text-align:center">
+      <div style="font-family:'Saira Condensed';font-weight:900;font-size:34px;text-transform:uppercase;margin-bottom:18px">⏸ Pause</div>
+      <button class="btn btn-primary btn-block" id="btnResume">▶ Reprendre</button>
+      <button class="btn btn-ghost btn-block" id="btnRestartFromPause" style="margin-top:10px">↻ Recommencer</button>
+      <button class="btn btn-ghost btn-block" id="btnQuitFromPause" style="margin-top:10px">✕ Quitter la partie</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="ovOver">
+    <div style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(34px,6vw,64px);text-transform:uppercase">Game Over</div>
+    <div id="ovRecordBadge" style="display:none;padding:7px 18px;border-radius:999px;background:linear-gradient(90deg,#ffcc00,#ff9500);color:#1a1400;font-family:'Saira Condensed';font-weight:900;font-size:13px;letter-spacing:.12em;text-transform:uppercase">★ Nouveau record</div>
+    <div style="display:flex;gap:40px;flex-wrap:wrap;justify-content:center">
+      <div><div style="font-size:11px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Score</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:48px;color:#9fb4c7" id="overScore">0</div></div>
+      <div><div style="font-size:11px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Temps</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:48px" id="overTime">0.0s</div></div>
+      <div><div style="font-size:11px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Crédits</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:48px;color:#ffcc00" id="overCredits">+0</div></div>
+    </div>
+    <div style="width:min(430px,92%);background:#0c0d14cc;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px 18px;text-align:left">
+      <div style="font-family:'Saira Condensed';font-weight:900;font-size:16px;text-transform:uppercase;margin-bottom:10px">🏆 Classement</div>
+      <div id="overBoard"></div>
+    </div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
+      <button class="btn btn-primary" id="btnRetry">↻ Rejouer</button>
+      <button class="btn btn-ghost" id="btnChangeCar">Changer de voiture</button>
+      <button class="btn btn-ghost" id="btnWatchAd">📺 Pub +crédits</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="ovBoard">
+    <div style="width:100%;max-width:760px;display:flex;flex-direction:column;height:80vh">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="font-family:'Saira Condensed';font-weight:900;font-size:24px;text-transform:uppercase">🏆 Classement — Top 25</div>
+        <button class="btn btn-ghost" id="btnBoardClose">✕ Fermer</button>
+      </div>
+      <div style="flex:1;overflow:auto;display:flex;flex-direction:column;gap:6px" id="fullBoard"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
+<script src="../js/supabase-client.js"></script>
+<script src="../js/cars.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/economy.js"></script>
+<script src="../js/leaderboard.js"></script>
+<script src="../js/ads.js"></script>
+<script src="js/routes.js"></script>
+<script src="js/loader.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
