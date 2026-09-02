@@ -4,6 +4,8 @@
   window.DG = window.DG || {};
   const LANES = [-3.3, -1.1, 1.1, 3.3];
   const NEAR_MISS_GAP = 0.85;
+  const TRAFFIC_FILES = ['../uploads/taxi.glb','../uploads/van.glb','../uploads/truck-flat.glb','../uploads/police.glb','../uploads/delivery.glb','../uploads/race.glb','../uploads/race-future.glb'];
+  const TRAFFIC_TINTS = [0xe23b3b,0x2f7bff,0x18c56b,0xf5b301,0xff7a00,0x9b5cff,0xeceff4,0x18324a,0x00c2ff];
 
   function GameEngine(container, cb){
     this.container = container;
@@ -94,7 +96,8 @@
 
   GameEngine.prototype._preloadObstacles = function(){
     DG.Loader.loadModel('../uploads/traffic-cone-new.glb').then(m=>{ this._coneModel = m; });
-    DG.Loader.loadModel('../uploads/traffic-signs.glb').then(m=>{ this._signModel = m; });
+    this._trafficModels = [];
+    TRAFFIC_FILES.forEach(f=>DG.Loader.loadModel(f).then(m=>{ if(m) this._trafficModels.push(m); }));
   };
 
   GameEngine.prototype._onResize = function(){
@@ -233,12 +236,16 @@
     const lane = LANES[li];
     let mesh, w = 1.2;
     const r = Math.random();
-    if(r < 0.55 && this._coneModel){
+    if(r < 0.35 && this._coneModel){
       mesh = DG.Loader.normalizeModel(T, this._coneModel, 1.0, 0);
       w = 0.7;
-    } else if(this._signModel){
-      mesh = DG.Loader.normalizeModel(T, this._signModel, 1.6, 0);
-      w = 0.8;
+    } else if(this._trafficModels && this._trafficModels.length){
+      let ti = Math.floor(Math.random()*this._trafficModels.length);
+      if(this._trafficModels.length > 1 && ti === this._lastTrafficIdx) ti = (ti+1) % this._trafficModels.length;
+      this._lastTrafficIdx = ti;
+      mesh = DG.Loader.normalizeModel(T, this._trafficModels[ti], 3.6, Math.PI);
+      DG.Loader.tintModel(T, mesh, TRAFFIC_TINTS[Math.floor(Math.random()*TRAFFIC_TINTS.length)], 0.0);
+      w = 1.25;
     } else if(this._coneModel){
       mesh = DG.Loader.normalizeModel(T, this._coneModel, 1.0, 0);
       w = 0.7;

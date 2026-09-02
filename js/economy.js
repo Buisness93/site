@@ -40,6 +40,11 @@
     },
 
     async _loadPlayerCars(){
+      if(DG.Auth.profile && DG.Auth.profile.is_admin){
+        this.unlocked = DG.CARS.map(c=>c.id);
+        this._emit();
+        return;
+      }
       if(!DG.supabase || !DG.Auth.user) return;
       const { data, error } = await DG.supabase.from('player_cars').select('car_id').eq('user_id', DG.Auth.user.id);
       if(!error && data){ this.unlocked = Array.from(new Set([DG.defaultCarId, ...data.map(r=>r.car_id)])); this._emit(); }
