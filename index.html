@@ -39,6 +39,8 @@
  .board-top1 .crown{font-size:34px}
  .board-top1 .who{font-family:'Saira Condensed';font-weight:900;font-size:26px}
  .board-top1 .sc{margin-left:auto;font-family:'Saira Condensed';font-weight:900;font-size:32px;color:#ffcc00}
+ .board-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;margin-top:30px}
+ @media (max-width:780px){ .board-grid{grid-template-columns:1fr} }
  @media (max-width:680px){ .hero-text{left:5vw;right:5vw;max-width:none} }
 </style>
 </head>
@@ -128,7 +130,7 @@
     <div class="container" data-reveal>
       <div class="eyebrow"><span class="dash"></span>Classement en direct</div>
       <h2 class="h1" style="font-size:clamp(32px,5vw,54px)">Le meilleur pilote du moment</h2>
-      <div class="grid" style="grid-template-columns:1.3fr 1fr;margin-top:30px" id="homeBoardWrap">
+      <div class="board-grid" id="homeBoardWrap">
         <div class="board-highlight">
           <div id="homeBoardTop1" class="skeleton">Chargement du classement…</div>
           <div id="homeBoardRest" style="display:flex;flex-direction:column;gap:6px;margin-top:6px"></div>

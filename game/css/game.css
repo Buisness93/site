@@ -37,6 +37,13 @@ h1,h2,h3{font-family:'Saira Condensed',sans-serif;text-transform:uppercase;margi
 .btn-boost:active{background:rgba(159,180,199,.55)}
 .kbd-hint{font-family:monospace;font-size:10px;color:#8a8f98;letter-spacing:.05em}
 @media (max-width:480px){ .btn-lane{width:56px;height:56px;font-size:22px} .btn-boost{font-size:13px} .kbd-hint{display:none} }
+@media (max-width:520px){
+  #hudSpeedCell{display:none}
+  .hud-stats .cell{padding:6px 10px}
+  .hud-stats .v{font-size:16px}
+  .icon-btn{width:36px;height:36px;font-size:14px}
+  .top-actions{gap:6px}
+}
 
 .overlay{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;background:radial-gradient(circle at 50% 38%, #0b0e14f0, #06070afa);text-align:center;padding:24px calc(env(safe-area-inset-right,0px) + 20px) calc(env(safe-area-inset-bottom,0px) + 20px) calc(env(safe-area-inset-left,0px) + 20px);overflow:auto}
 .overlay.hidden{display:none}

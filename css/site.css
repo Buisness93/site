@@ -31,7 +31,6 @@ button{cursor:pointer;transition:transform .12s cubic-bezier(.2,.7,.2,1),box-sha
 button:active{transform:translateY(1px) scale(.97)}
 ::selection{background:var(--accent);color:#fff}
 .container{max-width:1180px;margin:0 auto;padding:0 6vw}
-@media (min-width:1400px){ .container{padding:0 max(6vw, calc((100vw - 1320px)/2))} }
 
 /* ---------- Nav ---------- */
 .navbar{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;backdrop-filter:blur(16px);background:linear-gradient(rgba(var(--bg-rgb),.92),rgba(var(--bg-rgb),.7));border-bottom:1px solid rgba(var(--line-rgb),.08)}
@@ -86,7 +85,7 @@ main{padding-top:78px}
 /* ---------- Toast / forms ---------- */
 .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
 .field label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)}
-.field input, .field textarea{background:#07080d;border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:12px 14px;color:var(--text-1);font-size:15px;outline:none}
+.field input, .field textarea{width:100%;background:#07080d;border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:12px 14px;color:var(--text-1);font-size:15px;outline:none}
 [data-theme="ivoire"] .field input, [data-theme="ivoire"] .field textarea{background:#fffdf8;color:#241d13}
 .field input:focus, .field textarea:focus{border-color:var(--accent)}
 .msg{padding:11px 14px;border-radius:10px;font-size:13.5px;margin-bottom:14px}
