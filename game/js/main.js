@@ -10,7 +10,7 @@
     overScore:$('overScore'), overTime:$('overTime'), overCredits:$('overCredits'), overBoard:$('overBoard'), ovRecordBadge:$('ovRecordBadge'),
     btnRetry:$('btnRetry'), btnChangeCar:$('btnChangeCar'), btnWatchAd:$('btnWatchAd'),
     fullBoard:$('fullBoard'), btnBoardClose:$('btnBoardClose'),
-    dailyCard:$('dailyCard'), dailyDesc:$('dailyDesc'), dailyReward:$('dailyReward'),
+    dailyCard:$('dailyCard'), dailyDesc:$('dailyDesc'), dailyCta:$('dailyCta'),
     overDailyCard:$('overDailyCard'), overDailyDesc:$('overDailyDesc'), btnClaimDaily:$('btnClaimDaily'),
     btnLeft:$('btnLeft'), btnRight:$('btnRight'), btnBoost:$('btnBoost'), btnCam:$('btnCam'), btnPause:$('btnPause'), btnFullscreen:$('btnFullscreen'), btnMusic:$('btnMusic'), bgAudio:$('bgAudio'),
     musicPanel:$('musicPanel'), musicTrackName:$('musicTrackName'), btnMusicPrev:$('btnMusicPrev'), btnMusicToggle:$('btnMusicToggle'), btnMusicNext:$('btnMusicNext'), musicVolume:$('musicVolume'), musicList:$('musicList'),
@@ -89,7 +89,7 @@
         '</button>'
       );
     }).join('');
-    els.carGrid.querySelectorAll('[data-car]:not([disabled])').forEach(b=>b.addEventListener('click', ()=>{ state.selectedCar = b.getAttribute('data-car'); renderCarGrid(); els.btnStart.disabled = false; }));
+    els.carGrid.querySelectorAll('[data-car]:not([disabled])').forEach(b=>b.addEventListener('click', ()=>{ state.selectedCar = b.getAttribute('data-car'); renderCarGrid(); els.btnStart.disabled = false; updateDailyCta(); }));
     els.btnStart.disabled = unlocked.indexOf(state.selectedCar) === -1;
   }
   function hexAlpha(hex, a){
@@ -102,15 +102,40 @@
     els.pilotMoney.textContent = '🪙 ' + DG.Economy.money.toLocaleString('fr-FR');
   }
 
-  async function renderDailyCard(){
+  function updateDailyCta(){
     if(!els.dailyCard) return;
     const dc = DG.dailyChallenge();
     const car = DG.carById(dc.carId);
-    const claimed = await DG.Economy.hasClaimedDailyChallenge();
-    state.dailyClaimedToday = claimed;
+    const claimed = !!state.dailyClaimedToday;
+    const unlocked = DG.Economy.unlocked.indexOf(dc.carId) !== -1;
+    const selected = state.selectedCar === dc.carId;
     els.dailyDesc.textContent = 'Score ≥ ' + dc.target.toLocaleString('fr-FR') + ' avec la ' + car.name + (claimed ? ' — déjà réclamé aujourd\'hui ✓' : '');
-    els.dailyReward.textContent = claimed ? '✓ Fait' : '🪙 +' + dc.reward;
     els.dailyCard.classList.toggle('done', claimed);
+    els.dailyCard.classList.toggle('locked', !claimed && !unlocked);
+    els.dailyCard.classList.toggle('selected', !claimed && unlocked && selected);
+    if(claimed) els.dailyCta.textContent = '✓ Fait';
+    else if(!unlocked) els.dailyCta.textContent = '🔒 Débloquer';
+    else if(selected) els.dailyCta.textContent = '✓ Choisi';
+    else els.dailyCta.textContent = '🎯 Défi · +' + dc.reward;
+  }
+
+  function selectDailyChallenge(){
+    const dc = DG.dailyChallenge();
+    if(state.dailyClaimedToday){ popup('Défi déjà réclamé aujourd\'hui ✓', '#ffcc00'); return; }
+    if(DG.Economy.unlocked.indexOf(dc.carId) === -1){
+      popup('Débloque la ' + DG.carById(dc.carId).name + ' pour ce défi', '#ff9090');
+      return;
+    }
+    state.selectedCar = dc.carId;
+    renderCarGrid();
+    updateDailyCta();
+    popup('🎯 Défi sélectionné !', '#ffcc00');
+  }
+
+  async function renderDailyCard(){
+    if(!els.dailyCard) return;
+    state.dailyClaimedToday = await DG.Economy.hasClaimedDailyChallenge();
+    updateDailyCta();
   }
 
   async function goToChoosing(){
@@ -189,6 +214,10 @@
     engine.start(car, state.selectedRoute, state.personalBest);
   }
   els.btnStart.addEventListener('click', startRun);
+  if(els.dailyCard){
+    els.dailyCard.addEventListener('click', selectDailyChallenge);
+    els.dailyCard.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); selectDailyChallenge(); } });
+  }
 
   let lastResult = null;
   async function handleGameOver(result){
