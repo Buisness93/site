@@ -25,7 +25,7 @@
     { file:'../uploads/traffic-bus-grey.gltf', len:8.0 },
     { file:'../uploads/traffic-bus-white.glb', len:9.0 },
     { file:'../uploads/traffic-truck-semi.glb', len:10.0 },
-    { file:'../uploads/traffic-truck-flatbed.gltf', len:9.0 },
+    { file:'../uploads/traffic-truck-flatbed.gltf', len:11.5 },
   ];
 
   // Fantome du meilleur run (par voiture+route) : stocke localement, aucun
