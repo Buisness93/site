@@ -251,22 +251,41 @@
   };
   GameEngine.prototype.setBoostHeld = function(v){ this._boostHeld = v; };
 
-  // Moteur synthetise en Web Audio (aucun fichier son a charger) : deux
-  // oscillateurs (fondamentale + sous-harmonique) passes dans un filtre passe-bas,
-  // dont la frequence/le volume suivent la vitesse et le boost en temps reel.
+  // Bruit moteur : si un vrai enregistrement existe (uploads/engine-loop.mp3,
+  // une boucle propre de ralenti/acceleration), on le joue et on module sa vitesse
+  // de lecture selon la vitesse/le boost (effet "regime moteur"). Sinon, retombe
+  // automatiquement sur une synthese Web Audio (deux oscillateurs + filtre).
+  const ENGINE_SAMPLE_FILE = '../uploads/engine-loop.mp3';
+
   GameEngine.prototype._initEngineSound = function(){
     if(this._audioCtx) { if(this._audioCtx.state === 'suspended') this._audioCtx.resume().catch(()=>{}); return; }
     try{
       const AC = window.AudioContext || window.webkitAudioContext;
       if(!AC) return;
       const ctx = new AC();
-      const osc1 = ctx.createOscillator(); osc1.type = 'sawtooth'; osc1.frequency.value = 55;
-      const osc2 = ctx.createOscillator(); osc2.type = 'square'; osc2.frequency.value = 28;
-      const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 500;
-      const gain = ctx.createGain(); gain.gain.value = 0;
-      osc1.connect(filter); osc2.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-      osc1.start(); osc2.start();
-      this._audioCtx = ctx; this._engineOsc1 = osc1; this._engineOsc2 = osc2; this._engineFilter = filter; this._engineGain = gain;
+      const gain = ctx.createGain(); gain.gain.value = 0; gain.connect(ctx.destination);
+      this._audioCtx = ctx; this._engineGain = gain;
+
+      fetch(ENGINE_SAMPLE_FILE)
+        .then(r=>{ if(!r.ok) throw new Error('no sample'); return r.arrayBuffer(); })
+        .then(buf=>ctx.decodeAudioData(buf))
+        .then(audioBuffer=>{
+          const src = ctx.createBufferSource();
+          src.buffer = audioBuffer; src.loop = true;
+          const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 4000;
+          src.connect(filter); filter.connect(gain);
+          src.start();
+          this._engineSample = src; this._engineFilter = filter;
+        })
+        .catch(()=>{
+          // Pas de fichier reel fourni : synthese de secours (fondamentale + sous-harmonique).
+          const osc1 = ctx.createOscillator(); osc1.type = 'sawtooth'; osc1.frequency.value = 55;
+          const osc2 = ctx.createOscillator(); osc2.type = 'square'; osc2.frequency.value = 28;
+          const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 500;
+          osc1.connect(filter); osc2.connect(filter); filter.connect(gain);
+          osc1.start(); osc2.start();
+          this._engineOsc1 = osc1; this._engineOsc2 = osc2; this._engineFilter = filter;
+        });
     } catch(e){}
   };
 
@@ -276,12 +295,18 @@
     const now = ctx.currentTime;
     const ratio = Math.max(0, Math.min(1.3, this._speed / (this.mult.maxSpeed || 1)));
     const boostAdd = this._boostActive ? 1 : 0;
-    const freq1 = 55 + ratio * 210 + boostAdd * 60;
     const gainTarget = (0.05 + ratio * 0.09 + boostAdd * 0.05);
-    this._engineOsc1.frequency.setTargetAtTime(freq1, now, 0.08);
-    this._engineOsc2.frequency.setTargetAtTime(freq1 * 0.5, now, 0.08);
-    this._engineFilter.frequency.setTargetAtTime(500 + ratio * 2200, now, 0.08);
     this._engineGain.gain.setTargetAtTime(gainTarget, now, 0.12);
+    if(this._engineSample){
+      const rate = 0.6 + ratio * 1.1 + boostAdd * 0.3;
+      this._engineSample.playbackRate.setTargetAtTime(rate, now, 0.08);
+      if(this._engineFilter) this._engineFilter.frequency.setTargetAtTime(1500 + ratio * 4000, now, 0.08);
+    } else if(this._engineOsc1){
+      const freq1 = 55 + ratio * 210 + boostAdd * 60;
+      this._engineOsc1.frequency.setTargetAtTime(freq1, now, 0.08);
+      this._engineOsc2.frequency.setTargetAtTime(freq1 * 0.5, now, 0.08);
+      this._engineFilter.frequency.setTargetAtTime(500 + ratio * 2200, now, 0.08);
+    }
   };
 
   GameEngine.prototype._muteEngineSound = function(){
