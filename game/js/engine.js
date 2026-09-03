@@ -25,8 +25,19 @@
     { file:'../uploads/traffic-bus-grey.gltf', len:8.0 },
     { file:'../uploads/traffic-bus-white.glb', len:9.0 },
     { file:'../uploads/traffic-truck-semi.glb', len:10.0 },
-    { file:'../uploads/traffic-truck-flatbed.gltf', len:9.5 },
+    { file:'../uploads/traffic-truck-flatbed.gltf', len:9.0 },
   ];
+
+  // Fantome du meilleur run (par voiture+route) : stocke localement, aucun
+  // serveur requis. Trace = points {t, dist, x} echantillonnes pendant la partie.
+  function ghostKey(carId, routeId){ return 'dg_ghost_' + carId + '_' + routeId; }
+  function loadGhost(carId, routeId){
+    try { const raw = localStorage.getItem(ghostKey(carId, routeId)); return raw ? JSON.parse(raw) : null; }
+    catch(e){ return null; }
+  }
+  function saveGhost(carId, routeId, data){
+    try { localStorage.setItem(ghostKey(carId, routeId), JSON.stringify(data)); } catch(e){}
+  }
 
   function GameEngine(container, cb){
     this.container = container;
@@ -229,6 +240,21 @@
     this._personalBest = personalBest || 0;
     this._recordBroken = false;
     this._nearMissStreak = 0;
+
+    // Fantome : charge le meilleur run enregistre pour cette voiture+route, s'il existe.
+    if(this._ghostMesh){ this.scene.remove(this._ghostMesh); this._ghostMesh = null; }
+    this._ghostData = loadGhost(car.id, routeId);
+    this._ghostIdx = 0;
+    this._trace = [];
+    this._sampleT = 0;
+    if(this._ghostData && this._ghostData.trace && this._ghostData.trace.length){
+      const ghostMat = new T.MeshStandardMaterial({ color:0x8fd0ff, transparent:true, opacity:0.32, depthWrite:false, emissive:0x2a6f9e, emissiveIntensity:0.6 });
+      this._ghostMesh = DG.Loader.makeFallbackCar(T, { body:0x8fd0ff, emissive:0x2a6f9e });
+      this._ghostMesh.traverse(n=>{ if(n.isMesh) n.material = ghostMat; });
+      this._ghostMesh.visible = false;
+      this.scene.add(this._ghostMesh);
+    }
+
     this.playing = true; this.paused = false;
     this.setCamLabel();
   };
@@ -239,6 +265,7 @@
   GameEngine.prototype.quit = function(){
     this.playing = false; this.paused = false;
     if(this._player){ this.scene.remove(this._player); this._player = null; }
+    if(this._ghostMesh){ this.scene.remove(this._ghostMesh); this._ghostMesh = null; }
     this._obstacles.forEach(o=>this.scene.remove(o.mesh)); this._obstacles = [];
     this._pickups.forEach(p=>this.scene.remove(p.mesh)); this._pickups = [];
   };
@@ -371,6 +398,30 @@
       this._player.rotation.z = (targetX - this._playerX) * 0.14;
     }
 
+    // Echantillonne notre propre trace (pour devenir le futur fantome) et fait
+    // avancer le fantome existant sur sa propre trace, au meme instant t.
+    this._sampleT -= dt;
+    if(this._sampleT <= 0){
+      this._sampleT = 0.2;
+      this._trace.push({ t:this._time, dist:this._dist, x:this._playerX });
+    }
+    if(this._ghostMesh && this._ghostData){
+      const gt = this._ghostData.trace;
+      while(this._ghostIdx < gt.length - 1 && gt[this._ghostIdx+1].t <= this._time) this._ghostIdx++;
+      const a = gt[this._ghostIdx], b = gt[Math.min(this._ghostIdx+1, gt.length-1)];
+      const span = Math.max(0.001, b.t - a.t);
+      const f = Math.max(0, Math.min(1, (this._time - a.t) / span));
+      const gDist = a.dist + (b.dist - a.dist) * f;
+      const gX = a.x + (b.x - a.x) * f;
+      const relZ = -(gDist - this._dist);
+      if(this._time <= gt[gt.length-1].t + 1 && relZ > -140 && relZ < 20){
+        this._ghostMesh.visible = true;
+        this._ghostMesh.position.set(gX, 0, relZ);
+      } else {
+        this._ghostMesh.visible = false;
+      }
+    }
+
     this._spawnT -= dt;
     const interval = Math.max(0.3, 1.0 - this._time*0.025);
     if(this._spawnT <= 0){
@@ -445,7 +496,13 @@
 
   GameEngine.prototype._gameOver = function(){
     this.playing = false;
-    const result = { score:this.currentScore(), time:this._time, carId:this.car.id, routeId:this.route.id };
+    const score = this.currentScore();
+    const carId = this.car.id, routeId = this.route.id;
+    if(!this._ghostData || score > this._ghostData.score){
+      this._trace.push({ t:this._time, dist:this._dist, x:this._playerX });
+      saveGhost(carId, routeId, { score, trace:this._trace });
+    }
+    const result = { score, time:this._time, carId, routeId };
     if(this.cb.onGameOver) this.cb.onGameOver(result);
   };
 
