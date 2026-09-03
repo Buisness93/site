@@ -13,7 +13,7 @@
     dailyCard:$('dailyCard'), dailyDesc:$('dailyDesc'), dailyReward:$('dailyReward'),
     overDailyCard:$('overDailyCard'), overDailyDesc:$('overDailyDesc'), btnClaimDaily:$('btnClaimDaily'),
     btnLeft:$('btnLeft'), btnRight:$('btnRight'), btnBoost:$('btnBoost'), btnCam:$('btnCam'), btnPause:$('btnPause'), btnFullscreen:$('btnFullscreen'), btnMusic:$('btnMusic'), bgAudio:$('bgAudio'),
-    musicPanel:$('musicPanel'), musicTrackName:$('musicTrackName'), btnMusicPrev:$('btnMusicPrev'), btnMusicToggle:$('btnMusicToggle'), btnMusicNext:$('btnMusicNext'), musicVolume:$('musicVolume'),
+    musicPanel:$('musicPanel'), musicTrackName:$('musicTrackName'), btnMusicPrev:$('btnMusicPrev'), btnMusicToggle:$('btnMusicToggle'), btnMusicNext:$('btnMusicNext'), musicVolume:$('musicVolume'), musicList:$('musicList'),
     hudRecordChase:$('hudRecordChase'), recordFlash:$('recordFlash'), pilotBest:$('pilotBest'),
   };
 
@@ -318,12 +318,23 @@
       const { data, error } = await DG.supabase.from('music_tracks').select('*').eq('active', true).order('added_at', { ascending:false });
       tracks = (!error && data) ? data : [];
     }
+    function trackLabel(t){ return t.artist ? (t.title + ' — ' + t.artist) : t.title; }
+    function renderList(){
+      if(!tracks.length){ els.musicList.innerHTML = '<div class="music-list-empty">Aucune piste</div>'; return; }
+      els.musicList.innerHTML = tracks.map((t,i)=>
+        '<div class="music-list-item' + (i===current?' active':'') + '" data-idx="' + i + '">' +
+          '<span class="n">' + (i+1) + '</span><span>' + trackLabel(t) + '</span>' +
+        '</div>'
+      ).join('');
+      els.musicList.querySelectorAll('[data-idx]').forEach(el=>el.addEventListener('click', ()=>playIndex(parseInt(el.getAttribute('data-idx'),10))));
+    }
     function playIndex(i){
       if(!tracks.length) return;
       current = (i + tracks.length) % tracks.length;
       els.bgAudio.src = tracks[current].url;
       els.bgAudio.play().catch(()=>{});
-      els.musicTrackName.textContent = tracks[current].artist ? (tracks[current].title + ' — ' + tracks[current].artist) : tracks[current].title;
+      els.musicTrackName.textContent = trackLabel(tracks[current]);
+      renderList();
     }
     let savedVol = 50;
     try { const v = parseInt(localStorage.getItem('dg_music_vol'), 10); if(!isNaN(v)) savedVol = v; } catch(e){}
@@ -336,6 +347,7 @@
       await loadTracks();
       if(!tracks.length){ popup('Aucune musique disponible pour le moment', '#8a8f98'); els.musicPanel.classList.add('hidden'); return; }
       els.musicPanel.classList.toggle('hidden');
+      renderList();
       if(!els.musicPanel.classList.contains('hidden') && current === -1) playIndex(Math.floor(Math.random()*tracks.length));
     });
     els.btnMusicToggle.addEventListener('click', ()=>{
