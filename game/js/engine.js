@@ -5,13 +5,27 @@
   const LANES = [-3.3, -1.1, 1.1, 3.3];
   const NEAR_MISS_GAP = 0.85;
   // Vraies voitures/camions de trafic (couleurs d'origine du modele, pas de teinte).
+  // len = longueur cible (memes unites que les voitures jouables) : chaque type de
+  // vehicule est mis a une taille realiste au lieu d'etre tous normalises pareil.
   const TRAFFIC_FILES = [
-    '../uploads/traffic-hatch-green.glb', '../uploads/traffic-hatch-red.glb', '../uploads/traffic-hatch-grey.glb',
-    '../uploads/traffic-sedan-dark.glb', '../uploads/traffic-sedan-grey.glb', '../uploads/traffic-sedan-maroon.glb', '../uploads/traffic-sedan-white.glb',
-    '../uploads/traffic-wagon-dark.glb', '../uploads/traffic-suv-dark.glb', '../uploads/traffic-suv-grey.glb',
-    '../uploads/traffic-van-orange.glb', '../uploads/traffic-van-white.glb', '../uploads/traffic-van-maroon.glb',
-    '../uploads/traffic-minibus-grey.glb', '../uploads/traffic-bus-white.glb',
-    '../uploads/traffic-truck-semi.glb', '../uploads/traffic-truck-flatbed.glb',
+    { file:'../uploads/traffic-hatch-green.glb', len:3.0 },
+    { file:'../uploads/traffic-hatch-red.glb', len:3.0 },
+    { file:'../uploads/traffic-hatch-grey.glb', len:3.0 },
+    { file:'../uploads/traffic-sedan-dark.glb', len:3.6 },
+    { file:'../uploads/traffic-sedan-grey.glb', len:3.6 },
+    { file:'../uploads/traffic-sedan-maroon.glb', len:3.6 },
+    { file:'../uploads/traffic-sedan-white.glb', len:3.6 },
+    { file:'../uploads/traffic-wagon-dark.glb', len:3.7 },
+    { file:'../uploads/traffic-suv-dark.gltf', len:3.9 },
+    { file:'../uploads/traffic-suv-grey.glb', len:4.0 },
+    { file:'../uploads/traffic-van-orange.glb', len:4.2 },
+    { file:'../uploads/traffic-van-white.glb', len:4.2 },
+    { file:'../uploads/traffic-van-maroon.glb', len:4.2 },
+    { file:'../uploads/traffic-van-red.gltf', len:4.2 },
+    { file:'../uploads/traffic-bus-grey.gltf', len:7.5 },
+    { file:'../uploads/traffic-bus-white.glb', len:8.5 },
+    { file:'../uploads/traffic-truck-semi.glb', len:9.5 },
+    { file:'../uploads/traffic-truck-flatbed.gltf', len:5.5 },
   ];
 
   function GameEngine(container, cb){
@@ -104,7 +118,7 @@
   GameEngine.prototype._preloadObstacles = function(){
     DG.Loader.loadModel('../uploads/traffic-cone-new.glb').then(m=>{ this._coneModel = m; });
     this._trafficModels = [];
-    TRAFFIC_FILES.forEach(f=>DG.Loader.loadModel(f).then(m=>{ if(m) this._trafficModels.push(m); }));
+    TRAFFIC_FILES.forEach(t=>DG.Loader.loadModel(t.file).then(m=>{ if(m) this._trafficModels.push({ model:m, len:t.len }); }));
   };
 
   GameEngine.prototype._onResize = function(){
@@ -295,8 +309,11 @@
       let ti = Math.floor(Math.random()*this._trafficModels.length);
       if(this._trafficModels.length > 1 && ti === this._lastTrafficIdx) ti = (ti+1) % this._trafficModels.length;
       this._lastTrafficIdx = ti;
-      mesh = DG.Loader.normalizeModel(T, this._trafficModels[ti], 3.6, Math.PI);
-      w = 0.95;
+      const t = this._trafficModels[ti];
+      mesh = DG.Loader.normalizeModel(T, t.model, t.len, Math.PI);
+      // Largeur de collision proportionnelle a la taille du vehicule, plafonnee pour
+      // qu'un bus/camion reste toujours doublable depuis la voie d'a cote.
+      w = Math.min(1.3, 0.95 * (t.len / 3.6));
     } else if(this._coneModel){
       mesh = DG.Loader.normalizeModel(T, this._coneModel, 1.0, 0);
       w = 0.5;
