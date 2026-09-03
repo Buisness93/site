@@ -28,7 +28,12 @@
       <button class="icon-btn" id="btnFullscreen" title="Plein écran">⛶</button>
 
       <div class="music-panel hidden" id="musicPanel">
-        <div class="music-track" id="musicTrackName">—</div>
+        <div class="music-track" id="musicTrackName" title="Voir toutes les pistes">—</div>
+        <div class="music-seek-row">
+          <span class="music-time" id="musicTimeCur">0:00</span>
+          <input type="range" id="musicSeek" min="0" max="1000" value="0" step="1">
+          <span class="music-time" id="musicTimeDur">0:00</span>
+        </div>
         <div class="music-row">
           <button class="icon-btn" id="btnMusicPrev" title="Piste précédente">⏮</button>
           <button class="icon-btn" id="btnMusicToggle" title="Lecture / pause">⏸</button>
@@ -38,7 +43,7 @@
           <span class="music-vol-icon">🔉</span>
           <input type="range" id="musicVolume" min="0" max="100" value="50">
         </div>
-        <div class="music-list" id="musicList"></div>
+        <div class="music-list hidden" id="musicList"></div>
       </div>
     </div>
   </div>
