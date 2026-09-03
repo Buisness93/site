@@ -238,24 +238,24 @@
     const T = window.THREE;
     const li = forceLane != null ? forceLane : Math.floor(Math.random()*4);
     const lane = LANES[li];
-    let mesh, w = 1.2;
+    let mesh, w = 0.95;
     const r = Math.random();
     if(r < 0.35 && this._coneModel){
       mesh = DG.Loader.normalizeModel(T, this._coneModel, 1.0, 0);
-      w = 0.7;
+      w = 0.5;
     } else if(this._trafficModels && this._trafficModels.length){
       let ti = Math.floor(Math.random()*this._trafficModels.length);
       if(this._trafficModels.length > 1 && ti === this._lastTrafficIdx) ti = (ti+1) % this._trafficModels.length;
       this._lastTrafficIdx = ti;
       mesh = DG.Loader.normalizeModel(T, this._trafficModels[ti], 3.6, Math.PI);
       DG.Loader.tintModel(T, mesh, TRAFFIC_TINTS[Math.floor(Math.random()*TRAFFIC_TINTS.length)], 0.0);
-      w = 1.25;
+      w = 0.95;
     } else if(this._coneModel){
       mesh = DG.Loader.normalizeModel(T, this._coneModel, 1.0, 0);
-      w = 0.7;
+      w = 0.5;
     } else {
       mesh = DG.Loader.makeFallbackCar(T, { body:0x161b23 });
-      w = 1.2;
+      w = 0.95;
     }
     mesh.position.set(lane, 0, -134);
     mesh.userData.w = w;
@@ -350,7 +350,7 @@
     this._pickupT -= dt;
     if(this._pickupT <= 0){ this._pickupT = 1.1 + Math.random()*1.0; this._spawnPickup(); }
 
-    const playerHalfW = 0.9;
+    const playerHalfW = 0.55;
     for(let i=this._obstacles.length-1; i>=0; i--){
       const o = this._obstacles[i];
       o.mesh.position.z += scroll;
