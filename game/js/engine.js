@@ -187,7 +187,7 @@
     };
   };
 
-  GameEngine.prototype.start = async function(car, routeId){
+  GameEngine.prototype.start = async function(car, routeId, personalBest){
     const T = window.THREE;
     if(!this.route || this.route.id !== routeId) this.setRoute(routeId);
     this.car = car;
@@ -208,6 +208,9 @@
     this._dist = 0; this._time = 0; this._spawnT = 0.7; this._pickupT = 1.2;
     this._obstacleBonus = 0; this._coinCredits = 0; this._nearMissBonus = 0;
     this._multiplier = 1; this._multiplierT = 0;
+    this._personalBest = personalBest || 0;
+    this._recordBroken = false;
+    this._nearMissStreak = 0;
     this.playing = true; this.paused = false;
     this.setCamLabel();
   };
@@ -360,8 +363,12 @@
         o.scored = true;
         this._obstacleBonus += 50 * this._multiplier;
         if(gap >= 0 && gap < NEAR_MISS_GAP){
-          this._nearMissBonus += 30 * this._multiplier;
-          if(this.cb.onPickup) this.cb.onPickup('near-miss');
+          this._nearMissStreak++;
+          const streakBonus = Math.min(5, this._nearMissStreak) * 10;
+          this._nearMissBonus += (30 + streakBonus) * this._multiplier;
+          if(this.cb.onPickup) this.cb.onPickup('near-miss', { streak: this._nearMissStreak });
+        } else {
+          this._nearMissStreak = 0;
         }
       }
       if(o.mesh.position.z > 11){ this.scene.remove(o.mesh); this._obstacles.splice(i,1); }
@@ -381,13 +388,22 @@
       if(p.mesh.position.z > 11){ this.scene.remove(p.mesh); this._pickups.splice(i,1); }
     }
 
+    const score = this.currentScore();
+    if(!this._recordBroken && this._personalBest > 0 && score > this._personalBest){
+      this._recordBroken = true;
+      if(this.cb.onRecordBroken) this.cb.onRecordBroken();
+    }
+
     if(this.cb.onHud) this.cb.onHud({
       time: this._time,
-      score: this.currentScore(),
+      score: score,
       speed: Math.round(this._speed*5),
       boostPct: this._boostFuel*100,
       multiplierActive: this._multiplier > 1,
-      multiplierT: this._multiplierT
+      multiplierT: this._multiplierT,
+      personalBest: this._personalBest,
+      recordBroken: this._recordBroken,
+      scoreToRecord: this._recordBroken ? 0 : Math.max(0, this._personalBest - score)
     });
   };
 

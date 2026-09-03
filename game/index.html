@@ -17,7 +17,7 @@
     <div>
       <div class="hud-stats">
         <div class="cell"><div class="l">TEMPS</div><div class="v" id="hudTime">0.0s</div></div>
-        <div class="cell"><div class="l">SCORE</div><div class="v accent" id="hudScore">0</div></div>
+        <div class="cell"><div class="l">SCORE</div><div class="v accent" id="hudScore">0</div><div class="record-chase" id="hudRecordChase"></div></div>
         <div class="cell" id="hudSpeedCell"><div class="l">VITESSE</div><div class="v" id="hudSpeed">0<span style="font-size:10px;color:#8a8f98"> km/h</span></div></div>
       </div>
     </div>
@@ -44,6 +44,7 @@
   <audio id="bgAudio" preload="none"></audio>
 
   <div class="multiplier-badge" id="multBadge">×2 GAINS — <span id="multTime">8</span>s</div>
+  <div class="record-flash" id="recordFlash">★ NOUVEAU RECORD !</div>
   <div class="popups" id="popups"></div>
 
   <div class="bottombar" id="hudBottom" style="display:none">
@@ -89,6 +90,7 @@
             <span style="font-size:10px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Pilote</span>
             <span style="font-family:'Saira Condensed';font-weight:800;font-size:15px" id="pilotName">—</span>
             <span style="font-size:10px;letter-spacing:.1em;color:#ffcc00;padding:5px 10px;border-radius:999px;background:rgba(255,204,0,.12)" id="pilotMoney">🪙 0</span>
+            <span style="font-size:10px;letter-spacing:.1em;color:#ff9090;padding:5px 10px;border-radius:999px;background:rgba(255,144,144,.12)" id="pilotBest">🏆 —</span>
           </div>
           <a href="../garage.html" style="font-size:11px;color:#8a8f98">🔧 Gérer le garage →</a>
         </div>

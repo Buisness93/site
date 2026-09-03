@@ -12,9 +12,22 @@
     fullBoard:$('fullBoard'), btnBoardClose:$('btnBoardClose'),
     btnLeft:$('btnLeft'), btnRight:$('btnRight'), btnBoost:$('btnBoost'), btnCam:$('btnCam'), btnPause:$('btnPause'), btnFullscreen:$('btnFullscreen'), btnMusic:$('btnMusic'), bgAudio:$('bgAudio'),
     musicPanel:$('musicPanel'), musicTrackName:$('musicTrackName'), btnMusicPrev:$('btnMusicPrev'), btnMusicToggle:$('btnMusicToggle'), btnMusicNext:$('btnMusicNext'), musicVolume:$('musicVolume'),
+    hudRecordChase:$('hudRecordChase'), recordFlash:$('recordFlash'), pilotBest:$('pilotBest'),
   };
 
-  const state = { username:null, selectedCar: DG.defaultCarId, selectedRoute: DG.defaultRouteId, screen:'loading' };
+  const state = { username:null, selectedCar: DG.defaultCarId, selectedRoute: DG.defaultRouteId, screen:'loading', personalBest:0 };
+
+  async function refreshPersonalBest(){
+    if(DG.Auth.isLoggedIn() && DG.supabase && DG.Auth.user){
+      try{
+        const { data, error } = await DG.supabase.from('leaderboard').select('score').eq('user_id', DG.Auth.user.id).order('score', { ascending:false }).limit(1);
+        state.personalBest = (!error && data && data.length) ? data[0].score : 0;
+      } catch(e){ state.personalBest = 0; }
+    } else {
+      try { state.personalBest = parseInt(localStorage.getItem('apex_best')||'0',10) || 0; } catch(e){ state.personalBest = 0; }
+    }
+    if(els.pilotBest) els.pilotBest.textContent = '🏆 ' + (state.personalBest > 0 ? state.personalBest.toLocaleString('fr-FR') : '—');
+  }
 
   function show(id){
     ['ovLoading','ovNaming','ovChoosing','ovPaused','ovOver','ovBoard'].forEach(k=>els[k].classList.add('hidden'));
@@ -91,6 +104,7 @@
     renderRouteTabs();
     renderCarGrid();
     refreshPilotBar();
+    refreshPersonalBest();
   }
 
   let engine;
@@ -107,14 +121,30 @@
         els.boostFill.style.width = d.boostPct + '%';
         if(d.multiplierActive){ els.multBadge.classList.add('show'); els.multTime.textContent = Math.ceil(d.multiplierT); }
         else els.multBadge.classList.remove('show');
+        if(els.hudRecordChase){
+          if(d.personalBest > 0 && d.recordBroken){ els.hudRecordChase.textContent = '★ RECORD'; els.hudRecordChase.classList.add('broken'); }
+          else if(d.personalBest > 0){ els.hudRecordChase.textContent = '🎯 -' + d.scoreToRecord; els.hudRecordChase.classList.remove('broken'); }
+          else { els.hudRecordChase.textContent = ''; els.hudRecordChase.classList.remove('broken'); }
+        }
       },
       onCamLabel(label){ els.camLabel.textContent = label; },
       onPauseChange(paused){ show(paused ? 'ovPaused' : null); if(!paused){ els.hudTop.style.display='flex'; els.hudBottom.style.display='flex'; } },
-      onPickup(kind){
+      onPickup(kind, payload){
         if(kind==='coin') popup('+10 🪙', '#ffcc00');
-        else if(kind==='near-miss') popup('FRÔLÉ ! +30', '#ff9090');
+        else if(kind==='near-miss'){
+          const streak = (payload && payload.streak) || 1;
+          if(streak >= 3) popup('FRÔLÉ x' + streak + ' 🔥', '#ff5a3d');
+          else popup('FRÔLÉ ! +30', '#ff9090');
+        }
         else if(kind==='nitro') popup('NITRO !', '#3df0ff');
         else if(kind==='multiplier') popup('×2 GAINS !', '#ff5ad1');
+      },
+      onRecordBroken(){
+        popup('★ NOUVEAU RECORD !', '#ffcc00');
+        if(els.recordFlash){
+          els.recordFlash.classList.remove('show'); void els.recordFlash.offsetWidth;
+          els.recordFlash.classList.add('show');
+        }
       },
       onGameOver(result){ handleGameOver(result); }
     });
@@ -140,7 +170,7 @@
     const car = DG.carById(state.selectedCar);
     els.hudTop.style.display = 'flex'; els.hudBottom.style.display = 'flex';
     show(null);
-    engine.start(car, state.selectedRoute);
+    engine.start(car, state.selectedRoute, state.personalBest);
   }
   els.btnStart.addEventListener('click', startRun);
 
@@ -148,10 +178,12 @@
   async function handleGameOver(result){
     els.hudTop.style.display = 'none'; els.hudBottom.style.display = 'none';
     lastResult = result;
-    let best = 0;
-    try { best = parseInt(localStorage.getItem('apex_best')||'0',10) || 0; } catch(e){}
-    const isRecord = result.score > best;
-    if(isRecord){ try { localStorage.setItem('apex_best', String(result.score)); } catch(e){} }
+    const isRecord = result.score > state.personalBest;
+    if(isRecord){
+      state.personalBest = result.score;
+      if(!DG.Auth.isLoggedIn()){ try { localStorage.setItem('apex_best', String(result.score)); } catch(e){} }
+      if(els.pilotBest) els.pilotBest.textContent = '🏆 ' + state.personalBest.toLocaleString('fr-FR');
+    }
     els.ovRecordBadge.style.display = isRecord ? 'inline-block' : 'none';
     els.overScore.textContent = result.score;
     els.overTime.textContent = result.time.toFixed(1) + 's';
