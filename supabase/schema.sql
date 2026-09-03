@@ -585,3 +585,105 @@ end;
 $$;
 
 grant execute on function public.admin_list_codes() to authenticated;
+
+-- ============================================================
+-- 9. DEFI DU JOUR (voiture imposee + objectif, changent chaque jour, memes pour
+-- tout le monde). La voiture/l'objectif sont recalcules ici plutot que stockes,
+-- via la meme formule deterministe que DG.dailyChallenge() cote client (js/cars.js).
+-- IMPORTANT : si tu ajoutes une voiture dans js/cars.js, ajoute son id ici aussi,
+-- exactement a la meme position dans la liste.
+-- ============================================================
+create table if not exists public.daily_challenge_claims (
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  challenge_day integer not null,
+  score integer not null,
+  claimed_at timestamptz not null default now(),
+  primary key (user_id, challenge_day)
+);
+alter table public.daily_challenge_claims enable row level security;
+-- Pas de policy select/insert publique : uniquement via les fonctions ci-dessous.
+
+create or replace function public.claim_daily_challenge(p_score integer, p_car_id text, p_time numeric default null)
+returns integer
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_days integer := floor(extract(epoch from now()) / 86400)::integer;
+  v_ids text[] := array['citadine','audi-a3','golf-r','audi-a8','rs6-abt','huracan-performante','812-competizione','aventador-svj','pagani-huayra-r','daytona-sp3','mclaren-p1','laferrari','chiron','veyron-ettore','w16-mistral','centodieci','bolide'];
+  v_car_id text;
+  v_target integer;
+  v_reward integer := 250;
+begin
+  if v_uid is null then raise exception 'Connecte-toi pour reclamer le defi du jour.'; end if;
+  v_car_id := v_ids[(v_days % array_length(v_ids,1)) + 1];
+  v_target := 300 + (v_days % 5) * 50;
+  if p_car_id <> v_car_id then raise exception 'Ce n''est pas la voiture du defi du jour.'; end if;
+  if p_score < v_target then raise exception 'Score insuffisant pour le defi du jour.'; end if;
+  if exists (select 1 from public.daily_challenge_claims where user_id = v_uid and challenge_day = v_days) then
+    raise exception 'Defi du jour deja reclame.';
+  end if;
+
+  insert into public.daily_challenge_claims (user_id, challenge_day, score) values (v_uid, v_days, p_score);
+  update public.profiles set money = money + v_reward where id = v_uid;
+  return v_reward;
+end;
+$$;
+
+grant execute on function public.claim_daily_challenge(integer, text, numeric) to authenticated;
+
+create or replace function public.has_claimed_daily_challenge()
+returns boolean
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_days integer := floor(extract(epoch from now()) / 86400)::integer;
+begin
+  if v_uid is null then return false; end if;
+  return exists (select 1 from public.daily_challenge_claims where user_id = v_uid and challenge_day = v_days);
+end;
+$$;
+
+grant execute on function public.has_claimed_daily_challenge() to authenticated;
+
+-- ============================================================
+-- 10. STATS PERSONNELLES (pour les succes/trophees, compte connecte)
+-- ============================================================
+create or replace function public.my_stats()
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_games integer;
+  v_best integer;
+  v_cars integer;
+  v_records integer;
+  v_daily integer;
+begin
+  if v_uid is null then raise exception 'Connexion requise'; end if;
+
+  select count(*), coalesce(max(score),0) into v_games, v_best
+  from public.game_sessions where user_id = v_uid;
+
+  select count(*) into v_cars from public.player_cars where user_id = v_uid;
+
+  -- Nombre de parties qui ont etabli un nouveau record personnel (y compris la 1ere).
+  select count(*) into v_records from (
+    select score, max(score) over (order by created_at rows between unbounded preceding and 1 preceding) as prev_max
+    from public.game_sessions where user_id = v_uid
+  ) t where score > coalesce(prev_max, -1);
+
+  select count(*) into v_daily from public.daily_challenge_claims where user_id = v_uid;
+
+  return jsonb_build_object(
+    'games_played', v_games, 'best_score', v_best,
+    'cars_unlocked', v_cars + 1, -- +1 pour la citadine offerte, jamais dans player_cars
+    'records_beaten', v_records,
+    'daily_challenges_claimed', v_daily
+  );
+end;
+$$;
+
+grant execute on function public.my_stats() to authenticated;

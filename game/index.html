@@ -96,6 +96,15 @@
         </div>
       </div>
 
+      <div class="daily-card" id="dailyCard">
+        <div class="daily-icon">🎯</div>
+        <div class="daily-body">
+          <div class="daily-title">Défi du jour</div>
+          <div class="daily-desc" id="dailyDesc">—</div>
+        </div>
+        <div class="daily-reward" id="dailyReward">—</div>
+      </div>
+
       <div>
         <div style="font-size:10px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase;margin-bottom:8px">Route</div>
         <div class="tabs" id="routeTabs"></div>
@@ -127,6 +136,15 @@
       <div><div style="font-size:11px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Temps</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:48px" id="overTime">0.0s</div></div>
       <div><div style="font-size:11px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase">Crédits</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:48px;color:#ffcc00" id="overCredits">+0</div></div>
     </div>
+    <div class="daily-card hidden" id="overDailyCard" style="width:min(430px,92%);box-sizing:border-box">
+      <div class="daily-icon">🎯</div>
+      <div class="daily-body">
+        <div class="daily-title">Défi du jour réussi !</div>
+        <div class="daily-desc" id="overDailyDesc">—</div>
+      </div>
+      <button class="btn btn-primary" id="btnClaimDaily" style="white-space:nowrap">Réclamer +250</button>
+    </div>
+
     <div style="width:min(430px,92%);background:#0c0d14cc;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px 18px;text-align:left">
       <div style="font-family:'Saira Condensed';font-weight:900;font-size:16px;text-transform:uppercase;margin-bottom:10px">🏆 Classement</div>
       <div id="overBoard"></div>

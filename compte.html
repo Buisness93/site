@@ -52,6 +52,10 @@
         <div class="card"><div style="font-size:11px;letter-spacing:.14em;color:var(--text-3);text-transform:uppercase">Voitures débloquées</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:30px;margin-top:6px" id="statCars">—</div></div>
       </div>
       <div class="card" style="margin-top:18px">
+        <div style="font-size:11px;letter-spacing:.14em;color:var(--text-3);text-transform:uppercase;margin-bottom:10px">🏆 Succès</div>
+        <div class="badge-grid" id="badgeGrid"><div class="skeleton">Chargement…</div></div>
+      </div>
+      <div class="card" style="margin-top:18px">
         <div style="font-size:11px;letter-spacing:.14em;color:var(--text-3);text-transform:uppercase;margin-bottom:10px">🎟️ Code promo</div>
         <div id="codeMsg"></div>
         <div class="field"><input type="text" id="codeInput" maxlength="24" placeholder="Ex. DEYLO2026" style="text-transform:uppercase"></div>
@@ -126,6 +130,36 @@
     }
   });
 
+  // Succès/trophées calcules a partir de my_stats() (parties jouees, records battus, etc).
+  const BADGES = [
+    { icon:'🔑', label:'Premier volant',    check:s=>s.cars_unlocked >= 2 },
+    { icon:'🚗', label:'Collectionneur',    check:s=>s.cars_unlocked >= 6 },
+    { icon:'🏁', label:'Garage complet',    check:s=>s.cars_unlocked >= DG.CARS.length },
+    { icon:'🛣️', label:'Petit rouleur',     check:s=>s.games_played >= 10 },
+    { icon:'⏱️', label:'Vétéran',           check:s=>s.games_played >= 50 },
+    { icon:'💪', label:'Increvable',        check:s=>s.games_played >= 200 },
+    { icon:'📈', label:'Recordman',         check:s=>s.records_beaten >= 5 },
+    { icon:'👑', label:'Légende',           check:s=>s.records_beaten >= 15 },
+    { icon:'🎯', label:'Défi relevé',       check:s=>s.daily_challenges_claimed >= 1 },
+  ];
+
+  let achievementsLoadedFor = null;
+  async function loadAchievements(){
+    if(achievementsLoadedFor === DG.Auth.user.id) return;
+    achievementsLoadedFor = DG.Auth.user.id;
+    const grid = document.getElementById('badgeGrid');
+    try{
+      const { data, error } = await DG.supabase.rpc('my_stats');
+      if(error) throw error;
+      grid.innerHTML = BADGES.map(b=>{
+        const unlocked = b.check(data);
+        return '<div class="badge' + (unlocked?' unlocked':'') + '"><div class="icon">' + b.icon + '</div><div class="label">' + b.label + '</div></div>';
+      }).join('');
+    } catch(e){
+      grid.innerHTML = '<div class="skeleton">Indisponible</div>';
+    }
+  }
+
   function render(){
     const loggedIn = DG.Auth.isLoggedIn();
     document.getElementById('loggedOutView').style.display = loggedIn ? 'none' : 'block';
@@ -138,6 +172,9 @@
       const avatarImg = document.getElementById('avatarImg');
       const avatar = DG.Auth.avatarUrl();
       if(avatar){ avatarImg.src = avatar; avatarImg.style.display = 'block'; } else { avatarImg.style.display = 'none'; }
+      loadAchievements();
+    } else {
+      achievementsLoadedFor = null;
     }
   }
   DG.Auth.onChange(render);

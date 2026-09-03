@@ -36,6 +36,18 @@
     { id:'bolide',                 brand:'Bugatti',     name:'Bolide',                     tier:'hypercar', price:520000, model:'uploads/bugatti-bolide.glb',                 rotY:0, glow:0x3dff8f, body:0x081008, stats:{speed:10,   accel:10,  handling:9,   boost:10} },
   ];
 
+  // Defi du jour : voiture imposee + objectif de score, identiques pour tout le
+  // monde et qui changent chaque jour (calcul deterministe, aucun serveur requis
+  // pour l'afficher). L'ordre de cette liste doit rester identique a celui utilise
+  // par la fonction SQL claim_daily_challenge() (supabase/schema.sql) : si tu
+  // ajoutes une voiture ici, ajoute-la aussi la-bas, au meme endroit dans la liste.
+  const DAILY_CAR_IDS = CARS.map(c=>c.id);
+  function dailyChallenge(){
+    const days = Math.floor(Date.now() / 86400000);
+    const idx = ((days % DAILY_CAR_IDS.length) + DAILY_CAR_IDS.length) % DAILY_CAR_IDS.length;
+    return { days, carId: DAILY_CAR_IDS[idx], target: 300 + (days % 5) * 50, reward: 250 };
+  }
+
   const byId = {};
   CARS.forEach(c=>byId[c.id]=c);
 
@@ -53,4 +65,5 @@
   DG.carById = (id)=>byId[id] || CARS[0];
   DG.defaultCarId = CARS[0].id;
   DG.carScoreFactor = carScoreFactor;
+  DG.dailyChallenge = dailyChallenge;
 })();

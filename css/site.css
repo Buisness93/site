@@ -102,6 +102,14 @@ main{padding-top:78px}
 .leaderboard-row .meta{font-size:11.5px;color:var(--text-3);min-width:90px;text-align:right}
 .leaderboard-row .score{font-family:'Saira Condensed';font-weight:800;font-size:17px;color:var(--accent-light);min-width:64px;text-align:right}
 
+.badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+.badge{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:14px 8px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02)}
+.badge .icon{font-size:26px;filter:grayscale(1);opacity:.35}
+.badge .label{font-size:10.5px;line-height:1.25;color:var(--text-3)}
+.badge.unlocked{border-color:rgba(var(--accent-rgb),.4);background:rgba(var(--accent-rgb),.08)}
+.badge.unlocked .icon{filter:none;opacity:1}
+.badge.unlocked .label{color:var(--text-1)}
+
 @keyframes neonPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.25)}}
 .leaderboard-row.top3{padding:16px 20px;border-radius:14px;gap:16px;position:relative;background:linear-gradient(90deg,rgba(var(--neon-rgb),.16),rgba(var(--neon-rgb),.02));border:1px solid rgba(var(--neon-rgb),.5);box-shadow:0 0 26px -6px rgba(var(--neon-rgb),.65),inset 0 0 22px -14px rgba(var(--neon-rgb),.7);animation:neonPulse 2.6s ease-in-out infinite}
 .leaderboard-row.top3 .rank{font-size:24px;width:38px;text-shadow:0 0 10px currentColor,0 0 22px currentColor}

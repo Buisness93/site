@@ -10,6 +10,8 @@
     overScore:$('overScore'), overTime:$('overTime'), overCredits:$('overCredits'), overBoard:$('overBoard'), ovRecordBadge:$('ovRecordBadge'),
     btnRetry:$('btnRetry'), btnChangeCar:$('btnChangeCar'), btnWatchAd:$('btnWatchAd'),
     fullBoard:$('fullBoard'), btnBoardClose:$('btnBoardClose'),
+    dailyCard:$('dailyCard'), dailyDesc:$('dailyDesc'), dailyReward:$('dailyReward'),
+    overDailyCard:$('overDailyCard'), overDailyDesc:$('overDailyDesc'), btnClaimDaily:$('btnClaimDaily'),
     btnLeft:$('btnLeft'), btnRight:$('btnRight'), btnBoost:$('btnBoost'), btnCam:$('btnCam'), btnPause:$('btnPause'), btnFullscreen:$('btnFullscreen'), btnMusic:$('btnMusic'), bgAudio:$('bgAudio'),
     musicPanel:$('musicPanel'), musicTrackName:$('musicTrackName'), btnMusicPrev:$('btnMusicPrev'), btnMusicToggle:$('btnMusicToggle'), btnMusicNext:$('btnMusicNext'), musicVolume:$('musicVolume'),
     hudRecordChase:$('hudRecordChase'), recordFlash:$('recordFlash'), pilotBest:$('pilotBest'),
@@ -99,6 +101,17 @@
     els.pilotMoney.textContent = '🪙 ' + DG.Economy.money.toLocaleString('fr-FR');
   }
 
+  async function renderDailyCard(){
+    if(!els.dailyCard) return;
+    const dc = DG.dailyChallenge();
+    const car = DG.carById(dc.carId);
+    const claimed = await DG.Economy.hasClaimedDailyChallenge();
+    state.dailyClaimedToday = claimed;
+    els.dailyDesc.textContent = 'Score ≥ ' + dc.target.toLocaleString('fr-FR') + ' avec la ' + car.name + (claimed ? ' — déjà réclamé aujourd\'hui ✓' : '');
+    els.dailyReward.textContent = claimed ? '✓ Fait' : '🪙 +' + dc.reward;
+    els.dailyCard.classList.toggle('done', claimed);
+  }
+
   async function goToChoosing(){
     show('ovChoosing');
     state.screen = 'choosing';
@@ -106,6 +119,7 @@
     renderCarGrid();
     refreshPilotBar();
     refreshPersonalBest();
+    renderDailyCard();
   }
 
   let engine;
@@ -194,6 +208,40 @@
     els.overCredits.textContent = '+' + credits;
     const board = await DG.Leaderboard.fetchBoard(5);
     els.overBoard.innerHTML = board.length ? board.map((e,i)=>DG.Leaderboard.rowHTML(e,i)).join('') : '<div style="text-align:center;color:#8a8f98;padding:16px">Aucun score encore.</div>';
+    await refreshDailyClaim(result);
+  }
+
+  async function refreshDailyClaim(result){
+    if(!els.overDailyCard) return;
+    els.overDailyCard.classList.add('hidden');
+    const dc = DG.dailyChallenge();
+    if(result.carId !== dc.carId || result.score < dc.target) return;
+    if(!DG.Auth.isLoggedIn()){
+      els.overDailyDesc.textContent = 'Connecte-toi pour réclamer tes +' + dc.reward + ' crédits.';
+      els.btnClaimDaily.textContent = 'Se connecter';
+      els.btnClaimDaily.onclick = ()=>{ window.location.href = '../compte.html'; };
+      els.overDailyCard.classList.remove('hidden');
+      return;
+    }
+    const already = await DG.Economy.hasClaimedDailyChallenge();
+    if(already) return;
+    els.overDailyDesc.textContent = 'Objectif du jour atteint (' + result.score.toLocaleString('fr-FR') + ' ≥ ' + dc.target.toLocaleString('fr-FR') + ').';
+    els.btnClaimDaily.disabled = false;
+    els.btnClaimDaily.textContent = 'Réclamer +' + dc.reward;
+    els.btnClaimDaily.onclick = async ()=>{
+      els.btnClaimDaily.disabled = true;
+      els.btnClaimDaily.textContent = '…';
+      const res = await DG.Economy.claimDailyChallenge(result.score, result.carId);
+      if(res.ok){
+        els.btnClaimDaily.textContent = '✓ Réclamé';
+        els.overDailyDesc.textContent = '+' + res.credits + ' crédits ajoutés !';
+      } else {
+        els.btnClaimDaily.disabled = false;
+        els.btnClaimDaily.textContent = 'Réclamer +' + dc.reward;
+        els.overDailyDesc.textContent = res.error || 'Erreur.';
+      }
+    };
+    els.overDailyCard.classList.remove('hidden');
   }
 
   els.btnRetry.addEventListener('click', startRun);

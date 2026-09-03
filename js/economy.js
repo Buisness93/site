@@ -136,6 +136,28 @@
         await this._loadPlayerCars();
         return { ok:true, credits: data.credits, carId: data.car_id };
       } catch(e){ return { ok:false, error: e.message || 'Code invalide.' }; }
+    },
+
+    // Defi du jour : reclame la recompense si le score/voiture du jour matchent (verifie cote serveur).
+    async claimDailyChallenge(score, carId){
+      if(!DG.Auth.isLoggedIn()) return { ok:false, error:'Connecte-toi pour reclamer la recompense.' };
+      try{
+        const { data, error } = await DG.supabase.rpc('claim_daily_challenge', { p_score: score, p_car_id: carId });
+        if(error) throw error;
+        await DG.Auth.refreshProfile();
+        this.money = DG.Auth.profile ? DG.Auth.profile.money : this.money;
+        this._emit();
+        return { ok:true, credits: data };
+      } catch(e){ return { ok:false, error: e.message || 'Défi déjà réclamé ou objectif non atteint.' }; }
+    },
+
+    async hasClaimedDailyChallenge(){
+      if(!DG.Auth.isLoggedIn()) return false;
+      try{
+        const { data, error } = await DG.supabase.rpc('has_claimed_daily_challenge');
+        if(error) throw error;
+        return !!data;
+      } catch(e){ return false; }
     }
   };
 

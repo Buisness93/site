@@ -82,6 +82,14 @@ h1,h2,h3{font-family:'Saira Condensed',sans-serif;text-transform:uppercase;margi
 .tab{padding:9px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.04);color:#cfd6df;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:700}
 .tab.active{background:rgba(159,180,199,.22);border-color:#9fb4c7;color:#fff}
 
+.daily-card{display:flex;align-items:center;gap:14px;background:linear-gradient(90deg,rgba(255,204,0,.14),rgba(255,149,0,.06));border:1px solid rgba(255,204,0,.35);border-radius:16px;padding:14px 18px}
+.daily-icon{font-size:26px;line-height:1}
+.daily-body{flex:1;min-width:0}
+.daily-title{font-family:'Saira Condensed';font-weight:900;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#ffcc00}
+.daily-desc{font-size:13px;color:#cfd6df;margin-top:2px}
+.daily-reward{font-family:'Saira Condensed';font-weight:900;font-size:15px;color:#ffcc00;white-space:nowrap}
+.daily-card.done{opacity:.55}
+
 .car-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;max-height:46vh;overflow:auto;padding-right:4px}
 .car-card{position:relative;text-align:left;background:linear-gradient(180deg,#14171e,#0a0c10);border:1px solid rgba(255,255,255,.14);border-radius:18px;color:#fff;padding:0}
 .car-card .bar{height:5px;border-radius:17px 17px 0 0}
