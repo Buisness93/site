@@ -83,11 +83,12 @@ h1,h2,h3{font-family:'Saira Condensed',sans-serif;text-transform:uppercase;margi
 .tab.active{background:rgba(159,180,199,.22);border-color:#9fb4c7;color:#fff}
 
 .car-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;max-height:46vh;overflow:auto;padding-right:4px}
-.car-card{position:relative;text-align:left;background:linear-gradient(180deg,#14171e,#0a0c10);border:1px solid rgba(255,255,255,.14);border-radius:18px;overflow:hidden;color:#fff;padding:0}
-.car-card .bar{height:5px}
+.car-card{position:relative;text-align:left;background:linear-gradient(180deg,#14171e,#0a0c10);border:1px solid rgba(255,255,255,.14);border-radius:18px;color:#fff;padding:0}
+.car-card .bar{height:5px;border-radius:17px 17px 0 0}
 .car-card .body{padding:16px 18px 18px}
 .car-card .tier{font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:700}
-.car-card .name{font-family:'Saira Condensed';font-weight:900;font-size:21px;margin:3px 0 10px}
+.car-card .name{font-family:'Saira Condensed';font-weight:900;font-size:21px;margin:3px 0 4px}
+.car-card .score-mult{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.03em;color:#ffcc00;background:rgba(255,204,0,.12);border:1px solid rgba(255,204,0,.35);border-radius:999px;padding:3px 9px;margin-bottom:10px}
 .car-card .stats{display:flex;gap:3px;margin-bottom:12px}
 .car-card .stat-bar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden}
 .car-card .stat-bar i{display:block;height:100%;background:currentColor}

@@ -172,9 +172,6 @@
 
   GameEngine.prototype._statMultipliers = function(car){
     const s = car.stats;
-    // Note globale 0-1 basee sur les 4 stats : sert a recompenser les bonnes
-    // voitures avec un meilleur score, a talent de pilotage egal.
-    const rating = (s.speed + s.accel + s.handling + s.boost) / 40;
     return {
       baseSpeed: 18 + s.speed * 1.6,       // vitesse au demarrage : deja rapide des le depart
       maxSpeed: 25 + s.speed * 5.1,        // plafond : une bonne voiture va bien plus loin
@@ -183,7 +180,7 @@
       boostDrain: Math.max(0.22, 0.5 - s.boost * 0.02),
       boostRecharge: 0.14 + s.boost * 0.01,
       boostPower: 1.55 + s.boost * 0.035,
-      scoreFactor: 1 + rating,             // jusqu'a quasi x2 le score avec la meilleure voiture
+      scoreFactor: DG.carScoreFactor(car),  // jusqu'a quasi x2 le score avec la meilleure voiture
     };
   };
 
@@ -213,13 +210,15 @@
     this._nearMissStreak = 0;
     this.playing = true; this.paused = false;
     this.setCamLabel();
+    this._initEngineSound();
   };
 
-  GameEngine.prototype.pause = function(){ if(this.playing){ this.paused = true; if(this.cb.onPauseChange) this.cb.onPauseChange(true); } };
+  GameEngine.prototype.pause = function(){ if(this.playing){ this.paused = true; this._muteEngineSound(); if(this.cb.onPauseChange) this.cb.onPauseChange(true); } };
   GameEngine.prototype.resume = function(){ if(this.playing){ this.paused = false; this._last = performance.now(); if(this.cb.onPauseChange) this.cb.onPauseChange(false); } };
 
   GameEngine.prototype.quit = function(){
     this.playing = false; this.paused = false;
+    this._muteEngineSound();
     if(this._player){ this.scene.remove(this._player); this._player = null; }
     this._obstacles.forEach(o=>this.scene.remove(o.mesh)); this._obstacles = [];
     this._pickups.forEach(p=>this.scene.remove(p.mesh)); this._pickups = [];
@@ -231,9 +230,48 @@
   };
   GameEngine.prototype.setBoostHeld = function(v){ this._boostHeld = v; };
 
+  // Moteur synthetise en Web Audio (aucun fichier son a charger) : deux
+  // oscillateurs (fondamentale + sous-harmonique) passes dans un filtre passe-bas,
+  // dont la frequence/le volume suivent la vitesse et le boost en temps reel.
+  GameEngine.prototype._initEngineSound = function(){
+    if(this._audioCtx) { if(this._audioCtx.state === 'suspended') this._audioCtx.resume().catch(()=>{}); return; }
+    try{
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC) return;
+      const ctx = new AC();
+      const osc1 = ctx.createOscillator(); osc1.type = 'sawtooth'; osc1.frequency.value = 55;
+      const osc2 = ctx.createOscillator(); osc2.type = 'square'; osc2.frequency.value = 28;
+      const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 500;
+      const gain = ctx.createGain(); gain.gain.value = 0;
+      osc1.connect(filter); osc2.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+      osc1.start(); osc2.start();
+      this._audioCtx = ctx; this._engineOsc1 = osc1; this._engineOsc2 = osc2; this._engineFilter = filter; this._engineGain = gain;
+    } catch(e){}
+  };
+
+  GameEngine.prototype._updateEngineSound = function(){
+    if(!this._audioCtx || !this.mult) return;
+    const ctx = this._audioCtx;
+    const now = ctx.currentTime;
+    const ratio = Math.max(0, Math.min(1.3, this._speed / (this.mult.maxSpeed || 1)));
+    const boostAdd = this._boostActive ? 1 : 0;
+    const freq1 = 55 + ratio * 210 + boostAdd * 60;
+    const gainTarget = (0.05 + ratio * 0.09 + boostAdd * 0.05);
+    this._engineOsc1.frequency.setTargetAtTime(freq1, now, 0.08);
+    this._engineOsc2.frequency.setTargetAtTime(freq1 * 0.5, now, 0.08);
+    this._engineFilter.frequency.setTargetAtTime(500 + ratio * 2200, now, 0.08);
+    this._engineGain.gain.setTargetAtTime(gainTarget, now, 0.12);
+  };
+
+  GameEngine.prototype._muteEngineSound = function(){
+    if(!this._audioCtx) return;
+    this._engineGain.gain.setTargetAtTime(0, this._audioCtx.currentTime, 0.1);
+  };
+
   GameEngine.prototype.destroy = function(){
     if(this._raf) cancelAnimationFrame(this._raf);
     if(this._ro) this._ro.disconnect();
+    if(this._audioCtx) this._audioCtx.close().catch(()=>{});
     if(this.renderer){ this.renderer.dispose(); if(this.renderer.domElement.parentNode) this.renderer.domElement.parentNode.removeChild(this.renderer.domElement); }
   };
 
@@ -319,6 +357,7 @@
       else this._boostFuel = Math.min(1, this._boostFuel + dt*this.mult.boostRecharge);
       if(want) scroll *= this.mult.boostPower;
     }
+    if(this.playing) this._updateEngineSound();
 
     for(const st of this._stripes){ st.position.z += scroll; if(st.position.z > 10) st.position.z -= 240; }
     const wrap = this._decorWrap || 140;
@@ -414,6 +453,7 @@
 
   GameEngine.prototype._gameOver = function(){
     this.playing = false;
+    this._muteEngineSound();
     const result = { score:this.currentScore(), time:this._time, carId:this.car.id, routeId:this.route.id };
     if(this.cb.onGameOver) this.cb.onGameOver(result);
   };

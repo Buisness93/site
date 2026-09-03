@@ -84,6 +84,7 @@ insert into public.cars_catalog (id, price) values
   ('citadine', 0),
   ('kart', 800),
   ('compacte-sport', 2500),
+  ('audi-a3', 4000),
   ('berline-sport', 5000),
   ('suv', 6500),
   ('golf-r', 7500),
@@ -91,12 +92,19 @@ insert into public.cars_catalog (id, price) values
   ('audi-a8', 13000),
   ('gt3', 25000),
   ('rs6-abt', 26000),
+  ('huracan-performante', 45000),
   ('aventador', 60000),
   ('812-competizione', 60000),
+  ('aventador-svj', 82000),
   ('pagani-huayra-r', 88000),
-  ('centodieci', 150000),
+  ('daytona-sp3', 120000),
   ('mclaren-p1', 145000),
-  ('laferrari', 175000)
+  ('laferrari', 175000),
+  ('chiron', 230000),
+  ('veyron-ettore', 280000),
+  ('w16-mistral', 340000),
+  ('centodieci', 420000),
+  ('bolide', 520000)
 on conflict (id) do update set price = excluded.price;
 
 -- Voitures possedees par joueur (au-dela de la citadine offerte a tous)

@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="css/site.css">
 <style>
  .car-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px;margin-top:30px}
- .car-card{position:relative;background:linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid rgba(255,255,255,.1);border-radius:18px;overflow:hidden}
- .car-card .bar{height:5px}
+ .car-card{position:relative;background:linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid rgba(255,255,255,.1);border-radius:18px}
+ .car-card .bar{height:5px;border-radius:17px 17px 0 0}
  .car-card .body{padding:18px 20px 20px}
  .stat-bars{display:flex;gap:3px;margin:12px 0}
  .stat-bars .b{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
@@ -58,6 +58,7 @@
           '<div class="body">' +
             '<div class="pill pill-tier" style="margin-bottom:8px">' + c.brand + ' · ' + ((DG.TIERS[c.tier]||{}).label||c.tier) + '</div>' +
             '<h3 style="font-size:22px">' + c.name + '</h3>' +
+            '<div class="pill" style="color:#ffcc00;background:rgba(255,204,0,.12);border:1px solid rgba(255,204,0,.35);margin:2px 0 10px">🏆 Score ×' + DG.carScoreFactor(c).toFixed(2) + '</div>' +
             '<div class="stat-bars">' + statBar(c.stats.speed,color)+statBar(c.stats.accel,color)+statBar(c.stats.handling,color)+statBar(c.stats.boost,color) + '</div>' +
             (isUnlocked
               ? '<span class="pill pill-owned">✓ Débloquée</span>'
