@@ -4,8 +4,15 @@
   window.DG = window.DG || {};
   const LANES = [-3.3, -1.1, 1.1, 3.3];
   const NEAR_MISS_GAP = 0.85;
-  const TRAFFIC_FILES = ['../uploads/taxi.glb','../uploads/van.glb','../uploads/truck-flat.glb','../uploads/police.glb','../uploads/delivery.glb','../uploads/race.glb','../uploads/race-future.glb'];
-  const TRAFFIC_TINTS = [0xe23b3b,0x2f7bff,0x18c56b,0xf5b301,0xff7a00,0x9b5cff,0xeceff4,0x18324a,0x00c2ff];
+  // Vraies voitures/camions de trafic (couleurs d'origine du modele, pas de teinte).
+  const TRAFFIC_FILES = [
+    '../uploads/traffic-hatch-green.glb', '../uploads/traffic-hatch-red.glb', '../uploads/traffic-hatch-grey.glb',
+    '../uploads/traffic-sedan-dark.glb', '../uploads/traffic-sedan-grey.glb', '../uploads/traffic-sedan-maroon.glb', '../uploads/traffic-sedan-white.glb',
+    '../uploads/traffic-wagon-dark.glb', '../uploads/traffic-suv-dark.glb', '../uploads/traffic-suv-grey.glb',
+    '../uploads/traffic-van-orange.glb', '../uploads/traffic-van-white.glb', '../uploads/traffic-van-maroon.glb',
+    '../uploads/traffic-minibus-grey.glb', '../uploads/traffic-bus-white.glb',
+    '../uploads/traffic-truck-semi.glb', '../uploads/traffic-truck-flatbed.glb',
+  ];
 
   function GameEngine(container, cb){
     this.container = container;
@@ -289,7 +296,6 @@
       if(this._trafficModels.length > 1 && ti === this._lastTrafficIdx) ti = (ti+1) % this._trafficModels.length;
       this._lastTrafficIdx = ti;
       mesh = DG.Loader.normalizeModel(T, this._trafficModels[ti], 3.6, Math.PI);
-      DG.Loader.tintModel(T, mesh, TRAFFIC_TINTS[Math.floor(Math.random()*TRAFFIC_TINTS.length)], 0.0);
       w = 0.95;
     } else if(this._coneModel){
       mesh = DG.Loader.normalizeModel(T, this._coneModel, 1.0, 0);
@@ -320,9 +326,20 @@
 
   GameEngine.prototype._spawnPickup = function(){
     const T = window.THREE;
+    // Evite de poser un bonus dans une voie deja bloquee par un obstacle proche :
+    // sinon il est litteralement impossible a prendre sans percuter l'obstacle.
+    const blockedLanes = new Set();
+    for(const o of this._obstacles){
+      if(o.mesh.position.z < -95 && o.mesh.position.z > -165){
+        const li2 = LANES.indexOf(o.laneX);
+        if(li2 !== -1) blockedLanes.add(li2);
+      }
+    }
+    const freeLanes = [0,1,2,3].filter(l=>!blockedLanes.has(l));
+    if(!freeLanes.length) return; // toutes les voies occupees : on saute ce cycle
+    const li = freeLanes[Math.floor(Math.random()*freeLanes.length)];
     const roll = Math.random();
     const kind = roll < 0.72 ? 'coin' : (roll < 0.88 ? 'nitro' : 'multiplier');
-    const li = Math.floor(Math.random()*4);
     const mesh = pickupMesh(T, kind);
     mesh.position.set(LANES[li], 1.05, -130);
     this.scene.add(mesh);

@@ -52,6 +52,12 @@
         <div class="card"><div style="font-size:11px;letter-spacing:.14em;color:var(--text-3);text-transform:uppercase">Voitures débloquées</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:30px;margin-top:6px" id="statCars">—</div></div>
       </div>
       <div class="card" style="margin-top:18px">
+        <div style="font-size:11px;letter-spacing:.14em;color:var(--text-3);text-transform:uppercase;margin-bottom:10px">🎟️ Code promo</div>
+        <div id="codeMsg"></div>
+        <div class="field"><input type="text" id="codeInput" maxlength="24" placeholder="Ex. DEYLO2026" style="text-transform:uppercase"></div>
+        <button class="btn btn-primary btn-block" id="btnRedeemCode">Utiliser le code</button>
+      </div>
+      <div class="card" style="margin-top:18px">
         <div class="field"><label>Changer de pseudo</label><input type="text" id="newUsername" maxlength="16"></div>
         <button class="btn btn-ghost btn-block" id="btnSaveUsername">Enregistrer</button>
       </div>
@@ -100,6 +106,24 @@
     const v = document.getElementById('newUsername').value.trim();
     if(!v) return;
     try { await DG.Auth.updateUsername(v); render(); } catch(err){ alert(err.message); }
+  });
+
+  document.getElementById('btnRedeemCode').addEventListener('click', async ()=>{
+    const input = document.getElementById('codeInput');
+    const codeMsg = document.getElementById('codeMsg');
+    const code = input.value.trim();
+    if(!code) return;
+    const res = await DG.Economy.redeemCode(code);
+    if(res.ok){
+      const car = res.carId ? DG.carById(res.carId) : null;
+      const parts = [];
+      if(res.credits) parts.push('+' + res.credits + ' crédits');
+      if(car) parts.push(car.name + ' débloquée');
+      codeMsg.innerHTML = '<div class="msg msg-ok">Code activé : ' + (parts.join(' · ') || 'terminé') + ' !</div>';
+      input.value = '';
+    } else {
+      codeMsg.innerHTML = '<div class="msg msg-error">' + res.error + '</div>';
+    }
   });
 
   function render(){

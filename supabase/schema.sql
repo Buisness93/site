@@ -476,3 +476,112 @@ create policy "radio_admin_delete" on storage.objects
     bucket_id = 'radio'
     and exists (select 1 from public.profiles where id = auth.uid() and is_admin = true)
   );
+
+-- ============================================================
+-- 8. CODES PROMO (l'admin cree un code, un joueur connecte le saisit une fois)
+-- ============================================================
+create table if not exists public.promo_codes (
+  code text primary key,
+  car_id text references public.cars_catalog(id),
+  credits integer not null default 0,
+  max_redemptions integer,
+  redemption_count integer not null default 0,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+alter table public.promo_codes enable row level security;
+-- Pas de policy select/insert publique : uniquement via les fonctions ci-dessous.
+
+create table if not exists public.promo_code_redemptions (
+  id bigserial primary key,
+  code text not null references public.promo_codes(code) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  redeemed_at timestamptz not null default now(),
+  unique(code, user_id)
+);
+alter table public.promo_code_redemptions enable row level security;
+
+create or replace function public.redeem_code(p_code text)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_code text := upper(trim(p_code));
+  v_row public.promo_codes%rowtype;
+begin
+  if v_uid is null then raise exception 'Connecte-toi pour utiliser un code.'; end if;
+
+  select * into v_row from public.promo_codes where code = v_code and active = true for update;
+  if not found then raise exception 'Code invalide.'; end if;
+  if v_row.max_redemptions is not null and v_row.redemption_count >= v_row.max_redemptions then
+    raise exception 'Ce code a atteint sa limite d''utilisation.';
+  end if;
+  if exists (select 1 from public.promo_code_redemptions where code = v_code and user_id = v_uid) then
+    raise exception 'Vous avez deja utilise ce code.';
+  end if;
+
+  insert into public.promo_code_redemptions (code, user_id) values (v_code, v_uid);
+  update public.promo_codes set redemption_count = redemption_count + 1 where code = v_code;
+
+  if v_row.credits > 0 then
+    update public.profiles set money = money + v_row.credits where id = v_uid;
+  end if;
+  if v_row.car_id is not null then
+    insert into public.player_cars (user_id, car_id) values (v_uid, v_row.car_id) on conflict do nothing;
+  end if;
+
+  return jsonb_build_object('credits', v_row.credits, 'car_id', v_row.car_id);
+end;
+$$;
+
+grant execute on function public.redeem_code(text) to authenticated;
+
+create or replace function public.admin_create_code(
+  p_code text, p_car_id text default null, p_credits integer default 0, p_max_redemptions integer default null
+) returns void
+language plpgsql security definer set search_path = public
+as $$
+declare v_is_admin boolean;
+begin
+  select is_admin into v_is_admin from public.profiles where id = auth.uid();
+  if not coalesce(v_is_admin, false) then raise exception 'Acces refuse'; end if;
+  if p_code is null or length(trim(p_code)) = 0 then raise exception 'Code vide'; end if;
+
+  insert into public.promo_codes (code, car_id, credits, max_redemptions, active)
+  values (upper(trim(p_code)), p_car_id, coalesce(p_credits,0), p_max_redemptions, true)
+  on conflict (code) do update set
+    car_id = excluded.car_id, credits = excluded.credits,
+    max_redemptions = excluded.max_redemptions, active = true;
+end;
+$$;
+
+grant execute on function public.admin_create_code(text, text, integer, integer) to authenticated;
+
+create or replace function public.admin_set_code_active(p_code text, p_active boolean)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare v_is_admin boolean;
+begin
+  select is_admin into v_is_admin from public.profiles where id = auth.uid();
+  if not coalesce(v_is_admin, false) then raise exception 'Acces refuse'; end if;
+  update public.promo_codes set active = p_active where code = upper(trim(p_code));
+end;
+$$;
+
+grant execute on function public.admin_set_code_active(text, boolean) to authenticated;
+
+create or replace function public.admin_list_codes()
+returns setof public.promo_codes
+language plpgsql stable security definer set search_path = public
+as $$
+declare v_is_admin boolean;
+begin
+  select is_admin into v_is_admin from public.profiles where id = auth.uid();
+  if not coalesce(v_is_admin, false) then raise exception 'Acces refuse'; end if;
+  return query select * from public.promo_codes order by created_at desc;
+end;
+$$;
+
+grant execute on function public.admin_list_codes() to authenticated;

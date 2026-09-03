@@ -123,6 +123,19 @@
       try { localStorage.setItem(GUEST_AD_KEY, String(Date.now())); } catch(e){}
       this._emit();
       return { ok:true, amount:100 };
+    },
+
+    // Code promo (cree par l'admin) : credite de l'argent et/ou debloque une voiture.
+    async redeemCode(code){
+      if(!DG.Auth.isLoggedIn()) return { ok:false, error:'Connecte-toi pour utiliser un code.' };
+      try{
+        const { data, error } = await DG.supabase.rpc('redeem_code', { p_code: code });
+        if(error) throw error;
+        await DG.Auth.refreshProfile();
+        this.money = DG.Auth.profile ? DG.Auth.profile.money : this.money;
+        await this._loadPlayerCars();
+        return { ok:true, credits: data.credits, carId: data.car_id };
+      } catch(e){ return { ok:false, error: e.message || 'Code invalide.' }; }
     }
   };
 

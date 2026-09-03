@@ -74,6 +74,24 @@
       </div>
 
       <div class="card" style="margin-top:20px">
+        <h3 style="font-size:18px">🎟️ Codes promo</h3>
+        <p style="color:var(--text-3);font-size:13px">Un code peut créditer des crédits et/ou débloquer une voiture précise. Un joueur ne peut utiliser un même code qu'une fois.</p>
+        <div id="codeMsg"></div>
+        <div class="grid grid-auto" style="gap:12px">
+          <div class="field"><label>Code</label><input type="text" id="codeCode" maxlength="24" placeholder="Ex. DEYLO2026" style="text-transform:uppercase"></div>
+          <div class="field"><label>Voiture à débloquer (optionnel)</label>
+            <select id="codeCar" style="width:100%;background:var(--card-1);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:10px 12px;color:inherit;font-family:inherit">
+              <option value="">— Aucune —</option>
+            </select>
+          </div>
+          <div class="field"><label>Crédits (optionnel)</label><input type="number" id="codeCredits" min="0" value="0"></div>
+          <div class="field"><label>Nombre d'utilisations max (vide = illimité)</label><input type="number" id="codeMax" min="1"></div>
+        </div>
+        <button class="btn btn-primary" id="btnCreateCode">Créer / mettre à jour le code</button>
+        <table style="margin-top:16px"><thead><tr><th>Code</th><th>Voiture</th><th>Crédits</th><th>Utilisations</th><th>Statut</th><th></th></tr></thead><tbody id="codesBody"></tbody></table>
+      </div>
+
+      <div class="card" style="margin-top:20px">
         <h3 style="font-size:18px">Parties récentes (avec IP)</h3>
         <p style="color:var(--text-3);font-size:13px">
           L'IP est celle déclarée par le navigateur au moment de l'envoi du score — utile pour repérer un joueur qui
@@ -106,6 +124,7 @@
     loadSuggestions();
     loadPlayers();
     loadSessions();
+    loadCodes();
   }
 
   async function loadStats(){
@@ -180,6 +199,40 @@
         '</td><td>' + escapeHTML(s.ip_address||'—') + '</td></tr>';
     }).join('') || '<tr><td colspan="6">Aucune partie enregistrée.</td></tr>';
   }
+
+  const codeCarSelect = document.getElementById('codeCar');
+  codeCarSelect.innerHTML += DG.CARS.map(c=>'<option value="' + c.id + '">' + escapeHTML(c.name) + '</option>').join('');
+
+  async function loadCodes(){
+    const { data, error } = await DG.supabase.rpc('admin_list_codes');
+    const rows = (!error && data) ? data : [];
+    document.getElementById('codesBody').innerHTML = rows.map(c=>{
+      const car = c.car_id ? DG.carById(c.car_id) : null;
+      const uses = c.redemption_count + (c.max_redemptions!=null ? ' / ' + c.max_redemptions : ' / ∞');
+      return '<tr><td>' + escapeHTML(c.code) + '</td><td>' + (car?escapeHTML(car.name):'—') + '</td><td>' + c.credits +
+        '</td><td>' + uses + '</td><td>' + (c.active?'Actif':'Désactivé') + '</td>' +
+        '<td><button class="btn btn-ghost btn-sm" data-code-toggle="' + escapeHTML(c.code) + '" data-active="' + c.active + '">' + (c.active?'Désactiver':'Réactiver') + '</button></td></tr>';
+    }).join('') || '<tr><td colspan="6">Aucun code créé.</td></tr>';
+    document.querySelectorAll('[data-code-toggle]').forEach(b=>b.addEventListener('click', async ()=>{
+      await DG.supabase.rpc('admin_set_code_active', { p_code: b.getAttribute('data-code-toggle'), p_active: b.getAttribute('data-active') !== 'true' });
+      loadCodes();
+    }));
+  }
+
+  document.getElementById('btnCreateCode').addEventListener('click', async ()=>{
+    const msgEl = document.getElementById('codeMsg');
+    const code = document.getElementById('codeCode').value.trim();
+    if(!code){ msgEl.innerHTML = '<div class="msg msg-error">Le code ne peut pas être vide.</div>'; return; }
+    const carId = document.getElementById('codeCar').value || null;
+    const credits = parseInt(document.getElementById('codeCredits').value, 10) || 0;
+    const maxStr = document.getElementById('codeMax').value.trim();
+    const maxRedemptions = maxStr ? parseInt(maxStr, 10) : null;
+    const { error } = await DG.supabase.rpc('admin_create_code', { p_code: code, p_car_id: carId, p_credits: credits, p_max_redemptions: maxRedemptions });
+    if(error){ msgEl.innerHTML = '<div class="msg msg-error">' + escapeHTML(error.message) + '</div>'; return; }
+    msgEl.innerHTML = '<div class="msg msg-ok">Code enregistré !</div>';
+    document.getElementById('codeCode').value=''; document.getElementById('codeCar').value=''; document.getElementById('codeCredits').value='0'; document.getElementById('codeMax').value='';
+    loadCodes();
+  });
 
   document.getElementById('btnUpload').addEventListener('click', async ()=>{
     const msgEl = document.getElementById('uploadMsg');
