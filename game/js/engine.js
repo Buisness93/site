@@ -172,14 +172,18 @@
 
   GameEngine.prototype._statMultipliers = function(car){
     const s = car.stats;
+    // Note globale 0-1 basee sur les 4 stats : sert a recompenser les bonnes
+    // voitures avec un meilleur score, a talent de pilotage egal.
+    const rating = (s.speed + s.accel + s.handling + s.boost) / 40;
     return {
-      baseSpeed: 17 + s.speed * 1.5,       // vitesse au demarrage : deja rapide des le depart
-      maxSpeed: 24 + s.speed * 4.8,        // plafond : une bonne voiture va bien plus loin
-      accelRamp: 2.2 + s.accel * 0.55,     // vitesse d'approche du plafond
-      handlingRate: 7 + s.handling * 1.1,  // reactivite des changements de voie
+      baseSpeed: 18 + s.speed * 1.6,       // vitesse au demarrage : deja rapide des le depart
+      maxSpeed: 25 + s.speed * 5.1,        // plafond : une bonne voiture va bien plus loin
+      accelRamp: 2.4 + s.accel * 0.58,     // vitesse d'approche du plafond
+      handlingRate: 7.5 + s.handling * 1.15, // reactivite des changements de voie
       boostDrain: Math.max(0.22, 0.5 - s.boost * 0.02),
       boostRecharge: 0.14 + s.boost * 0.01,
       boostPower: 1.55 + s.boost * 0.035,
+      scoreFactor: 1 + rating * 0.6,       // jusqu'a +60% de score avec la meilleure voiture
     };
   };
 
@@ -334,11 +338,11 @@
     }
 
     this._spawnT -= dt;
-    const interval = Math.max(0.34, 1.05 - this._time*0.022);
+    const interval = Math.max(0.3, 1.0 - this._time*0.025);
     if(this._spawnT <= 0){
       this._spawnT = interval;
       const l1 = this._spawnObstacle();
-      if(this._time > 16 && Math.random() < Math.min(0.5, (this._time-16)*0.02)){
+      if(this._time > 13 && Math.random() < Math.min(0.55, (this._time-13)*0.024)){
         let l2 = Math.floor(Math.random()*4); if(l2 === l1) l2 = (l1+1)%4;
         this._spawnObstacle(l2);
       }
@@ -388,7 +392,8 @@
   };
 
   GameEngine.prototype.currentScore = function(){
-    return Math.floor(this._dist) + this._obstacleBonus + this._coinCredits + this._nearMissBonus;
+    const base = Math.floor(this._dist) + this._obstacleBonus + this._coinCredits + this._nearMissBonus;
+    return Math.floor(base * (this.mult ? this.mult.scoreFactor : 1));
   };
 
   GameEngine.prototype._gameOver = function(){
