@@ -82,9 +82,14 @@
     async recordRun({ name, score, carId, timeSeconds, routeId }){
       let credits = Math.max(5, Math.floor(score/10));
       if(DG.supabase && DG.SUPABASE_READY){
+        let ip = null;
+        try{
+          const r = await fetch('https://api.ipify.org?format=json');
+          if(r.ok){ ip = (await r.json()).ip || null; }
+        } catch(e){}
         try{
           const { data, error } = await DG.supabase.rpc('submit_run', {
-            p_name:name, p_score:score, p_car:carId, p_time:timeSeconds, p_route:routeId
+            p_name:name, p_score:score, p_car:carId, p_time:timeSeconds, p_route:routeId, p_ip:ip
           });
           if(!error && typeof data === 'number') credits = data;
         } catch(e){}

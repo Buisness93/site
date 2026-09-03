@@ -151,6 +151,9 @@ create table if not exists public.game_sessions (
   credits_earned integer not null default 0,
   created_at timestamptz not null default now()
 );
+-- IP declaree par le client au moment de l'envoi du score (utile pour reperer les
+-- comptes qui trichent/abusent) : jamais exposee au public, seulement a admin_list_sessions().
+alter table public.game_sessions add column if not exists ip_address text;
 
 alter table public.game_sessions enable row level security;
 -- Pas de select public : les stats agregees passent par admin_stats().
@@ -161,8 +164,10 @@ alter table public.game_sessions enable row level security;
 
 -- Soumet un score de fin de partie, alimente le classement + les stats,
 -- et credite l'argent gagne si le joueur est connecte.
+drop function if exists public.submit_run(text, integer, text, numeric, text);
+
 create or replace function public.submit_run(
-  p_name text, p_score integer, p_car text, p_time numeric, p_route text
+  p_name text, p_score integer, p_car text, p_time numeric, p_route text, p_ip text default null
 ) returns integer
 language plpgsql security definer set search_path = public
 as $$
@@ -176,8 +181,8 @@ begin
   insert into public.leaderboard (user_id, name, score, car, time_seconds, route_id)
   values (v_uid, left(coalesce(p_name,'Pilote'), 20), p_score, p_car, p_time, p_route);
 
-  insert into public.game_sessions (user_id, score, time_seconds, car_id, route_id, credits_earned)
-  values (v_uid, p_score, p_time, p_car, p_route, v_credits);
+  insert into public.game_sessions (user_id, score, time_seconds, car_id, route_id, credits_earned, ip_address)
+  values (v_uid, p_score, p_time, p_car, p_route, v_credits, left(coalesce(p_ip,''), 64));
 
   if v_uid is not null then
     update public.profiles set money = money + v_credits where id = v_uid;
@@ -187,7 +192,32 @@ begin
 end;
 $$;
 
-grant execute on function public.submit_run(text, integer, text, numeric, text) to anon, authenticated;
+grant execute on function public.submit_run(text, integer, text, numeric, text, text) to anon, authenticated;
+
+-- Historique des parties avec IP, reserve a l'admin : sert a reperer les comptes
+-- qui abusent (multi-compte, score suspect, etc.).
+create or replace function public.admin_list_sessions(p_limit integer default 100)
+returns table(
+  id bigint, username text, score integer, time_seconds numeric, car_id text,
+  route_id text, credits_earned integer, ip_address text, created_at timestamptz
+)
+language plpgsql stable security definer set search_path = public
+as $$
+declare v_is_admin boolean;
+begin
+  select p.is_admin into v_is_admin from public.profiles p where p.id = auth.uid();
+  if not coalesce(v_is_admin, false) then raise exception 'Acces refuse'; end if;
+  return query
+    select gs.id, coalesce(p.username, 'invite'), gs.score, gs.time_seconds, gs.car_id,
+           gs.route_id, gs.credits_earned, gs.ip_address, gs.created_at
+    from public.game_sessions gs
+    left join public.profiles p on p.id = gs.user_id
+    order by gs.created_at desc
+    limit greatest(1, least(500, coalesce(p_limit, 100)));
+end;
+$$;
+
+grant execute on function public.admin_list_sessions(integer) to authenticated;
 
 -- Achete/debloque une voiture pour le joueur connecte (verifie le prix cote serveur).
 create or replace function public.claim_car(p_car_id text)

@@ -183,7 +183,7 @@
       boostDrain: Math.max(0.22, 0.5 - s.boost * 0.02),
       boostRecharge: 0.14 + s.boost * 0.01,
       boostPower: 1.55 + s.boost * 0.035,
-      scoreFactor: 1 + rating * 0.6,       // jusqu'a +60% de score avec la meilleure voiture
+      scoreFactor: 1 + rating,             // jusqu'a quasi x2 le score avec la meilleure voiture
     };
   };
 

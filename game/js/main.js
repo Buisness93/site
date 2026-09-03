@@ -11,6 +11,7 @@
     btnRetry:$('btnRetry'), btnChangeCar:$('btnChangeCar'), btnWatchAd:$('btnWatchAd'),
     fullBoard:$('fullBoard'), btnBoardClose:$('btnBoardClose'),
     btnLeft:$('btnLeft'), btnRight:$('btnRight'), btnBoost:$('btnBoost'), btnCam:$('btnCam'), btnPause:$('btnPause'), btnFullscreen:$('btnFullscreen'), btnMusic:$('btnMusic'), bgAudio:$('bgAudio'),
+    musicPanel:$('musicPanel'), musicTrackName:$('musicTrackName'), btnMusicPrev:$('btnMusicPrev'), btnMusicToggle:$('btnMusicToggle'), btnMusicNext:$('btnMusicNext'), musicVolume:$('musicVolume'),
   };
 
   const state = { username:null, selectedCar: DG.defaultCarId, selectedRoute: DG.defaultRouteId, screen:'loading' };
@@ -241,17 +242,33 @@
       current = (i + tracks.length) % tracks.length;
       els.bgAudio.src = tracks[current].url;
       els.bgAudio.play().catch(()=>{});
+      els.musicTrackName.textContent = tracks[current].artist ? (tracks[current].title + ' — ' + tracks[current].artist) : tracks[current].title;
     }
-    els.bgAudio.volume = 0.5;
+    let savedVol = 50;
+    try { const v = parseInt(localStorage.getItem('dg_music_vol'), 10); if(!isNaN(v)) savedVol = v; } catch(e){}
+    els.bgAudio.volume = savedVol/100;
+    els.musicVolume.value = savedVol;
     els.bgAudio.addEventListener('ended', ()=>playIndex(current+1));
-    els.bgAudio.addEventListener('play', ()=>els.btnMusic.classList.add('active'));
-    els.bgAudio.addEventListener('pause', ()=>els.btnMusic.classList.remove('active'));
+    els.bgAudio.addEventListener('play', ()=>{ els.btnMusic.classList.add('active'); els.btnMusicToggle.textContent = '⏸'; });
+    els.bgAudio.addEventListener('pause', ()=>{ els.btnMusic.classList.remove('active'); els.btnMusicToggle.textContent = '▶'; });
     els.btnMusic.addEventListener('click', async ()=>{
       await loadTracks();
-      if(!tracks.length){ popup('Aucune musique disponible pour le moment', '#8a8f98'); return; }
-      if(!els.bgAudio.paused){ els.bgAudio.pause(); return; }
-      if(current === -1) playIndex(Math.floor(Math.random()*tracks.length));
+      if(!tracks.length){ popup('Aucune musique disponible pour le moment', '#8a8f98'); els.musicPanel.classList.add('hidden'); return; }
+      els.musicPanel.classList.toggle('hidden');
+      if(!els.musicPanel.classList.contains('hidden') && current === -1) playIndex(Math.floor(Math.random()*tracks.length));
+    });
+    els.btnMusicToggle.addEventListener('click', ()=>{
+      if(!tracks.length) return;
+      if(!els.bgAudio.paused) els.bgAudio.pause();
+      else if(current === -1) playIndex(Math.floor(Math.random()*tracks.length));
       else els.bgAudio.play().catch(()=>{});
+    });
+    els.btnMusicPrev.addEventListener('click', ()=>playIndex(current-1));
+    els.btnMusicNext.addEventListener('click', ()=>playIndex(current+1));
+    els.musicVolume.addEventListener('input', ()=>{
+      const v = parseInt(els.musicVolume.value, 10);
+      els.bgAudio.volume = v/100;
+      try { localStorage.setItem('dg_music_vol', String(v)); } catch(e){}
     });
   }
 

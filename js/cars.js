@@ -22,8 +22,8 @@
     { id:'audi-a8',         brand:'Audi',        name:'A8',                tier:'avance',   price:13000,  model:'uploads/audi-a8.glb',                  rotY:Math.PI, glow:0xc7ccd4, body:0x14161a, stats:{speed:7, accel:6, handling:6, boost:7} },
     { id:'rs6-abt',         brand:'Audi / ABT',  name:'RS6-R',             tier:'sportive', price:26000,  model:'uploads/audi-rs6-abt.glb',             rotY:0, glow:0xff2d2d, body:0x100c0c, stats:{speed:8, accel:8, handling:7, boost:8} },
     { id:'812-competizione', brand:'Ferrari',    name:'812 Competizione',  tier:'hypercar', price:60000,  model:'uploads/ferrari-812-competizione.glb', rotY:0, glow:0xff1a1a, body:0x140505, stats:{speed:9, accel:9, handling:9, boost:9} },
-    { id:'pagani-huayra-r',  brand:'Pagani',     name:'Huayra R',          tier:'hypercar', price:88000,  model:'uploads/pagani-huayra-r.glb',          rotY:Math.PI, glow:0xc0392b, body:0x120c08, stats:{speed:10, accel:9, handling:8, boost:10} },
-    { id:'mclaren-p1',      brand:'McLaren',     name:'P1',                tier:'hypercar', price:145000, model:'uploads/mclaren-p1.glb',               rotY:0, glow:0xff8a00, body:0x0a0a0a, stats:{speed:10, accel:10, handling:8, boost:10} },
+    { id:'pagani-huayra-r',  brand:'Pagani',     name:'Huayra R',          tier:'hypercar', price:88000,  model:'uploads/pagani-huayra-r.glb',          rotY:Math.PI, glow:0xc0392b, body:0x120c08, stats:{speed:9.4, accel:9, handling:8, boost:10} },
+    { id:'mclaren-p1',      brand:'McLaren',     name:'P1',                tier:'hypercar', price:145000, model:'uploads/mclaren-p1.glb',               rotY:0, glow:0xff8a00, body:0x0a0a0a, stats:{speed:9.7, accel:10, handling:8, boost:10} },
     { id:'laferrari',       brand:'Ferrari',     name:'LaFerrari',         tier:'hypercar', price:175000, model:'uploads/ferrari-laferrari.glb',        rotY:0, glow:0xff0000, body:0x140505, stats:{speed:10, accel:10, handling:9, boost:10} },
   ];
 

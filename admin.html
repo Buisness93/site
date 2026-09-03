@@ -72,6 +72,15 @@
         <input type="text" id="playerSearch" placeholder="Rechercher un pseudo…" style="width:100%;max-width:320px;margin:10px 0;background:var(--card-1);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 12px;color:inherit;font-family:inherit">
         <table style="margin-top:6px"><thead><tr><th>Pseudo</th><th>Argent</th><th>Voitures</th><th>Meilleur score</th><th>Admin</th><th>Créé le</th></tr></thead><tbody id="playersBody"></tbody></table>
       </div>
+
+      <div class="card" style="margin-top:20px">
+        <h3 style="font-size:18px">Parties récentes (avec IP)</h3>
+        <p style="color:var(--text-3);font-size:13px">
+          L'IP est celle déclarée par le navigateur au moment de l'envoi du score — utile pour repérer un joueur qui
+          triche ou multi-compte. Les 100 dernières parties, invités compris.
+        </p>
+        <table style="margin-top:6px"><thead><tr><th>Date</th><th>Joueur</th><th>Score</th><th>Voiture</th><th>Route</th><th>IP</th></tr></thead><tbody id="sessionsBody"></tbody></table>
+      </div>
     </div>
   </div>
 </main>
@@ -96,6 +105,7 @@
     loadTracks();
     loadSuggestions();
     loadPlayers();
+    loadSessions();
   }
 
   async function loadStats(){
@@ -158,6 +168,18 @@
     const q = e.target.value.trim().toLowerCase();
     renderPlayers(!q ? allPlayers : allPlayers.filter(p=>(p.username||'').toLowerCase().includes(q)));
   });
+
+  async function loadSessions(){
+    const { data, error } = await DG.supabase.rpc('admin_list_sessions', { p_limit: 100 });
+    const rows = (!error && data) ? data : [];
+    document.getElementById('sessionsBody').innerHTML = rows.map(s=>{
+      const car = DG.carById(s.car_id);
+      const route = DG.routeById(s.route_id);
+      return '<tr><td>' + new Date(s.created_at).toLocaleString('fr-FR') + '</td><td>' + escapeHTML(s.username) + '</td><td>' + s.score +
+        '</td><td>' + (car?escapeHTML(car.name):escapeHTML(s.car_id||'—')) + '</td><td>' + (route?escapeHTML(route.name):escapeHTML(s.route_id||'—')) +
+        '</td><td>' + escapeHTML(s.ip_address||'—') + '</td></tr>';
+    }).join('') || '<tr><td colspan="6">Aucune partie enregistrée.</td></tr>';
+  }
 
   document.getElementById('btnUpload').addEventListener('click', async ()=>{
     const msgEl = document.getElementById('uploadMsg');

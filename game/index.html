@@ -21,11 +21,24 @@
         <div class="cell" id="hudSpeedCell"><div class="l">VITESSE</div><div class="v" id="hudSpeed">0<span style="font-size:10px;color:#8a8f98"> km/h</span></div></div>
       </div>
     </div>
-    <div class="top-actions">
+    <div class="top-actions" style="position:relative">
       <div><button class="icon-btn" id="btnCam" title="Changer de caméra">🎥</button><div class="cam-label" id="camLabel">STANDARD</div></div>
       <button class="icon-btn" id="btnMusic" title="Musique">🎵</button>
       <button class="icon-btn" id="btnPause" title="Pause">⏸</button>
       <button class="icon-btn" id="btnFullscreen" title="Plein écran">⛶</button>
+
+      <div class="music-panel hidden" id="musicPanel">
+        <div class="music-track" id="musicTrackName">—</div>
+        <div class="music-row">
+          <button class="icon-btn" id="btnMusicPrev" title="Piste précédente">⏮</button>
+          <button class="icon-btn" id="btnMusicToggle" title="Lecture / pause">⏸</button>
+          <button class="icon-btn" id="btnMusicNext" title="Piste suivante">⏭</button>
+        </div>
+        <div class="music-row">
+          <span class="music-vol-icon">🔉</span>
+          <input type="range" id="musicVolume" min="0" max="100" value="50">
+        </div>
+      </div>
     </div>
   </div>
   <audio id="bgAudio" preload="none"></audio>
