@@ -28,16 +28,6 @@
     { file:'../uploads/traffic-truck-flatbed.gltf', len:11.5 },
   ];
 
-  // Fantome du meilleur run (par voiture+route) : stocke localement, aucun
-  // serveur requis. Trace = points {t, dist, x} echantillonnes pendant la partie.
-  function ghostKey(carId, routeId){ return 'dg_ghost_' + carId + '_' + routeId; }
-  function loadGhost(carId, routeId){
-    try { const raw = localStorage.getItem(ghostKey(carId, routeId)); return raw ? JSON.parse(raw) : null; }
-    catch(e){ return null; }
-  }
-  function saveGhost(carId, routeId, data){
-    try { localStorage.setItem(ghostKey(carId, routeId), JSON.stringify(data)); } catch(e){}
-  }
 
   function GameEngine(container, cb){
     this.container = container;
@@ -260,20 +250,6 @@
     this._recordBroken = false;
     this._nearMissStreak = 0;
 
-    // Fantome : charge le meilleur run enregistre pour cette voiture+route, s'il existe.
-    if(this._ghostMesh){ this.scene.remove(this._ghostMesh); this._ghostMesh = null; }
-    this._ghostData = loadGhost(car.id, routeId);
-    this._ghostIdx = 0;
-    this._trace = [];
-    this._sampleT = 0;
-    if(this._ghostData && this._ghostData.trace && this._ghostData.trace.length){
-      const ghostMat = new T.MeshStandardMaterial({ color:0x8fd0ff, transparent:true, opacity:0.32, depthWrite:false, emissive:0x2a6f9e, emissiveIntensity:0.6 });
-      this._ghostMesh = DG.Loader.makeFallbackCar(T, { body:0x8fd0ff, emissive:0x2a6f9e });
-      this._ghostMesh.traverse(n=>{ if(n.isMesh) n.material = ghostMat; });
-      this._ghostMesh.visible = false;
-      this.scene.add(this._ghostMesh);
-    }
-
     this.playing = true; this.paused = false;
     this.setCamLabel();
   };
@@ -288,34 +264,57 @@
     const T = window.THREE;
     const wrap = this._player;
     wrap.updateMatrixWorld(true);
-    let seatCenterW = null, interiorCenterW = null;
-    wrap.traverse(n=>{
-      const nm = n.name || '';
-      if(/seat|si[eè]ge/i.test(nm)){
-        if(seatCenterW) return;
+    const box = new T.Box3().setFromObject(wrap);
+    const h = box.max.y - box.min.y;
+    const zLen = box.max.z - box.min.z;
+    const xLen = box.max.x - box.min.x;
+    // Un vrai siege/habitacle a un volume plausible et "trapu" (pas un fil/une
+    // laniere). Le mot-cle seul ne suffit pas : certains modeles l'utilisent aussi
+    // pour un petit badge sur l'appuie-tete (Golf R : "Int_Seat_R_Badge") ou une
+    // ceinture de securite (RS6-R : "BSeatBelt_Geo...", fine et haute). On cherche
+    // d'abord un vrai "siege" nomme (le plus precis) ; seulement s'il n'y en a pas
+    // de fiable, on retombe sur un gros bloc "interieur" generique — sinon un gros
+    // bloc interieur (Centenario : "Interior_6", qui englobe aussi le plancher/les
+    // pieds) l'emportait par volume sur le vrai siege ("Seats_9"), plaçant la
+    // camera sous la caisse au lieu du siege.
+    const minSize = Math.min(xLen, zLen) * 0.12;
+    function bestMatch(re){
+      let found = null, bestVol = 0;
+      wrap.traverse(n=>{
+        const nm = n.name || '';
+        if(!re.test(nm)) return;
         const b = new T.Box3().setFromObject(n);
-        if(isFinite(b.min.x)){ const c = new T.Vector3(); b.getCenter(c); seatCenterW = c; }
-      } else if(/interior|int[ée]rieur|habitacle/i.test(nm)){
-        if(interiorCenterW) return;
-        const b = new T.Box3().setFromObject(n);
-        if(isFinite(b.min.x)){ const c = new T.Vector3(); b.getCenter(c); interiorCenterW = c; }
-      }
-    });
+        if(!isFinite(b.min.x)) return;
+        const s = new T.Vector3(); b.getSize(s);
+        const dims = [s.x, s.y, s.z].sort((a,c)=>a-c);
+        if(dims[2] < minSize) return;        // trop petit dans l'ensemble
+        if(dims[0] < dims[2] * 0.12) return;  // trop fin (laniere/cable) dans au moins un axe
+        const vol = s.x * s.y * s.z;
+        if(vol > bestVol){ bestVol = vol; found = b; }
+      });
+      return found;
+    }
+    let seatBox = bestMatch(/seat|si[eè]ge/i) || bestMatch(/interior|int[ée]rieur|habitacle/i);
     let eyeL;
-    const baseW = seatCenterW || interiorCenterW;
-    if(baseW){
-      eyeL = wrap.worldToLocal(baseW.clone()).add(new T.Vector3(0, 0.42, -0.2));
-    } else {
-      // Aucun siege/habitacle nomme dans le modele (souvent un seul mesh fusionne,
-      // carrosserie + interieur, sans sous-objets identifiables) : on ne peut pas
-      // reperer une place assise precise, mais on peut quand meme se caler a hauteur
-      // de base de pare-brise — assez haut et assez recule pour rester au-dessus du
-      // capot (pas de clipping) tout en gardant une vraie sensation d'habitacle
-      // (essuie-glaces/capot visibles en bas de cadre), plutot qu'une vue de toit
-      // detachee de la voiture.
-      const box = new T.Box3().setFromObject(wrap);
-      const h = box.max.y - box.min.y;
-      const zLen = box.max.z - box.min.z;
+    if(seatBox){
+      // Aux 3/4 de la hauteur du volume trouve (pas le sommet exact : pour un gros
+      // bloc "habitacle complet", le sommet peut deborder jusqu'au pavillon) — et
+      // pas de decalage avant devine : _player garde une orientation fixe pendant
+      // la course, "avant" est toujours -Z local, la camera regarde deja dans cette
+      // direction par defaut, inutile de deviner un axe comme dans la fiche 3D du garage.
+      const sh = seatBox.max.y - seatBox.min.y;
+      const topW = new T.Vector3((seatBox.min.x+seatBox.max.x)/2, seatBox.min.y + sh*0.75, (seatBox.min.z+seatBox.max.z)/2);
+      eyeL = wrap.worldToLocal(topW);
+      // Garde-fou : si malgre les filtres le point tombe hors de la voiture (fausse
+      // detection), on ignore et bascule sur le repli generique ci-dessous.
+      if(eyeL.y < box.min.y - 0.05 || eyeL.y > box.max.y + 0.35 || eyeL.z < box.min.z - 0.1 || eyeL.z > box.max.z + 0.1) seatBox = null;
+    }
+    if(!seatBox){
+      // Aucun siege fiable detecte (souvent un seul mesh fusionne, carrosserie +
+      // interieur, sans sous-objets identifiables) : on se cale a hauteur de base de
+      // pare-brise — assez haut et assez recule pour rester au-dessus du capot (pas
+      // de clipping) tout en gardant une vraie sensation d'habitacle (essuie-glaces/
+      // capot visibles en bas de cadre), plutot qu'une vue de toit detachee.
       eyeL = new T.Vector3(0, box.min.y + h * 0.74, box.min.z + zLen * 0.38);
     }
     const holder = new T.Object3D();
@@ -331,7 +330,6 @@
     this.playing = false; this.paused = false;
     if(this._player){ this.scene.remove(this._player); this._player = null; }
     this._interiorHolder = null;
-    if(this._ghostMesh){ this.scene.remove(this._ghostMesh); this._ghostMesh = null; }
     this._obstacles.forEach(o=>this.scene.remove(o.mesh)); this._obstacles = [];
     this._pickups.forEach(p=>this.scene.remove(p.mesh)); this._pickups = [];
   };
@@ -482,30 +480,6 @@
       this._player.rotation.z = (targetX - this._playerX) * 0.14;
     }
 
-    // Echantillonne notre propre trace (pour devenir le futur fantome) et fait
-    // avancer le fantome existant sur sa propre trace, au meme instant t.
-    this._sampleT -= dt;
-    if(this._sampleT <= 0){
-      this._sampleT = 0.2;
-      this._trace.push({ t:this._time, dist:this._dist, x:this._playerX });
-    }
-    if(this._ghostMesh && this._ghostData){
-      const gt = this._ghostData.trace;
-      while(this._ghostIdx < gt.length - 1 && gt[this._ghostIdx+1].t <= this._time) this._ghostIdx++;
-      const a = gt[this._ghostIdx], b = gt[Math.min(this._ghostIdx+1, gt.length-1)];
-      const span = Math.max(0.001, b.t - a.t);
-      const f = Math.max(0, Math.min(1, (this._time - a.t) / span));
-      const gDist = a.dist + (b.dist - a.dist) * f;
-      const gX = a.x + (b.x - a.x) * f;
-      const relZ = -(gDist - this._dist);
-      if(this._time <= gt[gt.length-1].t + 1 && relZ > -140 && relZ < 20){
-        this._ghostMesh.visible = true;
-        this._ghostMesh.position.set(gX, 0, relZ);
-      } else {
-        this._ghostMesh.visible = false;
-      }
-    }
-
     this._spawnT -= dt;
     const interval = Math.max(0.42, 1.0 - this._time*0.018);
     if(this._spawnT <= 0){
@@ -589,10 +563,6 @@
     this.playing = false;
     const score = this.currentScore();
     const carId = this.car.id, routeId = this.route.id;
-    if(!this._ghostData || score > this._ghostData.score){
-      this._trace.push({ t:this._time, dist:this._dist, x:this._playerX });
-      saveGhost(carId, routeId, { score, trace:this._trace });
-    }
     const result = { score, time:this._time, carId, routeId };
     if(this.cb.onGameOver) this.cb.onGameOver(result);
   };
