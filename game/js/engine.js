@@ -296,14 +296,17 @@
     if(baseW){
       eyeL = wrap.worldToLocal(baseW.clone()).add(new T.Vector3(0, 0.42, -0.2));
     } else {
-      // Aucun siege/habitacle detecte (modele exterieur uniquement) : plutot que de
-      // deviner un point "dans" une carrosserie fermee (risque de finir colle contre
-      // une portiere ou un becquet, tres variable selon la forme exacte du modele),
-      // on se place juste au-dessus du toit — garanti degage de toute geometrie du
-      // vehicule quelle que soit sa forme, cote plus proche d'une cam de toit que
-      // d'un habitacle, mais fiable pour n'importe quelle voiture.
+      // Aucun siege/habitacle nomme dans le modele (souvent un seul mesh fusionne,
+      // carrosserie + interieur, sans sous-objets identifiables) : on ne peut pas
+      // reperer une place assise precise, mais on peut quand meme se caler a hauteur
+      // de base de pare-brise — assez haut et assez recule pour rester au-dessus du
+      // capot (pas de clipping) tout en gardant une vraie sensation d'habitacle
+      // (essuie-glaces/capot visibles en bas de cadre), plutot qu'une vue de toit
+      // detachee de la voiture.
       const box = new T.Box3().setFromObject(wrap);
-      eyeL = new T.Vector3(0, box.max.y + 0.1, 0);
+      const h = box.max.y - box.min.y;
+      const zLen = box.max.z - box.min.z;
+      eyeL = new T.Vector3(0, box.min.y + h * 0.74, box.min.z + zLen * 0.38);
     }
     const holder = new T.Object3D();
     holder.position.copy(eyeL);
