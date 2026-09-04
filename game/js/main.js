@@ -4,7 +4,6 @@
     ovLoading:$('ovLoading'), ovNaming:$('ovNaming'), ovChoosing:$('ovChoosing'), ovPaused:$('ovPaused'), ovOver:$('ovOver'), ovBoard:$('ovBoard'),
     hudTop:$('hudTop'), hudBottom:$('hudBottom'), multBadge:$('multBadge'), multTime:$('multTime'), popups:$('popups'),
     hudTime:$('hudTime'), hudScore:$('hudScore'), hudSpeed:$('hudSpeed'), hudSpeedCell:$('hudSpeedCell'), camLabel:$('camLabel'), boostFill:$('boostFill'),
-    nameInput:$('nameInput'), btnNameOk:$('btnNameOk'),
     pilotName:$('pilotName'), pilotMoney:$('pilotMoney'), routeTabs:$('routeTabs'), carGrid:$('carGrid'), btnStart:$('btnStart'), btnBoardOpen:$('btnBoardOpen'),
     btnResume:$('btnResume'), btnRestartFromPause:$('btnRestartFromPause'), btnQuitFromPause:$('btnQuitFromPause'),
     overScore:$('overScore'), overTime:$('overTime'), overCredits:$('overCredits'), overBoard:$('overBoard'), ovRecordBadge:$('ovRecordBadge'), overCarSpin:$('overCarSpin'),
@@ -12,6 +11,7 @@
     fullBoard:$('fullBoard'), btnBoardClose:$('btnBoardClose'),
     dailyCard:$('dailyCard'), dailyDesc:$('dailyDesc'), dailyCta:$('dailyCta'),
     drawCard:$('drawCard'), drawDesc:$('drawDesc'), drawCta:$('drawCta'),
+    ovWheel:$('ovWheel'), wheelEl:$('wheelEl'), wheelResult:$('wheelResult'), btnSpinWheel:$('btnSpinWheel'), btnCloseWheel:$('btnCloseWheel'),
     overDailyCard:$('overDailyCard'), overDailyDesc:$('overDailyDesc'), btnClaimDaily:$('btnClaimDaily'),
     btnLeft:$('btnLeft'), btnRight:$('btnRight'), btnBoost:$('btnBoost'), btnCam:$('btnCam'), btnPause:$('btnPause'), btnFullscreen:$('btnFullscreen'), btnMusic:$('btnMusic'), bgAudio:$('bgAudio'),
     musicPanel:$('musicPanel'), musicTrackName:$('musicTrackName'), btnMusicPrev:$('btnMusicPrev'), btnMusicToggle:$('btnMusicToggle'), btnMusicNext:$('btnMusicNext'), musicVolume:$('musicVolume'), musicList:$('musicList'),
@@ -116,10 +116,8 @@
   }
 
   function loadUsername(){
-    if(DG.Auth.isLoggedIn()) return DG.Auth.displayName();
-    try { return (localStorage.getItem('apex_user')||'').slice(0,16); } catch(e){ return ''; }
+    return DG.Auth.isLoggedIn() ? DG.Auth.displayName() : '';
   }
-  function saveGuestUsername(v){ try { localStorage.setItem('apex_user', v); } catch(e){} }
 
   function tierColor(tier){ return (DG.TIERS[tier] && DG.TIERS[tier].color) || '#9fb4c7'; }
 
@@ -210,8 +208,15 @@
   function updateDrawCta(claimed){
     if(!els.drawCard) return;
     els.drawCard.classList.toggle('done', claimed);
+    if(!DG.Auth.isLoggedIn()){
+      els.drawCta.textContent = '🔒 Connecte-toi';
+      els.drawDesc.textContent = 'Connecte-toi pour tenter le tirage du jour.';
+      return;
+    }
     els.drawCta.textContent = claimed ? '✓ Fait' : '🎰 Tenter';
-    if(claimed) els.drawDesc.textContent = 'Déjà tenté aujourd\'hui — reviens demain ✓';
+    els.drawDesc.textContent = claimed
+      ? 'Déjà tenté aujourd\'hui — reviens demain ✓'
+      : 'Crédits garantis, et une chance infime de gagner une voiture rare.';
   }
 
   async function renderDrawCard(){
@@ -220,19 +225,72 @@
     updateDrawCta(claimed);
   }
 
-  async function tryDailyDraw(){
+  // Segments de la roue, dans l'ordre visuel (secteurs EGAUX a l'ecran — la
+  // vraie probabilite est deja imposee par claim_daily_draw() cote serveur ;
+  // la roue met juste en scene le resultat deja tire). L'angle est le centre
+  // du secteur, mesure depuis le haut (sens horaire), pour matcher --a en CSS.
+  const WHEEL_SEGMENTS = [
+    { credits:120,  angle:36  },
+    { credits:300,  angle:108 },
+    { credits:700,  angle:180 },
+    { credits:1500, angle:252 },
+    { jackpot:true, angle:324 },
+  ];
+  let _wheelSpins = 0;
+
+  function openWheel(){
+    if(!DG.Auth.isLoggedIn()){ popup('Connecte-toi pour tenter le tirage du jour', '#ff9090'); return; }
     if(els.drawCard.classList.contains('done')){ popup('Tirage déjà tenté aujourd\'hui ✓', '#b48cff'); return; }
-    els.drawCta.textContent = '…';
+    els.wheelResult.textContent = '';
+    els.btnSpinWheel.disabled = false;
+    els.btnSpinWheel.textContent = '🎰 Lancer la roue';
+    els.wheelEl.style.transition = 'none';
+    els.wheelEl.style.transform = 'rotate(0deg)';
+    void els.wheelEl.offsetWidth;
+    els.wheelEl.style.transition = '';
+    els.ovWheel.classList.remove('hidden');
+  }
+
+  function closeWheel(){
+    els.ovWheel.classList.add('hidden');
+  }
+
+  async function spinWheel(){
+    els.btnSpinWheel.disabled = true;
+    els.btnSpinWheel.textContent = '…';
     const res = await DG.Economy.claimDailyDraw();
-    if(!res.ok){ popup(res.error, '#ff9090'); updateDrawCta(false); return; }
-    updateDrawCta(true);
-    refreshPilotBar();
-    if(res.carId){
-      els.drawCard.classList.add('jackpot');
-      popup('🏆 Voiture rare gagnée : ' + (DG.carById(res.carId) || {}).name + ' !', '#b48cff');
-    } else {
-      popup('🎰 +' + res.credits + ' crédits !', '#b48cff');
+    if(!res.ok){
+      popup(res.error, '#ff9090');
+      els.wheelResult.textContent = '⚠ ' + res.error;
+      els.btnSpinWheel.disabled = false;
+      els.btnSpinWheel.textContent = '🎰 Lancer la roue';
+      return;
     }
+    // Retrouve le secteur correspondant au resultat deja tire cote serveur :
+    // voiture (ou le repli 5000 credits quand tout est deja debloque) -> jackpot,
+    // sinon le secteur credits le plus proche.
+    let seg;
+    if(res.carId || res.credits === 5000) seg = WHEEL_SEGMENTS.find(s=>s.jackpot);
+    else seg = WHEEL_SEGMENTS.reduce((best,s)=> (s.credits!=null && Math.abs(s.credits-res.credits) < Math.abs((best.credits||0)-res.credits)) ? s : best, WHEEL_SEGMENTS[0]);
+
+    _wheelSpins++;
+    const fullTurns = 5 + (_wheelSpins % 3);
+    const targetRotation = fullTurns*360 + (360 - seg.angle);
+    els.wheelEl.style.transform = 'rotate(' + targetRotation + 'deg)';
+
+    setTimeout(()=>{
+      updateDrawCta(true);
+      refreshPilotBar();
+      if(res.carId){
+        els.drawCard.classList.add('jackpot');
+        els.wheelResult.textContent = '🏆 Voiture rare gagnée : ' + (DG.carById(res.carId) || {}).name + ' !';
+        popup('🏆 Voiture rare gagnée !', '#b48cff');
+      } else {
+        els.wheelResult.textContent = '🎉 +' + res.credits + ' crédits !';
+        popup('🎰 +' + res.credits + ' crédits !', '#b48cff');
+      }
+      els.btnSpinWheel.textContent = '✓ Fait';
+    }, 3700);
   }
 
   async function goToChoosing(){
@@ -290,20 +348,16 @@
     engine.init();
     engine.setRoute(state.selectedRoute);
 
+    // Compte obligatoire pour jouer (pas de mode invite) : les scores/parties
+    // doivent tous etre rattaches a un vrai compte, notamment pour que la
+    // moderation (recherche, bannissement IP) ait un pseudo/compte fiable en face.
     state.username = loadUsername();
-    if(state.username) goToChoosing(); else show('ovNaming');
+    if(DG.Auth.isLoggedIn() && state.username) goToChoosing(); else show('ovNaming');
 
     wireControls();
     wireMusic();
   }
 
-  els.btnNameOk.addEventListener('click', ()=>{
-    let v = (els.nameInput.value||'').trim().slice(0,16) || 'Pilote';
-    saveGuestUsername(v);
-    state.username = v;
-    goToChoosing();
-  });
-  els.nameInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') els.btnNameOk.click(); });
 
   function startRun(){
     const car = DG.carById(state.selectedCar);
@@ -317,9 +371,11 @@
     els.dailyCard.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); selectDailyChallenge(); } });
   }
   if(els.drawCard){
-    els.drawCard.addEventListener('click', tryDailyDraw);
-    els.drawCard.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); tryDailyDraw(); } });
+    els.drawCard.addEventListener('click', openWheel);
+    els.drawCard.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); openWheel(); } });
   }
+  if(els.btnSpinWheel) els.btnSpinWheel.addEventListener('click', spinWheel);
+  if(els.btnCloseWheel) els.btnCloseWheel.addEventListener('click', closeWheel);
 
   let lastResult = null;
   async function handleGameOver(result){

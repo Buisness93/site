@@ -3,7 +3,7 @@
 (function(){
   const THEMES = [
     { id:'obsidian', label:'Obsidian', ring:'linear-gradient(135deg,#e6edf2,#4d6478)' },
-    { id:'ivoire', label:'Ivoire', ring:'linear-gradient(135deg,#e6c17d,#8a611f)' },
+    { id:'emeraude', label:'Émeraude', ring:'linear-gradient(135deg,#7dffb8,#0e5c34)' },
     { id:'carmin', label:'Carmin', ring:'linear-gradient(135deg,#ff9f80,#8f1912)' },
   ];
 
