@@ -65,9 +65,9 @@
     host.innerHTML = '';
     host.appendChild(renderer.domElement);
     const scene = new T.Scene();
-    const camera = new T.PerspectiveCamera(32, w/h, 0.1, 50);
-    camera.position.set(0, 1.35, 5.2);
-    camera.lookAt(0, 0.45, 0);
+    const camera = new T.PerspectiveCamera(34, w/h, 0.1, 50);
+    camera.position.set(0, 1.15, 4.4);
+    camera.lookAt(0, 0.55, 0);
     scene.add(new T.AmbientLight(0xffffff, 0.55));
     const key = new T.DirectionalLight(0xffffff, 1.2); key.position.set(3, 5, 4); scene.add(key);
     const glow = new T.PointLight(car.glow || 0x66ccff, 2.2, 12); glow.position.set(-2, 1.2, -2); scene.add(glow);
@@ -76,8 +76,10 @@
     _overSpin = state;
     const model = await DG.Loader.loadModel('../' + car.model);
     if(_overSpin !== state) { renderer.dispose(); return; } // ecran quitte pendant le chargement
-    const wrap = model ? DG.Loader.normalizeModel(T, model, 2.4, car.rotY || 0) : DG.Loader.makeFallbackCar(T, { body:car.body });
-    wrap.position.y -= 0.35;
+    // Cible plus grande (4.2, comme le garage) qu'au premier jet (2.4) : la voiture
+    // restait minuscule au milieu de son cadre agrandi ("on ne voit rien").
+    const wrap = model ? DG.Loader.normalizeModel(T, model, 4.2, car.rotY || 0) : DG.Loader.makeFallbackCar(T, { body:car.body });
+    wrap.position.y -= 0.12;
     rig.add(wrap);
     (function loop(now){
       state.raf = requestAnimationFrame(loop);
