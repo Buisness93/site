@@ -7,7 +7,7 @@
     nameInput:$('nameInput'), btnNameOk:$('btnNameOk'),
     pilotName:$('pilotName'), pilotMoney:$('pilotMoney'), routeTabs:$('routeTabs'), carGrid:$('carGrid'), btnStart:$('btnStart'), btnBoardOpen:$('btnBoardOpen'),
     btnResume:$('btnResume'), btnRestartFromPause:$('btnRestartFromPause'), btnQuitFromPause:$('btnQuitFromPause'),
-    overScore:$('overScore'), overTime:$('overTime'), overCredits:$('overCredits'), overBoard:$('overBoard'), ovRecordBadge:$('ovRecordBadge'),
+    overScore:$('overScore'), overTime:$('overTime'), overCredits:$('overCredits'), overBoard:$('overBoard'), ovRecordBadge:$('ovRecordBadge'), overCarSpin:$('overCarSpin'),
     btnRetry:$('btnRetry'), btnChangeCar:$('btnChangeCar'), btnWatchAd:$('btnWatchAd'),
     fullBoard:$('fullBoard'), btnBoardClose:$('btnBoardClose'),
     dailyCard:$('dailyCard'), dailyDesc:$('dailyDesc'), dailyCta:$('dailyCta'),
@@ -36,6 +36,54 @@
     ['ovLoading','ovNaming','ovChoosing','ovPaused','ovOver','ovBoard'].forEach(k=>els[k].classList.add('hidden'));
     if(id) els[id].classList.remove('hidden');
     if(id && id !== 'ovPaused'){ els.hudTop.style.display = 'none'; els.hudBottom.style.display = 'none'; }
+    if(id !== 'ovOver') stopOverCarSpin();
+  }
+
+  // Petite scene 3D independante (meme moteur de chargement que la course) pour faire
+  // tourner la voiture du joueur sur l'ecran de fin de partie, a cote du score — un clin
+  // d'oeil "showroom" pour rendre la fin de run plus stylee qu'un simple recapitulatif texte.
+  let _overSpin = null;
+  function stopOverCarSpin(){
+    if(!_overSpin) return;
+    cancelAnimationFrame(_overSpin.raf);
+    _overSpin.renderer.dispose();
+    if(_overSpin.renderer.domElement.parentNode) _overSpin.renderer.domElement.parentNode.removeChild(_overSpin.renderer.domElement);
+    _overSpin = null;
+  }
+  async function startOverCarSpin(carId){
+    stopOverCarSpin();
+    const host = els.overCarSpin;
+    if(!host) return;
+    const T = window.THREE;
+    const car = DG.carById(carId);
+    const w = host.clientWidth || 320, h = host.clientHeight || 170;
+    const renderer = new T.WebGLRenderer({ antialias:true, alpha:true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 1.75));
+    renderer.setSize(w, h);
+    renderer.outputEncoding = T.sRGBEncoding;
+    renderer.toneMapping = T.ACESFilmicToneMapping;
+    host.innerHTML = '';
+    host.appendChild(renderer.domElement);
+    const scene = new T.Scene();
+    const camera = new T.PerspectiveCamera(32, w/h, 0.1, 50);
+    camera.position.set(0, 1.35, 5.2);
+    camera.lookAt(0, 0.45, 0);
+    scene.add(new T.AmbientLight(0xffffff, 0.55));
+    const key = new T.DirectionalLight(0xffffff, 1.2); key.position.set(3, 5, 4); scene.add(key);
+    const glow = new T.PointLight(car.glow || 0x66ccff, 2.2, 12); glow.position.set(-2, 1.2, -2); scene.add(glow);
+    const rig = new T.Group(); scene.add(rig);
+    const state = { raf:0, renderer, scene };
+    _overSpin = state;
+    const model = await DG.Loader.loadModel('../' + car.model);
+    if(_overSpin !== state) { renderer.dispose(); return; } // ecran quitte pendant le chargement
+    const wrap = model ? DG.Loader.normalizeModel(T, model, 2.4, car.rotY || 0) : DG.Loader.makeFallbackCar(T, { body:car.body });
+    wrap.position.y -= 0.35;
+    rig.add(wrap);
+    (function loop(now){
+      state.raf = requestAnimationFrame(loop);
+      rig.rotation.y = (now || 0) * 0.00055;
+      renderer.render(scene, camera);
+    })();
   }
 
   function popup(text, cls){
@@ -234,6 +282,7 @@
     els.overTime.textContent = result.time.toFixed(1) + 's';
     els.overCredits.textContent = '+…';
     show('ovOver');
+    startOverCarSpin(result.carId);
     const credits = await DG.Economy.recordRun({ name: state.username, score: result.score, carId: result.carId, timeSeconds: result.time, routeId: result.routeId });
     els.overCredits.textContent = '+' + credits;
     const board = await DG.Leaderboard.fetchBoard(5);

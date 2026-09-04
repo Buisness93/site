@@ -31,8 +31,31 @@
     return cache[url];
   }
 
+  // Certains exports (Sketchfab/CGTrader) incluent un plan de sol/backdrop de leur propre
+  // scene de presentation (nom/materiau "floor", "ground", "chao"...). Ce plan fausse le
+  // calcul de taille (bounding box beaucoup plus grande que la voiture) et laisse un carre
+  // colore visible sous le modele une fois importe dans notre scene : on le retire.
+  const GROUND_RE = /\b(floor|ground|chao|ch[aã]o|backdrop|pavement|asphalt|tarmac|studio|platform|stage|plinth|pedestal)\b/i;
+  function stripGroundPlanes(obj){
+    const toRemove = [];
+    obj.traverse(n=>{
+      if(!n.isMesh) return;
+      const matName = Array.isArray(n.material) ? n.material.map(m=>m && m.name).join(' ') : (n.material && n.material.name) || '';
+      if(GROUND_RE.test(n.name) || GROUND_RE.test(matName)) toRemove.push(n);
+    });
+    toRemove.forEach(n=>{ if(n.parent) n.parent.remove(n); });
+  }
+
   function normalizeModel(T, src, targetLen, rotY){
-    const obj = src.clone(true);
+    // src.clone(true) ne recree pas correctement les os d'un modele rigge (SkinnedMesh) :
+    // le clone garde une reference vers le squelette ORIGINAL, donc il continue de se
+    // dessiner selon la pose du modele source en cache, ignorant toute rotation/anim
+    // appliquee au clone (la voiture "ne tourne meme pas"). SkeletonUtils.clone recree
+    // aussi les os pour de vrai. On ne l'utilise que si le modele en a besoin (couteux).
+    let hasSkin = false;
+    src.traverse(n=>{ if(n.isSkinnedMesh) hasSkin = true; });
+    const obj = (hasSkin && T.SkeletonUtils) ? T.SkeletonUtils.clone(src) : src.clone(true);
+    stripGroundPlanes(obj);
     obj.rotation.y = rotY || 0;
     obj.updateMatrixWorld(true);
     const box = new T.Box3().setFromObject(obj);

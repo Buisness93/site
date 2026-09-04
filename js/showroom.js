@@ -62,9 +62,27 @@
     return this._fullModels[url];
   };
 
+  const GROUND_RE = /\b(floor|ground|chao|ch[aã]o|backdrop|pavement|asphalt|tarmac|studio|platform|stage|plinth|pedestal)\b/i;
+  function stripGroundPlanes(obj){
+    const toRemove = [];
+    obj.traverse(n=>{
+      if(!n.isMesh) return;
+      const matName = Array.isArray(n.material) ? n.material.map(m=>m && m.name).join(' ') : (n.material && n.material.name) || '';
+      if(GROUND_RE.test(n.name) || GROUND_RE.test(matName)) toRemove.push(n);
+    });
+    toRemove.forEach(n=>{ if(n.parent) n.parent.remove(n); });
+  }
+
   Showroom.prototype.normalizeModel = function(src, targetLen, rotY){
     const T = window.THREE;
-    const obj = src.clone(true);
+    // src.clone(true) ne recree pas correctement les os d'un modele rigge (SkinnedMesh) :
+    // le clone garde une reference vers le squelette ORIGINAL et continue de se dessiner
+    // selon la pose du modele source en cache, ignorant toute rotation appliquee au clone.
+    // SkeletonUtils.clone recree aussi les os pour de vrai.
+    let hasSkin = false;
+    src.traverse(n=>{ if(n.isSkinnedMesh) hasSkin = true; });
+    const obj = (hasSkin && T.SkeletonUtils) ? T.SkeletonUtils.clone(src) : src.clone(true);
+    stripGroundPlanes(obj);
     obj.rotation.y = rotY || 0;
     obj.updateMatrixWorld(true);
     const box = new T.Box3().setFromObject(obj);

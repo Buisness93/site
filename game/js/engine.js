@@ -268,6 +268,12 @@
     const h = box.max.y - box.min.y;
     const zLen = box.max.z - box.min.z;
     const xLen = box.max.x - box.min.x;
+    // La largeur de collision suivait une constante fixe (0.55) qui ne correspondait
+    // pas aux voitures "widebody" (GT3 RS, M4 Widebody...) : leur carrosserie visuelle
+    // depassait la zone de collision, donnant l'impression de "passer a travers" les
+    // obstacles avant meme un vrai contact. On la derive maintenant de la largeur reelle
+    // du modele charge.
+    this._playerHalfW = Math.max(0.42, Math.min(0.95, xLen/2 * 0.86));
     // Un vrai siege/habitacle a un volume plausible et "trapu" (pas un fil/une
     // laniere). Le mot-cle seul ne suffit pas : certains modeles l'utilisent aussi
     // pour un petit badge sur l'appuie-tete (Golf R : "Int_Seat_R_Badge") ou une
@@ -300,15 +306,45 @@
       return found;
     }
     let seatBox = bestMatch(/seat|si[eè]ge/i) || bestMatch(/interior|int[ée]rieur|habitacle/i);
+
+    // Le noeud "siege" trouve regroupe souvent LES DEUX sieges (ex: "Seats_9") : son
+    // centre X tombe au milieu de l'habitacle, pas cote conducteur, d'ou la plainte
+    // "etre siege conducteur pas milieu". On cherche un volant ("steering"/"volant")
+    // pour savoir de quel cote se trouve reellement le conducteur ; a defaut, on suppose
+    // une conduite a gauche (repli raisonnable, la majorite du catalogue est LHD).
+    // Le T.50 a une VRAIE position de conduite centrale : on ne decale rien pour lui.
+    const isCentralDriving = this.car && this.car.id === 'gma-t50';
+    let driverSign = -1;
+    if(!isCentralDriving){
+      let swBox = null, swVol = 0;
+      wrap.traverse(n=>{
+        const nm = n.name || '';
+        if(!/steer|volant/i.test(nm)) return;
+        const b = new T.Box3().setFromObject(n);
+        if(!isFinite(b.min.x)) return;
+        const s = new T.Vector3(); b.getSize(s);
+        const vol = s.x * s.y * s.z;
+        if(vol > swVol){ swVol = vol; swBox = b; }
+      });
+      if(swBox) driverSign = ((swBox.min.x + swBox.max.x)/2) < (box.min.x + box.max.x)/2 ? -1 : 1;
+    }
+
     let eyeL;
     if(seatBox){
       // Aux 3/4 de la hauteur du volume trouve (pas le sommet exact : pour un gros
-      // bloc "habitacle complet", le sommet peut deborder jusqu'au pavillon) — et
-      // pas de decalage avant devine : _player garde une orientation fixe pendant
-      // la course, "avant" est toujours -Z local, la camera regarde deja dans cette
-      // direction par defaut, inutile de deviner un axe comme dans la fiche 3D du garage.
+      // bloc "habitacle complet", le sommet peut deborder jusqu'au pavillon).
+      // _player garde une orientation fixe pendant la course, "avant" est toujours
+      // -Z local, la camera regarde deja dans cette direction par defaut.
       const sh = seatBox.max.y - seatBox.min.y;
-      const topW = new T.Vector3((seatBox.min.x+seatBox.max.x)/2, seatBox.min.y + sh*0.75, (seatBox.min.z+seatBox.max.z)/2);
+      const sw = seatBox.max.x - seatBox.min.x;
+      const cx = (seatBox.min.x + seatBox.max.x)/2;
+      const cz = (seatBox.min.z + seatBox.max.z)/2;
+      const offsetX = isCentralDriving ? 0 : driverSign * Math.max(sw*0.22, 0.16);
+      // Petite avancee vers l'avant (-Z) depuis le centre du volume siege : sinon la
+      // camera reste calee au milieu du coussin/appuie-tete et se retrouve quasi dans
+      // la geometrie du siege, d'ou "on voit rien devant" (vue bouchee par le siege).
+      const forwardPush = Math.min(zLen*0.07, 0.34);
+      const topW = new T.Vector3(cx + offsetX, seatBox.min.y + sh*0.75, cz - forwardPush);
       eyeL = wrap.worldToLocal(topW);
       // Garde-fou : si malgre les filtres le point tombe hors de la voiture (fausse
       // detection), on ignore et bascule sur le repli generique ci-dessous.
@@ -320,7 +356,8 @@
       // pare-brise — assez haut et assez recule pour rester au-dessus du capot (pas
       // de clipping) tout en gardant une vraie sensation d'habitacle (essuie-glaces/
       // capot visibles en bas de cadre), plutot qu'une vue de toit detachee.
-      eyeL = new T.Vector3(0, box.min.y + h * 0.74, box.min.z + zLen * 0.38);
+      const offsetX = isCentralDriving ? 0 : driverSign * xLen * 0.16;
+      eyeL = new T.Vector3(offsetX, box.min.y + h * 0.74, box.min.z + zLen * 0.38);
     }
     const holder = new T.Object3D();
     holder.position.copy(eyeL);
@@ -505,7 +542,7 @@
     this._pickupT -= dt;
     if(this._pickupT <= 0){ this._pickupT = 1.1 + Math.random()*1.0; this._spawnPickup(); }
 
-    const playerHalfW = 0.55;
+    const playerHalfW = this._playerHalfW || 0.55;
     for(let i=this._obstacles.length-1; i>=0; i--){
       const o = this._obstacles[i];
       o.mesh.position.z += scroll;
