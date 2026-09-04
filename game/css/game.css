@@ -113,6 +113,29 @@ h1,h2,h3{font-family:'Saira Condensed',sans-serif;text-transform:uppercase;margi
 .daily-card.selected .daily-cta{background:#2fea6a;color:#0a1408}
 .daily-card.locked .daily-cta{background:rgba(255,90,90,.16);color:#ff9090;box-shadow:none}
 
+/* Tirage du jour : meme forme que le defi du jour mais accent violet, pour le
+   distinguer au premier coup d'oeil (defi = objectif skill ; tirage = chance). */
+.daily-card.draw-card{background:linear-gradient(90deg,rgba(155,92,255,.16),rgba(90,42,180,.06));border-color:rgba(155,92,255,.35)}
+.daily-card.draw-card:hover{border-color:rgba(155,92,255,.6);background:linear-gradient(90deg,rgba(155,92,255,.22),rgba(90,42,180,.1))}
+.daily-card.draw-card .daily-title{color:#b48cff}
+.daily-card.draw-card .daily-cta{background:#9b5cff;color:#160a2e;box-shadow:0 8px 18px -8px rgba(155,92,255,.7)}
+.daily-card.draw-card.done .daily-cta{background:rgba(255,255,255,.12);color:#cfd6df;box-shadow:none}
+.daily-card.draw-card.jackpot{animation:neonPulse 1.4s ease-in-out infinite}
+
+/* Flash colore a l'ecran de fin de partie : sans ca l'ecran est tout noir/plat,
+   peu excitant apres une course. Une explosion de couleur (teinte de la voiture
+   jouee) au moment ou l'ecran apparait, plus une ambiance de fond teintee en
+   continu pour eviter le noir uni. */
+#ovOver{background:radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--flash-color,#2a2140) 22%, #0b0e14) 0%, #06070afa 72%)}
+#overFlash{position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 38%, var(--flash-color,#ffcc00) 0%, transparent 62%);mix-blend-mode:screen}
+#overFlash.play{animation:overFlashBurst 1.15s cubic-bezier(.15,.7,.3,1)}
+@keyframes overFlashBurst{
+  0%{opacity:0; transform:scale(.35)}
+  10%{opacity:.95; transform:scale(1.05)}
+  35%{opacity:.55; transform:scale(1.15)}
+  100%{opacity:0; transform:scale(1.7)}
+}
+
 /* Ecran de fin de partie : voiture au centre, score en haut, classement/defi en cotes */
 .over-stats{display:flex;gap:clamp(24px,6vw,52px);flex-wrap:wrap;justify-content:center}
 .over-stat-label{font-size:11px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase}

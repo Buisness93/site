@@ -158,6 +158,28 @@
         if(error) throw error;
         return !!data;
       } catch(e){ return false; }
+    },
+
+    async claimDailyDraw(){
+      if(!DG.Auth.isLoggedIn()) return { ok:false, error:'Connecte-toi pour tenter le tirage du jour.' };
+      try{
+        const { data, error } = await DG.supabase.rpc('claim_daily_draw');
+        if(error) throw error;
+        await DG.Auth.refreshProfile();
+        this.money = DG.Auth.profile ? DG.Auth.profile.money : this.money;
+        if(data && data.car_id && this.unlocked.indexOf(data.car_id) === -1) this.unlocked.push(data.car_id);
+        this._emit();
+        return { ok:true, credits: (data && data.credits) || 0, carId: data && data.car_id };
+      } catch(e){ return { ok:false, error: e.message || 'Tirage déjà réclamé aujourd\'hui.' }; }
+    },
+
+    async hasClaimedDailyDraw(){
+      if(!DG.Auth.isLoggedIn()) return false;
+      try{
+        const { data, error } = await DG.supabase.rpc('has_claimed_daily_draw');
+        if(error) throw error;
+        return !!data;
+      } catch(e){ return false; }
     }
   };
 

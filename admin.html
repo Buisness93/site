@@ -7,14 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Saira:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/site.css">
 <style>
- .stat-card{background:linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 18px}
+ .stat-card{background:linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid rgba(var(--line-rgb),.08);border-radius:14px;padding:16px 18px}
  .stat-card .l{font-size:10.5px;letter-spacing:.16em;color:var(--text-3);text-transform:uppercase}
  .stat-card .v{font-family:'Saira Condensed';font-weight:900;font-size:28px;margin-top:4px}
  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:30px}
  @media (max-width:780px){ .two-col{grid-template-columns:1fr} }
  table{width:100%;border-collapse:collapse;font-size:13.5px}
- th{text-align:left;color:var(--text-3);font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.1)}
- td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.06)}
+ th{text-align:left;color:var(--text-3);font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:8px 10px;border-bottom:1px solid rgba(var(--line-rgb),.1)}
+ td{padding:8px 10px;border-bottom:1px solid rgba(var(--line-rgb),.06)}
 </style>
 </head>
 <body>
@@ -69,7 +69,7 @@
           Les mots de passe ne sont jamais visibles : Supabase Auth les stocke uniquement sous forme de hash (bcrypt),
           irréversible et illisible même par un administrateur. Voici les données de profil disponibles.
         </p>
-        <input type="text" id="playerSearch" placeholder="Rechercher un pseudo…" style="width:100%;max-width:320px;margin:10px 0;background:var(--card-1);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 12px;color:inherit;font-family:inherit">
+        <input type="text" id="playerSearch" placeholder="Rechercher un pseudo…" style="width:100%;max-width:320px;margin:10px 0;background:var(--card-1);border:1px solid rgba(var(--line-rgb),.12);border-radius:8px;padding:8px 12px;color:inherit;font-family:inherit">
         <table style="margin-top:6px"><thead><tr><th>Pseudo</th><th>Argent</th><th>Voitures</th><th>Meilleur score</th><th>Admin</th><th>Créé le</th></tr></thead><tbody id="playersBody"></tbody></table>
       </div>
 
@@ -80,7 +80,7 @@
         <div class="grid grid-auto" style="gap:12px">
           <div class="field"><label>Code</label><input type="text" id="codeCode" maxlength="24" placeholder="Ex. DEYLO2026" style="text-transform:uppercase"></div>
           <div class="field"><label>Voiture à débloquer (optionnel)</label>
-            <select id="codeCar" style="width:100%;background:var(--card-1);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:10px 12px;color:inherit;font-family:inherit">
+            <select id="codeCar" style="width:100%;background:var(--card-1);border:1px solid rgba(var(--line-rgb),.12);border-radius:8px;padding:10px 12px;color:inherit;font-family:inherit">
               <option value="">— Aucune —</option>
             </select>
           </div>
@@ -89,6 +89,21 @@
         </div>
         <button class="btn btn-primary" id="btnCreateCode">Créer / mettre à jour le code</button>
         <table style="margin-top:16px"><thead><tr><th>Code</th><th>Voiture</th><th>Crédits</th><th>Utilisations</th><th>Statut</th><th></th></tr></thead><tbody id="codesBody"></tbody></table>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <h3 style="font-size:18px">🚫 IP bannies</h3>
+        <p style="color:var(--text-3);font-size:13px">
+          Bloque l'IP au moment de l'envoi du score (submit_run) : plus de crédits ni d'entrée classement pour cette IP.
+          Copie une IP depuis le tableau des parties récentes ci-dessous.
+        </p>
+        <div id="banMsg"></div>
+        <div class="grid grid-auto" style="gap:12px">
+          <div class="field"><label>Adresse IP</label><input type="text" id="banIp" placeholder="Ex. 203.0.113.42"></div>
+          <div class="field"><label>Raison (optionnel)</label><input type="text" id="banReason" placeholder="Ex. multi-compte, score farming"></div>
+        </div>
+        <button class="btn btn-primary" id="btnBanIp">Bannir cette IP</button>
+        <table style="margin-top:16px"><thead><tr><th>IP</th><th>Raison</th><th>Banni par</th><th>Le</th><th></th></tr></thead><tbody id="bannedIpsBody"></tbody></table>
       </div>
 
       <div class="card" style="margin-top:20px">
@@ -125,6 +140,7 @@
     loadPlayers();
     loadSessions();
     loadCodes();
+    loadBannedIps();
   }
 
   async function loadStats(){
@@ -218,6 +234,32 @@
       loadCodes();
     }));
   }
+
+  async function loadBannedIps(){
+    const { data, error } = await DG.supabase.rpc('admin_list_banned_ips');
+    const rows = (!error && data) ? data : [];
+    document.getElementById('bannedIpsBody').innerHTML = rows.map(b=>{
+      return '<tr><td>' + escapeHTML(b.ip) + '</td><td>' + escapeHTML(b.reason||'—') + '</td><td>' + escapeHTML(b.banned_by_username||'—') +
+        '</td><td>' + new Date(b.banned_at).toLocaleString('fr-FR') + '</td>' +
+        '<td><button class="btn btn-ghost btn-sm" data-unban="' + escapeHTML(b.ip) + '">Débannir</button></td></tr>';
+    }).join('') || '<tr><td colspan="5">Aucune IP bannie.</td></tr>';
+    document.querySelectorAll('[data-unban]').forEach(btn=>btn.addEventListener('click', async ()=>{
+      await DG.supabase.rpc('admin_unban_ip', { p_ip: btn.getAttribute('data-unban') });
+      loadBannedIps();
+    }));
+  }
+
+  document.getElementById('btnBanIp').addEventListener('click', async ()=>{
+    const msgEl = document.getElementById('banMsg');
+    const ip = document.getElementById('banIp').value.trim();
+    if(!ip){ msgEl.innerHTML = '<div class="msg msg-error">L\'IP ne peut pas être vide.</div>'; return; }
+    const reason = document.getElementById('banReason').value.trim() || null;
+    const { error } = await DG.supabase.rpc('admin_ban_ip', { p_ip: ip, p_reason: reason });
+    if(error){ msgEl.innerHTML = '<div class="msg msg-error">' + escapeHTML(error.message) + '</div>'; return; }
+    msgEl.innerHTML = '<div class="msg msg-ok">IP bannie.</div>';
+    document.getElementById('banIp').value=''; document.getElementById('banReason').value='';
+    loadBannedIps();
+  });
 
   document.getElementById('btnCreateCode').addEventListener('click', async ()=>{
     const msgEl = document.getElementById('codeMsg');

@@ -102,13 +102,24 @@
         </div>
       </div>
 
-      <div class="daily-card" id="dailyCard" role="button" tabindex="0">
-        <div class="daily-icon">🎯</div>
-        <div class="daily-body">
-          <div class="daily-title">Défi du jour</div>
-          <div class="daily-desc" id="dailyDesc">—</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div class="daily-card" id="dailyCard" role="button" tabindex="0" style="flex:1 1 260px">
+          <div class="daily-icon">🎯</div>
+          <div class="daily-body">
+            <div class="daily-title">Défi du jour</div>
+            <div class="daily-desc" id="dailyDesc">—</div>
+          </div>
+          <div class="daily-cta" id="dailyCta">🎯 Défi</div>
         </div>
-        <div class="daily-cta" id="dailyCta">🎯 Défi</div>
+
+        <div class="daily-card draw-card" id="drawCard" role="button" tabindex="0" style="flex:1 1 260px">
+          <div class="daily-icon">🎰</div>
+          <div class="daily-body">
+            <div class="daily-title">Tirage du jour</div>
+            <div class="daily-desc" id="drawDesc">Crédits garantis, et une chance infime de gagner une voiture rare.</div>
+          </div>
+          <div class="daily-cta" id="drawCta">🎰 Tenter</div>
+        </div>
       </div>
 
       <div>
@@ -135,6 +146,7 @@
   </div>
 
   <div class="overlay hidden" id="ovOver">
+    <div id="overFlash"></div>
     <div style="font-family:'Saira Condensed';font-weight:900;font-size:clamp(30px,5vw,52px);text-transform:uppercase">Game Over</div>
     <div id="ovRecordBadge" style="display:none;padding:7px 18px;border-radius:999px;background:linear-gradient(90deg,#ffcc00,#ff9500);color:#1a1400;font-family:'Saira Condensed';font-weight:900;font-size:13px;letter-spacing:.12em;text-transform:uppercase">★ Nouveau record</div>
 

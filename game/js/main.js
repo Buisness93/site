@@ -11,6 +11,7 @@
     btnRetry:$('btnRetry'), btnChangeCar:$('btnChangeCar'), btnWatchAd:$('btnWatchAd'),
     fullBoard:$('fullBoard'), btnBoardClose:$('btnBoardClose'),
     dailyCard:$('dailyCard'), dailyDesc:$('dailyDesc'), dailyCta:$('dailyCta'),
+    drawCard:$('drawCard'), drawDesc:$('drawDesc'), drawCta:$('drawCta'),
     overDailyCard:$('overDailyCard'), overDailyDesc:$('overDailyDesc'), btnClaimDaily:$('btnClaimDaily'),
     btnLeft:$('btnLeft'), btnRight:$('btnRight'), btnBoost:$('btnBoost'), btnCam:$('btnCam'), btnPause:$('btnPause'), btnFullscreen:$('btnFullscreen'), btnMusic:$('btnMusic'), bgAudio:$('bgAudio'),
     musicPanel:$('musicPanel'), musicTrackName:$('musicTrackName'), btnMusicPrev:$('btnMusicPrev'), btnMusicToggle:$('btnMusicToggle'), btnMusicNext:$('btnMusicNext'), musicVolume:$('musicVolume'), musicList:$('musicList'),
@@ -37,6 +38,21 @@
     if(id) els[id].classList.remove('hidden');
     if(id && id !== 'ovPaused'){ els.hudTop.style.display = 'none'; els.hudBottom.style.display = 'none'; }
     if(id !== 'ovOver') stopOverCarSpin();
+  }
+
+  // Explosion de couleur (teinte de la voiture) au moment ou l'ecran de fin apparait :
+  // sans ca l'ecran etait tout noir/plat, "pas envie" selon le retour recu. On retire
+  // puis reajoute la classe pour pouvoir rejouer l'animation a chaque game over
+  // (retry) meme si l'overlay n'a pas ete cache entre-temps.
+  function flashOverScreen(carId){
+    const car = DG.carById(carId);
+    const hex = '#' + (car.glow != null ? car.glow : 0xffcc00).toString(16).padStart(6, '0');
+    els.ovOver.style.setProperty('--flash-color', hex);
+    const flash = document.getElementById('overFlash');
+    if(!flash) return;
+    flash.classList.remove('play');
+    void flash.offsetWidth; // force reflow pour rejouer l'animation CSS
+    flash.classList.add('play');
   }
 
   // Petite scene 3D independante (meme moteur de chargement que la course) pour faire
@@ -188,6 +204,37 @@
     updateDailyCta();
   }
 
+  // Tirage du jour : contrairement au defi (qui demande d'atteindre un score),
+  // c'est une action immediate au clic — des credits raisonnables la plupart du
+  // temps, et une chance infime (1%) de gagner une voiture rare directement.
+  function updateDrawCta(claimed){
+    if(!els.drawCard) return;
+    els.drawCard.classList.toggle('done', claimed);
+    els.drawCta.textContent = claimed ? '✓ Fait' : '🎰 Tenter';
+    if(claimed) els.drawDesc.textContent = 'Déjà tenté aujourd\'hui — reviens demain ✓';
+  }
+
+  async function renderDrawCard(){
+    if(!els.drawCard) return;
+    const claimed = await DG.Economy.hasClaimedDailyDraw();
+    updateDrawCta(claimed);
+  }
+
+  async function tryDailyDraw(){
+    if(els.drawCard.classList.contains('done')){ popup('Tirage déjà tenté aujourd\'hui ✓', '#b48cff'); return; }
+    els.drawCta.textContent = '…';
+    const res = await DG.Economy.claimDailyDraw();
+    if(!res.ok){ popup(res.error, '#ff9090'); updateDrawCta(false); return; }
+    updateDrawCta(true);
+    refreshPilotBar();
+    if(res.carId){
+      els.drawCard.classList.add('jackpot');
+      popup('🏆 Voiture rare gagnée : ' + (DG.carById(res.carId) || {}).name + ' !', '#b48cff');
+    } else {
+      popup('🎰 +' + res.credits + ' crédits !', '#b48cff');
+    }
+  }
+
   async function goToChoosing(){
     show('ovChoosing');
     state.screen = 'choosing';
@@ -196,6 +243,7 @@
     refreshPilotBar();
     refreshPersonalBest();
     renderDailyCard();
+    renderDrawCard();
   }
 
   let engine;
@@ -268,6 +316,10 @@
     els.dailyCard.addEventListener('click', selectDailyChallenge);
     els.dailyCard.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); selectDailyChallenge(); } });
   }
+  if(els.drawCard){
+    els.drawCard.addEventListener('click', tryDailyDraw);
+    els.drawCard.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); tryDailyDraw(); } });
+  }
 
   let lastResult = null;
   async function handleGameOver(result){
@@ -284,6 +336,7 @@
     els.overTime.textContent = result.time.toFixed(1) + 's';
     els.overCredits.textContent = '+…';
     show('ovOver');
+    flashOverScreen(result.carId);
     startOverCarSpin(result.carId);
     const credits = await DG.Economy.recordRun({ name: state.username, score: result.score, carId: result.carId, timeSeconds: result.time, routeId: result.routeId });
     els.overCredits.textContent = '+' + credits;

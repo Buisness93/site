@@ -121,6 +121,58 @@
     return m;
   }
 
+  // Parasol de plage colore (remplace les anciens "tas" violets qui ne lisaient
+  // pas comme du sable) : mat + toile conique rayee, pose pres de la route.
+  function beachUmbrella(T, x, z, hex){
+    const g = new T.Group();
+    const pole = new T.Mesh(new T.CylinderGeometry(0.045,0.045,1.7,6), new T.MeshStandardMaterial({ color:0xe8e2d4, roughness:0.6 }));
+    pole.position.y = 0.85; g.add(pole);
+    const canopy = new T.Mesh(new T.ConeGeometry(0.95,0.55,10,1,true), new T.MeshStandardMaterial({ color:hex, roughness:0.75, side:T.DoubleSide, flatShading:true }));
+    canopy.position.y = 1.75; g.add(canopy);
+    const tip = new T.Mesh(new T.SphereGeometry(0.045,6,6), new T.MeshStandardMaterial({ color:0xe8e2d4 }));
+    tip.position.y = 2.05; g.add(tip);
+    g.position.set(x, 0, z);
+    return g;
+  }
+
+  // Plan d'ocean cote route, teinte degrade turquoise->bleu profond (meme
+  // technique canvas que windowTexture) avec un reflet chaud du coucher de
+  // soleil qui glisse dessus : sans ca, "la plage" n'avait pas d'eau du tout.
+  let _oceanTex = null;
+  function oceanTexture(T){
+    if(_oceanTex) return _oceanTex;
+    // Degrade le long de la largeur (route -> large) : le plan est construit avec
+    // width=across-shore, height=le-long-de-la-route, et le mapping UV par defaut
+    // de PlaneGeometry associe U a la largeur — le degrade doit donc etre HORIZONTAL
+    // ici (sinon on obtient des bandes repetees a chaque segment le long de la route
+    // au lieu d'un degrade continu vers le large).
+    const c = document.createElement('canvas');
+    c.width = 128; c.height = 8;
+    const ctx = c.getContext('2d');
+    const g = ctx.createLinearGradient(0,0,128,0);
+    g.addColorStop(0, '#2fb8b0');
+    g.addColorStop(0.18, '#1c8fa8');
+    g.addColorStop(0.5, '#0f5a86');
+    g.addColorStop(1, '#082044');
+    ctx.fillStyle = g; ctx.fillRect(0,0,128,8);
+    // reflet chaud pres du bord route (proche) qui s'estompe vers le large
+    ctx.fillStyle = 'rgba(255,178,110,.65)';
+    ctx.fillRect(6,0,5,8);
+    ctx.fillStyle = 'rgba(255,205,150,.4)';
+    ctx.fillRect(13,0,4,8);
+    _oceanTex = new T.CanvasTexture(c);
+    _oceanTex.wrapT = T.RepeatWrapping;
+    return _oceanTex;
+  }
+  function oceanPlane(T, x, z, len){
+    const tex = oceanTexture(T);
+    const mat = new T.MeshBasicMaterial({ map:tex, fog:false });
+    const m = new T.Mesh(new T.PlaneGeometry(46, len), mat);
+    m.rotation.x = -Math.PI/2;
+    m.position.set(x, 0.01, z);
+    return m;
+  }
+
   const ROUTES = [
     {
       id:'autoroute-nuit', name:'Autoroute Nocturne', difficulty:'Standard', spacing:9,
@@ -162,21 +214,43 @@
     },
     {
       id:'cote-sunset', name:'Côte au Coucher du Soleil', difficulty:'Détente', spacing:8,
-      fog:0x35213a, fogNear:24, fogFar:118, ground:0x2a2018,
+      fog:0x35213a, fogNear:24, fogFar:118, ground:0xd9b57c,
       road:0x342a24, stripe:0xf2c78a, edge:0x5a3b2c, edgeEmissive:0xff9a4d,
       sky:{ top:0x3a2350, bottom:0xff9a5a },
       light:{ key:0xffb27a, keyI:1.15, hemiSky:0xff9d6b, hemiGround:0x2a1810, hemiI:0.55, ambient:0xffcfa0, ambientI:0.3 },
+      // Cote fixe : l'ocean reste toujours du meme cote de la route (comme une
+      // vraie route cotiere), le sable/les palmiers de l'autre — avant, palmiers
+      // et "dunes" alternaient des deux cotes sans aucune eau visible, ca ne
+      // ressemblait pas a une plage.
       buildDecor(T, scene, N){
         const items = [];
+        const umbrellaColors = [0xe2432f, 0x2fa6a0, 0xf2c23d, 0xe8734a, 0x3d6fd9];
         for(let i=0;i<N;i++){
-          const side = i % 2 === 0 ? -1 : 1;
-          if(i % 5 === 4){
-            const d = duneRidge(T, side*(16+Math.random()*10), -16-i*8, 9+Math.random()*6, 7+Math.random()*5, 0x241a3a);
+          const z = -16 - i*8;
+
+          // Ocean cote droit (+x), tuiles jointives le long de la route.
+          const o = oceanPlane(T, 13 + 23, z, 9.3);
+          scene.add(o); items.push(o);
+
+          // Cote gauche (-x) : sable avec palmiers/parasols pres de la route,
+          // quelques dunes plus loin pour casser la ligne d'horizon plate.
+          if(i % 7 === 6){
+            const d = duneRidge(T, -(16+Math.random()*8), z, 8+Math.random()*5, 6+Math.random()*4, 0xc9a869);
             scene.add(d); items.push(d);
-            continue;
+          } else if(i % 3 === 1){
+            const u = beachUmbrella(T, -(6.5+Math.random()*2.5), z + (Math.random()*2-1), umbrellaColors[i % umbrellaColors.length]);
+            scene.add(u); items.push(u);
+          } else {
+            const p = palmTree(T, -(7.5+Math.random()*3.5), z);
+            scene.add(p); items.push(p);
           }
-          const p = palmTree(T, side*(7.5+Math.random()*3.5), -16 - i*8);
-          scene.add(p); items.push(p);
+
+          // Une poignee de palmiers/parasols cote ocean, entre la route et l'eau,
+          // pour eviter la coupure trop nette route -> mer.
+          if(i % 4 === 2){
+            const p2 = palmTree(T, 6.5 + Math.random()*3, z + 3);
+            scene.add(p2); items.push(p2);
+          }
         }
         return items;
       }

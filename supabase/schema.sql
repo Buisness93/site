@@ -231,6 +231,9 @@ declare
   v_uid uuid := auth.uid();
   v_credits integer;
 begin
+  if p_ip is not null and exists (select 1 from public.banned_ips where ip = p_ip) then
+    raise exception 'Acces bloque.';
+  end if;
   if p_score is null or p_score < 0 then p_score := 0; end if;
   v_credits := greatest(5, floor(p_score / 10.0)::integer);
 
@@ -635,6 +638,70 @@ $$;
 grant execute on function public.admin_list_codes() to authenticated;
 
 -- ============================================================
+-- 8bis. IP BANNIES (anti-triche/abus) : reutilise l'IP declaree par le client
+-- au moment de submit_run() (voir game_sessions.ip_address) — meme limite
+-- deja acceptee ailleurs dans ce fichier : c'est une IP auto-declaree, pas
+-- verifiee au niveau reseau, mais suffisante pour couper court a un joueur
+-- identifie qui abuse (multi-compte, score farming, etc.).
+-- ============================================================
+create table if not exists public.banned_ips (
+  ip text primary key,
+  reason text,
+  banned_by uuid references public.profiles(id) on delete set null,
+  banned_at timestamptz not null default now()
+);
+alter table public.banned_ips enable row level security;
+-- Pas de policy publique : uniquement via les fonctions admin ci-dessous.
+
+create or replace function public.admin_ban_ip(p_ip text, p_reason text default null)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare v_is_admin boolean;
+begin
+  select is_admin into v_is_admin from public.profiles where id = auth.uid();
+  if not coalesce(v_is_admin, false) then raise exception 'Acces refuse'; end if;
+  if p_ip is null or length(trim(p_ip)) = 0 then raise exception 'IP invalide'; end if;
+  insert into public.banned_ips (ip, reason, banned_by) values (trim(p_ip), nullif(trim(coalesce(p_reason,'')),''), auth.uid())
+  on conflict (ip) do update set reason = excluded.reason, banned_by = excluded.banned_by, banned_at = now();
+end;
+$$;
+
+grant execute on function public.admin_ban_ip(text, text) to authenticated;
+
+create or replace function public.admin_unban_ip(p_ip text)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare v_is_admin boolean;
+begin
+  select is_admin into v_is_admin from public.profiles where id = auth.uid();
+  if not coalesce(v_is_admin, false) then raise exception 'Acces refuse'; end if;
+  delete from public.banned_ips where ip = trim(p_ip);
+end;
+$$;
+
+grant execute on function public.admin_unban_ip(text) to authenticated;
+
+create or replace function public.admin_list_banned_ips()
+returns table(ip text, reason text, banned_by_username text, banned_at timestamptz)
+language plpgsql stable security definer set search_path = public
+as $$
+declare v_is_admin boolean;
+begin
+  select is_admin into v_is_admin from public.profiles where id = auth.uid();
+  if not coalesce(v_is_admin, false) then raise exception 'Acces refuse'; end if;
+  return query
+    select b.ip, b.reason, p.username, b.banned_at
+    from public.banned_ips b
+    left join public.profiles p on p.id = b.banned_by
+    order by b.banned_at desc;
+end;
+$$;
+
+grant execute on function public.admin_list_banned_ips() to authenticated;
+
+-- ============================================================
 -- 9. DEFI DU JOUR (voiture imposee + objectif, changent chaque jour, memes pour
 -- tout le monde). La voiture/l'objectif sont recalcules ici plutot que stockes,
 -- via la meme formule deterministe que DG.dailyChallenge() cote client (js/cars.js).
@@ -694,6 +761,85 @@ end;
 $$;
 
 grant execute on function public.has_claimed_daily_challenge() to authenticated;
+
+-- ============================================================
+-- 9bis. TIRAGE QUOTIDIEN (loterie gratuite, 1x/jour) : credits raisonnables la
+-- plupart du temps, et une chance infime (1%) de gagner directement une
+-- voiture rare/couteuse (aussi dure a obtenir qu'une SVJ).
+-- ============================================================
+create table if not exists public.daily_draw_claims (
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  draw_day integer not null,
+  reward_credits integer not null default 0,
+  reward_car_id text,
+  claimed_at timestamptz not null default now(),
+  primary key (user_id, draw_day)
+);
+alter table public.daily_draw_claims enable row level security;
+-- Pas de policy select/insert publique : uniquement via les fonctions ci-dessous.
+
+create or replace function public.claim_daily_draw()
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_days integer := floor(extract(epoch from now()) / 86400)::integer;
+  v_roll numeric := random();
+  v_credits integer := 0;
+  v_car_id text;
+  -- Lot "voiture rare" : tier hypercar d'entree/milieu de gamme, difficile a
+  -- obtenir autrement sans y avoir deja mis le prix (ex: Aventador SVJ).
+  v_jackpot_ids text[] := array['aventador-svj','gt3-rs','812-competizione','huracan-performante','pagani-huayra-r'];
+  v_pick text;
+begin
+  if v_uid is null then raise exception 'Connecte-toi pour tenter le tirage du jour.'; end if;
+  if exists (select 1 from public.daily_draw_claims where user_id = v_uid and draw_day = v_days) then
+    raise exception 'Tirage du jour deja tente.';
+  end if;
+
+  if v_roll < 0.01 then
+    select id into v_pick from unnest(v_jackpot_ids) as id
+      where id not in (select car_id from public.player_cars where user_id = v_uid)
+      order by random() limit 1;
+    if v_pick is not null then
+      v_car_id := v_pick;
+      insert into public.player_cars (user_id, car_id) values (v_uid, v_car_id) on conflict do nothing;
+    else
+      v_credits := 5000; -- deja tout debloque parmi les lots : gros bonus credits a la place
+    end if;
+  elsif v_roll < 0.05 then v_credits := 1500;
+  elsif v_roll < 0.15 then v_credits := 700;
+  elsif v_roll < 0.45 then v_credits := 300;
+  else v_credits := 120;
+  end if;
+
+  insert into public.daily_draw_claims (user_id, draw_day, reward_credits, reward_car_id)
+    values (v_uid, v_days, v_credits, v_car_id);
+  if v_credits > 0 then
+    update public.profiles set money = money + v_credits where id = v_uid;
+  end if;
+
+  return jsonb_build_object('credits', v_credits, 'car_id', v_car_id);
+end;
+$$;
+
+grant execute on function public.claim_daily_draw() to authenticated;
+
+create or replace function public.has_claimed_daily_draw()
+returns boolean
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_days integer := floor(extract(epoch from now()) / 86400)::integer;
+begin
+  if v_uid is null then return false; end if;
+  return exists (select 1 from public.daily_draw_claims where user_id = v_uid and draw_day = v_days);
+end;
+$$;
+
+grant execute on function public.has_claimed_daily_draw() to authenticated;
 
 -- ============================================================
 -- 10. STATS PERSONNELLES (pour les succes/trophees, compte connecte)
