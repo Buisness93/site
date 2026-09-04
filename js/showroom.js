@@ -18,17 +18,21 @@
     return c.toDataURL();
   };
 
-  Showroom.prototype.loadModel = function(url){
+  Showroom.prototype._ensureLoader = function(){
     const T = window.THREE;
-    if(!this._loader){
-      const mgr = new T.LoadingManager();
-      const ph = this.placeholderTexURL();
-      mgr.setURLModifier((u)=>{ if(/colormap\.png$/i.test(u) || /Textures\//i.test(u)) return ph; return u; });
-      this._loader = new T.GLTFLoader(mgr);
-      if(window.MeshoptDecoder){
-        window.MeshoptDecoder.ready.then(()=>this._loader.setMeshoptDecoder(window.MeshoptDecoder)).catch(()=>{});
-      }
+    if(this._loader) return this._loader;
+    const mgr = new T.LoadingManager();
+    const ph = this.placeholderTexURL();
+    mgr.setURLModifier((u)=>{ if(/colormap\.png$/i.test(u) || /Textures\//i.test(u)) return ph; return u; });
+    this._loader = new T.GLTFLoader(mgr);
+    if(window.MeshoptDecoder){
+      window.MeshoptDecoder.ready.then(()=>this._loader.setMeshoptDecoder(window.MeshoptDecoder)).catch(()=>{});
     }
+    return this._loader;
+  };
+
+  Showroom.prototype.loadModel = function(url){
+    this._ensureLoader();
     if(this.models[url]) return Promise.resolve(this.models[url]);
     return new Promise((resolve)=>{
       this._loader.load(url,
@@ -37,6 +41,25 @@
         (err)=>{ console.warn('GLB load failed', url, err); resolve(null); }
       );
     });
+  };
+
+  // Comme loadModel, mais conserve aussi les clips d'animation du fichier (portes qui
+  // s'ouvrent, etc.) — necessaire pour la fiche 3D detaillee du garage.
+  Showroom.prototype.loadModelFull = function(url){
+    this._ensureLoader();
+    this._fullModels = this._fullModels || {};
+    if(this._fullModels[url]) return this._fullModels[url];
+    this._fullModels[url] = new Promise((resolve)=>{
+      this._loader.load(url,
+        (g)=>{
+          const scene = g.scene || (g.scenes && g.scenes[0]);
+          resolve({ scene, animations: g.animations || [] });
+        },
+        undefined,
+        (err)=>{ console.warn('GLB load failed', url, err); resolve({ scene:null, animations:[] }); }
+      );
+    });
+    return this._fullModels[url];
   };
 
   Showroom.prototype.normalizeModel = function(src, targetLen, rotY){

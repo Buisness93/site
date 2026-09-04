@@ -15,6 +15,23 @@
  .stat-bars .b{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
  .stat-bars .b i{display:block;height:100%}
  .car-card.locked{opacity:.7}
+ .btn-view3d{width:100%;margin-top:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:var(--text-1);border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;cursor:pointer}
+ .btn-view3d:hover{border-color:rgba(255,255,255,.32)}
+ #viewerModal{position:fixed;inset:0;background:rgba(4,5,8,.82);backdrop-filter:blur(6px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+ #viewerModal.hidden{display:none}
+ .viewer-panel{width:min(980px,96vw);height:min(680px,90vh);background:#0b0c11;border:1px solid rgba(255,255,255,.12);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;position:relative}
+ .viewer-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08)}
+ .viewer-head h3{font-size:20px;margin:0}
+ .viewer-close{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:var(--text-1);border-radius:10px;width:36px;height:36px;cursor:pointer;font-size:16px}
+ #viewerCanvasHost{flex:1;position:relative;touch-action:none}
+ #viewerCanvasHost canvas{display:block}
+ #viewerLoading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-2);font-size:13px;letter-spacing:.1em;text-transform:uppercase}
+ .viewer-controls{display:flex;gap:8px;flex-wrap:wrap;padding:14px 20px;border-top:1px solid rgba(255,255,255,.08)}
+ .viewer-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:var(--text-1);border-radius:10px;padding:9px 14px;font-family:inherit;font-size:13px;cursor:pointer}
+ .viewer-btn:hover{border-color:rgba(255,255,255,.32)}
+ .viewer-btn.active{background:var(--accent);border-color:var(--accent);color:#0a0a0a}
+ .viewer-btn.hidden{display:none}
+ .viewer-hint{margin-left:auto;align-self:center;font-size:11px;color:var(--text-3)}
 </style>
 </head>
 <body>
@@ -30,16 +47,38 @@
     <div class="car-grid" id="carGrid"></div>
   </div>
 </main>
+
+<div id="viewerModal" class="hidden">
+  <div class="viewer-panel">
+    <div class="viewer-head">
+      <h3 id="viewerTitle">—</h3>
+      <button class="viewer-close" id="viewerClose" title="Fermer">✕</button>
+    </div>
+    <div id="viewerCanvasHost">
+      <div id="viewerLoading">Chargement du modèle…</div>
+    </div>
+    <div class="viewer-controls">
+      <button class="viewer-btn active" id="viewerCamExt">↻ Extérieur</button>
+      <button class="viewer-btn hidden" id="viewerCamInt">🚗 Intérieur</button>
+      <button class="viewer-btn hidden" id="viewerDoors">🚪 Ouvrir les portes</button>
+      <span class="viewer-hint">Glissez pour tourner la voiture</span>
+    </div>
+  </div>
+</div>
 <footer class="footer">
   <div style="font-family:'Saira Condensed';font-weight:900;letter-spacing:.16em;color:var(--text-2);font-size:16px">DEYLO<span style="color:var(--accent)">·</span>GARAGE</div>
   <a href="index.html">← Retour à l'accueil</a>
 </footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/cars.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/economy.js"></script>
 <script src="js/nav.js"></script>
+<script src="js/showroom.js"></script>
 <script>
 (function(){
   function hexAlpha(hex, a){ const n = parseInt(hex.replace('#',''),16); return 'rgba(' + [(n>>16)&255,(n>>8)&255,n&255].join(',') + ',' + a + ')'; }
@@ -63,6 +102,7 @@
             (isUnlocked
               ? '<span class="pill pill-owned">✓ Débloquée</span>'
               : '<button class="btn btn-primary btn-block" data-buy="' + c.id + '" ' + (canAfford?'':'disabled') + '>🔒 Débloquer — 🪙 ' + c.price.toLocaleString('fr-FR') + '</button>') +
+            '<button class="btn-view3d" data-view3d="' + c.id + '">👁 Voir en 3D</button>' +
           '</div>' +
         '</div>'
       );
@@ -72,10 +112,212 @@
       const res = await DG.Economy.buyCar(btn.getAttribute('data-buy'));
       if(!res.ok){ alert(res.error || "Achat impossible"); render(); }
     }));
+    document.querySelectorAll('[data-view3d]').forEach(btn=>btn.addEventListener('click', ()=>openViewer(btn.getAttribute('data-view3d'))));
   }
 
   DG.Economy.onChange(render);
   render();
+
+  // ============================================================
+  // Fiche 3D detaillee : rotation libre, camera interieure (si une cabine
+  // est detectee dans le modele) et animations du fichier (portes, etc.),
+  // s'il y en a. Scene independante du showroom de la page d'accueil,
+  // creee/detruite a l'ouverture/fermeture pour ne pas garder de contexte
+  // WebGL inutile en memoire.
+  // ============================================================
+  let viewerRoom = null;
+  let viewerState = null; // { scene, raf, mixer, action, actionStarted, camMode, hasInterior, camHolder, dragging, lastX, velocity, rotY }
+
+  function closeViewer(){
+    if(!viewerState) return;
+    cancelAnimationFrame(viewerState.raf);
+    if(viewerState.cleanup) viewerState.cleanup();
+    const s = viewerState.scene;
+    if(s){
+      if(viewerRoom){ const idx = viewerRoom.scenes.indexOf(s); if(idx !== -1) viewerRoom.scenes.splice(idx,1); }
+      // Ne dispose PAS les geometries/materiaux : normalizeModel() clone la hierarchie
+      // mais partage les geometries/materiaux avec le modele source mis en cache
+      // (loadModelFull), reutilise a chaque ouverture. Seul le contexte WebGL (renderer)
+      // doit etre libere pour ne pas en accumuler un par voiture consultee.
+      s.renderer.dispose();
+    }
+    document.getElementById('viewerCanvasHost').innerHTML = '<div id="viewerLoading">Chargement du modèle…</div>';
+    viewerState = null;
+    document.getElementById('viewerModal').classList.add('hidden');
+  }
+
+  function setCamMode(mode){
+    if(!viewerState) return;
+    if(mode === 'int' && !viewerState.hasInterior) return;
+    viewerState.camMode = mode;
+    document.getElementById('viewerCamExt').classList.toggle('active', mode === 'ext');
+    document.getElementById('viewerCamInt').classList.toggle('active', mode === 'int');
+  }
+
+  function toggleDoors(){
+    if(!viewerState || !viewerState.action) return;
+    viewerState.doorsOpen = !viewerState.doorsOpen;
+    const action = viewerState.action;
+    action.paused = false;
+    action.timeScale = viewerState.doorsOpen ? 1 : -1;
+    if(!viewerState.actionStarted){
+      action.play();
+      viewerState.actionStarted = true;
+      if(!viewerState.doorsOpen) action.time = action.getClip().duration;
+    }
+    document.getElementById('viewerDoors').textContent = viewerState.doorsOpen ? '🚪 Fermer les portes' : '🚪 Ouvrir les portes';
+  }
+
+  async function openViewer(carId){
+    const car = DG.carById(carId);
+    if(!car) return;
+    closeViewer();
+    document.getElementById('viewerTitle').textContent = car.brand + ' ' + car.name;
+    document.getElementById('viewerModal').classList.remove('hidden');
+    const camExtBtn = document.getElementById('viewerCamExt');
+    const camIntBtn = document.getElementById('viewerCamInt');
+    const doorsBtn = document.getElementById('viewerDoors');
+    camIntBtn.classList.add('hidden');
+    doorsBtn.classList.add('hidden');
+    camExtBtn.classList.add('active'); camIntBtn.classList.remove('active');
+
+    if(!window.THREE || !window.THREE.GLTFLoader){ await new Promise(res=>{ const t=()=>{ (window.THREE&&window.THREE.GLTFLoader)?res():setTimeout(t,60); }; t(); }); }
+    if(!viewerRoom) viewerRoom = new DG.Showroom();
+    const host = document.getElementById('viewerCanvasHost');
+    const s = viewerRoom.makeScene(host, { glow: car.glow, glowI: 2.4 });
+    s.camera.position.set(4.4, 1.5, 6.2);
+
+    const state = { scene:s, raf:0, mixer:null, action:null, actionStarted:false, doorsOpen:false, camMode:'ext', hasInterior:false, camHolder:null, dragging:false, lastX:0, velocity:0, rotY:-0.5 };
+    viewerState = state;
+
+    const T = window.THREE;
+    const full = await viewerRoom.loadModelFull(car.model);
+    if(viewerState !== state) return; // fermee entre-temps
+    const loadingEl = document.getElementById('viewerLoading'); if(loadingEl) loadingEl.remove();
+    const wrap = full.scene ? viewerRoom.normalizeModel(full.scene, 4.2, car.rotY || 0) : new T.Group();
+    wrap.position.y = -0.55;
+    wrap.rotation.y = state.rotY;
+    s.scene.add(wrap);
+
+    if(full.animations && full.animations.length){
+      state.mixer = new T.AnimationMixer(wrap);
+      state.action = state.mixer.clipAction(full.animations[0]);
+      state.action.clampWhenFinished = true;
+      state.action.setLoop(T.LoopOnce, 1);
+      doorsBtn.classList.remove('hidden');
+      doorsBtn.textContent = '🚪 Ouvrir les portes';
+    }
+
+    // Point de vue habitacle : deduit des vraies positions du siege/volant dans le
+    // modele (pas de reglage a la main par voiture, chaque voiture a des proportions
+    // differentes). Tout est calcule en espace local a `wrap` — independant de sa
+    // rotation actuelle — pour rester correct meme quand la voiture tourne ensuite.
+    wrap.updateMatrixWorld(true);
+    let seatCenterW = null, wheelCenterW = null, interiorCenterW = null;
+    wrap.traverse(n=>{
+      const nm = n.name || '';
+      let box = null;
+      if(/seat|si[eè]ge/i.test(nm)){ if(seatCenterW) return; box = new T.Box3().setFromObject(n); }
+      else if(/steer|volant/i.test(nm)){ if(wheelCenterW) return; box = new T.Box3().setFromObject(n); }
+      else if(/interior|int[ée]rieur|habitacle/i.test(nm)){ if(interiorCenterW) return; box = new T.Box3().setFromObject(n); }
+      else return;
+      if(!box || !isFinite(box.min.x)) return;
+      const c = new T.Vector3(); box.getCenter(c);
+      if(/seat|si[eè]ge/i.test(nm)) seatCenterW = c;
+      else if(/steer|volant/i.test(nm)) wheelCenterW = c;
+      else interiorCenterW = c;
+    });
+    state.hasInterior = !!(seatCenterW || wheelCenterW || interiorCenterW);
+    camIntBtn.classList.toggle('hidden', !state.hasInterior);
+    if(state.hasInterior){
+      const eyeBaseW = seatCenterW || interiorCenterW || wheelCenterW;
+      const eyeBaseL = wrap.worldToLocal(eyeBaseW.clone());
+      let forwardL = null;
+      const refW = (wheelCenterW && wheelCenterW !== eyeBaseW) ? wheelCenterW : ((interiorCenterW && interiorCenterW !== eyeBaseW) ? interiorCenterW : null);
+      if(refW){ forwardL = wrap.worldToLocal(refW.clone()).sub(eyeBaseL); }
+      if(!forwardL || (forwardL.x*forwardL.x + forwardL.z*forwardL.z) < 1e-6) forwardL = new T.Vector3(0,0,1);
+      forwardL.y = 0; forwardL.normalize();
+
+      // Le siege/volant donne un AXE (avant<->arriere), pas un sens : selon la
+      // convention d'export du modele, "vers le volant" peut pointer vers l'avant
+      // ou (si l'axe est inverse) vers l'habitacle/arceau arriere. On tranche en
+      // lancant un rayon dans les deux sens depuis le siege : le sens qui degage
+      // le plus de distance avant de toucher une surface est cense etre le
+      // pare-brise (espace ouvert), l'autre le tableau de bord/arceau, tout proche.
+      const meshes = [];
+      wrap.traverse(n=>{ if(n.isMesh) meshes.push(n); });
+      const probeW = wrap.localToWorld(eyeBaseL.clone().addScaledVector(new T.Vector3(0,1,0), 0.3));
+      const dirW = forwardL.clone().transformDirection(wrap.matrixWorld).normalize();
+      const raycaster = new T.Raycaster();
+      raycaster.far = 6;
+      function clearAhead(dir){
+        raycaster.set(probeW, dir);
+        const hits = raycaster.intersectObjects(meshes, false);
+        return hits.length ? hits[0].distance : raycaster.far;
+      }
+      const distFwd = clearAhead(dirW);
+      const distBack = clearAhead(dirW.clone().negate());
+      if(distBack > distFwd) forwardL.negate();
+
+      const eyeL = eyeBaseL.clone().addScaledVector(new T.Vector3(0,1,0), 0.3).addScaledVector(forwardL, -0.08);
+      const holder = new T.Object3D();
+      holder.position.copy(eyeL);
+      holder.quaternion.setFromUnitVectors(new T.Vector3(0,0,-1), forwardL);
+      wrap.add(holder);
+      state.camHolder = holder;
+    }
+
+    const dom = s.renderer.domElement;
+    dom.style.cursor = 'grab';
+    const onDown = (e)=>{ state.dragging = true; state.velocity = 0; state.lastX = e.clientX; dom.style.cursor = 'grabbing'; };
+    const onMove = (e)=>{
+      if(!state.dragging) return;
+      const dx = e.movementX != null ? e.movementX : (e.clientX - state.lastX);
+      state.rotY += dx * 0.01;
+      state.velocity = dx * 0.01 * 60;
+      state.lastX = e.clientX;
+    };
+    const onUp = ()=>{ if(state.dragging){ state.dragging = false; dom.style.cursor = 'grab'; } };
+    dom.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    state.cleanup = ()=>{ dom.removeEventListener('pointerdown', onDown); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
+
+    let last = performance.now();
+    const extTarget = new T.Vector3(4.4, 1.5, 6.2);
+    const lookFwd = new T.Vector3(0,0,-1);
+    function loop(now){
+      state.raf = requestAnimationFrame(loop);
+      const dt = Math.min((now-last)/1000, 0.05); last = now;
+      if(state.mixer) state.mixer.update(dt);
+      if(!state.dragging){
+        if(Math.abs(state.velocity) > 0.02){ state.rotY += state.velocity*dt; state.velocity *= Math.pow(0.05, dt); }
+        else state.rotY += dt*0.22;
+      }
+      wrap.rotation.y = state.rotY;
+      if(state.camMode === 'int' && state.hasInterior){
+        const pos = new T.Vector3(); state.camHolder.getWorldPosition(pos);
+        const quat = new T.Quaternion(); state.camHolder.getWorldQuaternion(quat);
+        s.camera.position.copy(pos);
+        const look = lookFwd.clone().applyQuaternion(quat).add(pos);
+        s.camera.lookAt(look);
+      } else {
+        s.camera.position.lerp(extTarget, 0.07);
+        s.camera.lookAt(0, 0.55, 0);
+      }
+      s.renderer.render(s.scene, s.camera);
+    }
+    state.raf = requestAnimationFrame(loop);
+    s.active = true;
+  }
+  window.openViewer = openViewer;
+
+  document.getElementById('viewerClose').addEventListener('click', closeViewer);
+  document.getElementById('viewerModal').addEventListener('click', (e)=>{ if(e.target.id === 'viewerModal') closeViewer(); });
+  document.getElementById('viewerCamExt').addEventListener('click', ()=>setCamMode('ext'));
+  document.getElementById('viewerCamInt').addEventListener('click', ()=>setCamMode('int'));
+  document.getElementById('viewerDoors').addEventListener('click', toggleDoors);
+  window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeViewer(); });
 })();
 </script>
 </body>

@@ -90,16 +90,21 @@ insert into public.cars_catalog (id, price) values
   ('golf-r', 7500),
   ('suv-luxe', 12000),
   ('audi-a8', 13000),
+  ('supra', 16000),
+  ('m4-widebody', 20000),
   ('gt3', 25000),
   ('rs6-abt', 26000),
   ('huracan-performante', 45000),
   ('aventador', 60000),
   ('812-competizione', 60000),
+  ('aston-one77', 65000),
   ('aventador-svj', 82000),
   ('pagani-huayra-r', 88000),
+  ('centenario', 95000),
   ('daytona-sp3', 120000),
   ('mclaren-p1', 145000),
   ('laferrari', 175000),
+  ('aston-valhalla', 210000),
   ('chiron', 230000),
   ('veyron-ettore', 280000),
   ('w16-mistral', 340000),
@@ -138,6 +143,42 @@ alter table public.leaderboard add column if not exists user_id uuid references 
 alter table public.leaderboard add column if not exists time_seconds numeric;
 alter table public.leaderboard add column if not exists route_id text;
 alter table public.leaderboard add column if not exists created_at timestamptz not null default now();
+
+-- Corrige un bug de production : sur les bases deja existantes (creees avant ce
+-- fichier), la cle primaire de `leaderboard` portait sur `name` au lieu de `id`.
+-- Consequence : des qu'un joueur (ou un invite) soumettait un 2e score avec le
+-- meme pseudo, submit_run() echouait sur un doublon de cle primaire (erreur
+-- Postgres 23505) juste apres l'insertion dans `leaderboard` — donc AVANT
+-- d'atteindre l'insertion dans `game_sessions` et le credit des points dans
+-- `profiles.money` : plus aucun score n'etait alors enregistre/mis a jour, et
+-- les credits ne s'ajoutaient plus au portefeuille des joueurs connectes des
+-- leur 2e partie. On remet la cle primaire sur `id` (append-only : chaque
+-- partie garde sa propre ligne, comme le reste du code le suppose deja).
+alter table public.leaderboard add column if not exists id bigserial;
+do $$
+declare
+  v_pk_name text;
+  v_pk_on_id boolean;
+begin
+  select c.conname,
+         exists (
+           select 1 from unnest(c.conkey) as k
+           join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k
+           where a.attname = 'id'
+         )
+    into v_pk_name, v_pk_on_id
+  from pg_constraint c
+  where c.conrelid = 'public.leaderboard'::regclass and c.contype = 'p';
+
+  if v_pk_name is not null and not coalesce(v_pk_on_id, false) then
+    execute format('alter table public.leaderboard drop constraint %I', v_pk_name);
+    v_pk_name := null;
+  end if;
+
+  if v_pk_name is null then
+    alter table public.leaderboard add primary key (id);
+  end if;
+end $$;
 
 alter table public.leaderboard enable row level security;
 drop policy if exists "leaderboard_select_all" on public.leaderboard;
@@ -610,7 +651,7 @@ as $$
 declare
   v_uid uuid := auth.uid();
   v_days integer := floor(extract(epoch from now()) / 86400)::integer;
-  v_ids text[] := array['citadine','audi-a3','golf-r','audi-a8','rs6-abt','huracan-performante','812-competizione','aventador-svj','pagani-huayra-r','daytona-sp3','mclaren-p1','laferrari','chiron','veyron-ettore','w16-mistral','centodieci','bolide'];
+  v_ids text[] := array['citadine','audi-a3','golf-r','audi-a8','supra','m4-widebody','rs6-abt','huracan-performante','812-competizione','aston-one77','aventador-svj','pagani-huayra-r','centenario','daytona-sp3','mclaren-p1','laferrari','aston-valhalla','chiron','veyron-ettore','w16-mistral','centodieci','bolide'];
   v_car_id text;
   v_target integer;
   v_reward integer := 250;

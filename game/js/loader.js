@@ -64,6 +64,30 @@
     });
   }
 
+  // Certains modeles de trafic ont une peinture tres sombre (variantes "dark") ou une
+  // benne/caisse noire (camion a plateau) : sur les routes de nuit, peu eclairees, ils
+  // deviennent quasi invisibles, fondus dans le ciel/la route. On ajoute un leger
+  // surplus emissif (additif, ne change pas la teinte d'origine) pour qu'ils restent
+  // reperables meme dans les zones sombres, sans les faire "briller" artificiellement.
+  function boostVisibility(T, root, amount){
+    root.traverse(o=>{
+      if(o.isMesh && o.material){
+        const boost1 = (m)=>{
+          if(!m.emissive) return m;
+          m.emissive.setRGB(
+            Math.max(m.emissive.r, amount),
+            Math.max(m.emissive.g, amount),
+            Math.max(m.emissive.b, amount * 1.08)
+          );
+          m.emissiveIntensity = Math.max(m.emissiveIntensity || 0, 1);
+          m.needsUpdate = true;
+          return m;
+        };
+        o.material = Array.isArray(o.material) ? o.material.map(boost1) : boost1(o.material);
+      }
+    });
+  }
+
   function makeFallbackCar(T, opts){
     opts = opts || {};
     const g = new T.Group();
@@ -81,5 +105,5 @@
     return g;
   }
 
-  DG.Loader = { loadModel, normalizeModel, tintModel, makeFallbackCar };
+  DG.Loader = { loadModel, normalizeModel, tintModel, boostVisibility, makeFallbackCar };
 })();

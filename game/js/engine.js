@@ -49,6 +49,10 @@
       { name:'PROCHE', pos:[0,2.9,8.4], look:[0,1.0,-30] },
       { name:'STANDARD', pos:[0,4.2,11.4], look:[0,1.05,-46] },
       { name:'LARGE', pos:[0,5.6,14.8], look:[0,1.35,-62] },
+      // Pas de pos/look fixes : la position/orientation vient de _interiorHolder,
+      // ancre a l'habitacle du modele (voir _buildInteriorHolder). pos/look ici ne
+      // servent que de repli tant que _interiorHolder n'existe pas encore.
+      { name:'INTÉRIEUR', interior:true, pos:[0,2.9,8.4], look:[0,1.0,-30] },
     ];
     this._stripes = [];
     this._decor = [];
@@ -129,7 +133,11 @@
   GameEngine.prototype._preloadObstacles = function(){
     DG.Loader.loadModel('../uploads/traffic-cone-new.glb').then(m=>{ this._coneModel = m; });
     this._trafficModels = [];
-    TRAFFIC_FILES.forEach(t=>DG.Loader.loadModel(t.file).then(m=>{ if(m) this._trafficModels.push({ model:m, len:t.len }); }));
+    TRAFFIC_FILES.forEach(t=>DG.Loader.loadModel(t.file).then(m=>{
+      if(!m) return;
+      DG.Loader.boostVisibility(window.THREE, m, 0.055);
+      this._trafficModels.push({ model:m, len:t.len });
+    }));
   };
 
   GameEngine.prototype._onResize = function(){
@@ -230,6 +238,7 @@
     this._player = model ? DG.Loader.normalizeModel(T, model, 3.4, Math.PI - (car.rotY||0)) : DG.Loader.makeFallbackCar(T, { body:car.body, emissive:0x0a0e16 });
     this._player.position.set(0,0,0);
     this.scene.add(this._player);
+    this._buildInteriorHolder();
 
     this._lane = 1; this._playerX = LANES[1];
     this._speed = this.mult.baseSpeed;
@@ -259,12 +268,56 @@
     this.setCamLabel();
   };
 
+  // Camera interieure : ancre un point de vue habitacle au vehicule du joueur.
+  // Comme _player garde toujours la meme orientation pendant la course (seul un
+  // leger roulis en z change de voie), "l'avant" reste local -Z de _player — pas
+  // besoin de deviner le sens comme dans la fiche 3D du garage (voitures libres
+  // de tourner dans tous les sens). Si aucun siege/habitacle n'est detecte dans le
+  // modele, on retombe sur une hauteur d'oeil generique deduite de la boite englobante.
+  GameEngine.prototype._buildInteriorHolder = function(){
+    const T = window.THREE;
+    const wrap = this._player;
+    wrap.updateMatrixWorld(true);
+    let seatCenterW = null, interiorCenterW = null;
+    wrap.traverse(n=>{
+      const nm = n.name || '';
+      if(/seat|si[eè]ge/i.test(nm)){
+        if(seatCenterW) return;
+        const b = new T.Box3().setFromObject(n);
+        if(isFinite(b.min.x)){ const c = new T.Vector3(); b.getCenter(c); seatCenterW = c; }
+      } else if(/interior|int[ée]rieur|habitacle/i.test(nm)){
+        if(interiorCenterW) return;
+        const b = new T.Box3().setFromObject(n);
+        if(isFinite(b.min.x)){ const c = new T.Vector3(); b.getCenter(c); interiorCenterW = c; }
+      }
+    });
+    let eyeL;
+    const baseW = seatCenterW || interiorCenterW;
+    if(baseW){
+      eyeL = wrap.worldToLocal(baseW.clone()).add(new T.Vector3(0, 0.42, -0.2));
+    } else {
+      // Aucun siege/habitacle detecte (modele exterieur uniquement) : plutot que de
+      // deviner un point "dans" une carrosserie fermee (risque de finir colle contre
+      // une portiere ou un becquet, tres variable selon la forme exacte du modele),
+      // on se place juste au-dessus du toit — garanti degage de toute geometrie du
+      // vehicule quelle que soit sa forme, cote plus proche d'une cam de toit que
+      // d'un habitacle, mais fiable pour n'importe quelle voiture.
+      const box = new T.Box3().setFromObject(wrap);
+      eyeL = new T.Vector3(0, box.max.y + 0.1, 0);
+    }
+    const holder = new T.Object3D();
+    holder.position.copy(eyeL);
+    wrap.add(holder);
+    this._interiorHolder = holder;
+  };
+
   GameEngine.prototype.pause = function(){ if(this.playing){ this.paused = true; if(this.cb.onPauseChange) this.cb.onPauseChange(true); } };
   GameEngine.prototype.resume = function(){ if(this.playing){ this.paused = false; this._last = performance.now(); if(this.cb.onPauseChange) this.cb.onPauseChange(false); } };
 
   GameEngine.prototype.quit = function(){
     this.playing = false; this.paused = false;
     if(this._player){ this.scene.remove(this._player); this._player = null; }
+    this._interiorHolder = null;
     if(this._ghostMesh){ this.scene.remove(this._ghostMesh); this._ghostMesh = null; }
     this._obstacles.forEach(o=>this.scene.remove(o.mesh)); this._obstacles = [];
     this._pickups.forEach(p=>this.scene.remove(p.mesh)); this._pickups = [];
@@ -358,16 +411,30 @@
   };
 
   GameEngine.prototype._update = function(dt, now){
+    const T = window.THREE;
     const cp = this._camPresets[this._camIndex];
-    const bz = (this.playing && this._boostActive) ? -1.0 : 0;
-    const shake = (this.playing && this._boostActive) ? Math.sin(now*0.05)*0.05 : 0;
-    this.camera.position.x += (cp.pos[0]+shake - this.camera.position.x)*0.07;
-    this.camera.position.y += (cp.pos[1] - this.camera.position.y)*0.07;
-    this.camera.position.z += (cp.pos[2]+bz - this.camera.position.z)*0.07;
-    this._look.x += (cp.look[0]-this._look.x)*0.07;
-    this._look.y += (cp.look[1]-this._look.y)*0.07;
-    this._look.z += (cp.look[2]-this._look.z)*0.07;
-    this.camera.lookAt(this._look);
+    if(cp.interior && this._interiorHolder){
+      // Vue habitacle : la camera est rigidement calee sur le siege (aucun lissage,
+      // sinon elle semble flotter hors de la carrosserie pendant les changements de voie).
+      const pos = new T.Vector3(); this._interiorHolder.getWorldPosition(pos);
+      const quat = new T.Quaternion(); this._interiorHolder.getWorldQuaternion(quat);
+      this.camera.position.copy(pos);
+      this.camera.quaternion.copy(quat);
+      this.camera.fov += (76 - this.camera.fov) * Math.min(1, dt*6);
+      this.camera.updateProjectionMatrix();
+    } else {
+      const bz = (this.playing && this._boostActive) ? -1.0 : 0;
+      const shake = (this.playing && this._boostActive) ? Math.sin(now*0.05)*0.05 : 0;
+      this.camera.position.x += (cp.pos[0]+shake - this.camera.position.x)*0.07;
+      this.camera.position.y += (cp.pos[1] - this.camera.position.y)*0.07;
+      this.camera.position.z += (cp.pos[2]+bz - this.camera.position.z)*0.07;
+      this._look.x += (cp.look[0]-this._look.x)*0.07;
+      this._look.y += (cp.look[1]-this._look.y)*0.07;
+      this._look.z += (cp.look[2]-this._look.z)*0.07;
+      this.camera.lookAt(this._look);
+      this.camera.fov += (50 - this.camera.fov) * Math.min(1, dt*6);
+      this.camera.updateProjectionMatrix();
+    }
 
     let scroll = (this.playing ? this._speed : 7) * dt;
     if(this.playing){
@@ -423,12 +490,19 @@
     }
 
     this._spawnT -= dt;
-    const interval = Math.max(0.3, 1.0 - this._time*0.025);
+    const interval = Math.max(0.42, 1.0 - this._time*0.018);
     if(this._spawnT <= 0){
       this._spawnT = interval;
       const l1 = this._spawnObstacle();
-      if(this._time > 13 && Math.random() < Math.min(0.55, (this._time-13)*0.024)){
-        let l2 = Math.floor(Math.random()*4); if(l2 === l1) l2 = (l1+1)%4;
+      if(this._time > 18 && Math.random() < Math.min(0.4, (this._time-18)*0.016)){
+        // Les deux obstacles d'une meme vague apparaissent au meme endroit (z=-134) et
+        // avancent ensuite a la meme vitesse : ils restent donc cote a cote a l'ecran
+        // pendant toute leur traversee. Une voie d'ecart ne suffit pas — un camion/bus
+        // est assez large pour deborder sur la voie voisine et masquer/chevaucher le
+        // vehicule qui s'y trouve. On impose donc au moins 2 voies d'ecart entre les
+        // deux vehicules d'une meme vague.
+        const farLanes = [0,1,2,3].filter(l=>Math.abs(l-l1) >= 2);
+        const l2 = farLanes[Math.floor(Math.random()*farLanes.length)];
         this._spawnObstacle(l2);
       }
     }
