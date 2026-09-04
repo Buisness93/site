@@ -92,19 +92,26 @@ insert into public.cars_catalog (id, price) values
   ('audi-a8', 13000),
   ('supra', 16000),
   ('m4-widebody', 20000),
+  ('porsche-911', 24000),
   ('gt3', 25000),
   ('rs6-abt', 26000),
   ('huracan-performante', 45000),
+  ('gt3-rs', 52000),
   ('aventador', 60000),
   ('812-competizione', 60000),
   ('aston-one77', 65000),
   ('aventador-svj', 82000),
   ('pagani-huayra-r', 88000),
+  ('huayra-roadster', 92000),
   ('centenario', 95000),
+  ('huayra-bc', 110000),
   ('daytona-sp3', 120000),
+  ('pagani-imola', 135000),
   ('mclaren-p1', 145000),
   ('laferrari', 175000),
+  ('gma-t50', 195000),
   ('aston-valhalla', 210000),
+  ('revuelto', 220000),
   ('chiron', 230000),
   ('veyron-ettore', 280000),
   ('w16-mistral', 340000),
@@ -651,7 +658,7 @@ as $$
 declare
   v_uid uuid := auth.uid();
   v_days integer := floor(extract(epoch from now()) / 86400)::integer;
-  v_ids text[] := array['citadine','audi-a3','golf-r','audi-a8','supra','m4-widebody','rs6-abt','huracan-performante','812-competizione','aston-one77','aventador-svj','pagani-huayra-r','centenario','daytona-sp3','mclaren-p1','laferrari','aston-valhalla','chiron','veyron-ettore','w16-mistral','centodieci','bolide'];
+  v_ids text[] := array['citadine','audi-a3','golf-r','audi-a8','supra','m4-widebody','porsche-911','rs6-abt','huracan-performante','gt3-rs','812-competizione','aston-one77','aventador-svj','pagani-huayra-r','huayra-roadster','centenario','huayra-bc','daytona-sp3','pagani-imola','mclaren-p1','laferrari','gma-t50','aston-valhalla','revuelto','chiron','veyron-ettore','w16-mistral','centodieci','bolide'];
   v_car_id text;
   v_target integer;
   v_reward integer := 250;

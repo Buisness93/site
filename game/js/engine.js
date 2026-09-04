@@ -278,11 +278,16 @@
     // pieds) l'emportait par volume sur le vrai siege ("Seats_9"), plaçant la
     // camera sous la caisse au lieu du siege.
     const minSize = Math.min(xLen, zLen) * 0.12;
+    // Certains modeles n'ont pas de vrai noeud "siege" mais un tapis/moquette nomme
+    // avec "interior" dedans (ex: "rugs_all_rug_interior_0") : plausible en taille,
+    // mais au niveau du plancher et decale sur le cote — pire que le repli generique.
+    // On exclut ces pieces de garnissage evidentes de la categorie "interieur".
+    const EXCLUDE_RE = /rug|carpet|tapis|moquette|floor|plancher|mat\b|grid|trim|garnish|console|plastic|panel|badge|logo|belt|ceinture/i;
     function bestMatch(re){
       let found = null, bestVol = 0;
       wrap.traverse(n=>{
         const nm = n.name || '';
-        if(!re.test(nm)) return;
+        if(!re.test(nm) || EXCLUDE_RE.test(nm)) return;
         const b = new T.Box3().setFromObject(n);
         if(!isFinite(b.min.x)) return;
         const s = new T.Vector3(); b.getSize(s);
