@@ -86,6 +86,15 @@
     camera.lookAt(0,1.1,-46);
     this.camera = camera;
     this._look = new T.Vector3(0,1.1,-46);
+    scene.add(camera);
+    // Lumiere d'habitacle : accrochee a la camera (suit exactement ce qu'elle regarde),
+    // eteinte hors vue interieure. Sans elle, le tableau de bord/volant restent quasi
+    // noirs la nuit (seul un reflet ponctuel du ciel/decor est visible — juste "un rayon
+    // de lumiere" au lieu d'un habitacle lisible).
+    this._camLight = new T.PointLight(0xfff2d8, 0, 2.6, 1.7);
+    this._camLight.position.set(0, 0.45, 0.1);
+    camera.add(this._camLight);
+    this._routeAmbientI = 0.28;
 
     this.ambientLight = new T.AmbientLight(0xffffff, 0.28); scene.add(this.ambientLight);
     this.keyLight = new T.DirectionalLight(0xffffff, 1.1); this.keyLight.position.set(6,10,7); scene.add(this.keyLight);
@@ -195,6 +204,7 @@
       this.keyLight.color.setHex(L.key); this.keyLight.intensity = L.keyI;
       this.hemiLight.color.setHex(L.hemiSky); this.hemiLight.groundColor.setHex(L.hemiGround); this.hemiLight.intensity = L.hemiI;
       this.ambientLight.color.setHex(L.ambient); this.ambientLight.intensity = L.ambientI;
+      this._routeAmbientI = L.ambientI;
     }
     const DECOR_N = 16;
     this._decor = route.buildDecor(T, this.scene, DECOR_N) || [];
@@ -425,6 +435,8 @@
       this.camera.quaternion.copy(quat);
       this.camera.fov += (76 - this.camera.fov) * Math.min(1, dt*6);
       this.camera.updateProjectionMatrix();
+      if(this._camLight) this._camLight.intensity += (3.4 - this._camLight.intensity) * Math.min(1, dt*6);
+      this.ambientLight.intensity += ((this._routeAmbientI + 0.4) - this.ambientLight.intensity) * Math.min(1, dt*6);
     } else {
       const bz = (this.playing && this._boostActive) ? -1.0 : 0;
       const shake = (this.playing && this._boostActive) ? Math.sin(now*0.05)*0.05 : 0;
@@ -437,6 +449,8 @@
       this.camera.lookAt(this._look);
       this.camera.fov += (50 - this.camera.fov) * Math.min(1, dt*6);
       this.camera.updateProjectionMatrix();
+      if(this._camLight) this._camLight.intensity += (0 - this._camLight.intensity) * Math.min(1, dt*6);
+      this.ambientLight.intensity += (this._routeAmbientI - this.ambientLight.intensity) * Math.min(1, dt*6);
     }
 
     let scroll = (this.playing ? this._speed : 7) * dt;
