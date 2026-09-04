@@ -112,6 +112,23 @@ h1,h2,h3{font-family:'Saira Condensed',sans-serif;text-transform:uppercase;margi
 .daily-card.done .daily-cta{background:rgba(255,255,255,.12);color:#cfd6df;box-shadow:none}
 .daily-card.selected .daily-cta{background:#2fea6a;color:#0a1408}
 .daily-card.locked .daily-cta{background:rgba(255,90,90,.16);color:#ff9090;box-shadow:none}
+
+/* Ecran de fin de partie : voiture au centre, score en haut, classement/defi en cotes */
+.over-stats{display:flex;gap:clamp(24px,6vw,52px);flex-wrap:wrap;justify-content:center}
+.over-stat-label{font-size:11px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase}
+.over-stat-value{font-family:'Saira Condensed';font-weight:900;font-size:clamp(32px,5vw,46px);line-height:1.1}
+.over-row{display:flex;gap:20px;justify-content:center;align-items:stretch;flex-wrap:wrap-reverse;width:min(1000px,98%)}
+.over-panel{width:250px;flex:0 0 250px;box-sizing:border-box;background:linear-gradient(180deg,rgba(24,26,38,.92),rgba(8,9,14,.94));border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:16px 18px;text-align:left;box-shadow:0 24px 44px -28px rgba(0,0,0,.7)}
+.over-panel-title{font-family:'Saira Condensed';font-weight:900;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#e8ecf1;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.over-panel.over-daily{border-color:rgba(255,204,0,.32);background:linear-gradient(180deg,rgba(41,32,4,.55),rgba(10,9,4,.9))}
+.over-panel.over-daily .over-panel-title{color:#ffcc00}
+.over-panel.over-daily .over-daily-desc{font-size:12.5px;color:#cfd6df;margin:0 0 14px;line-height:1.4}
+/* Panneau classement de fin de partie trop etroit pour les 2 colonnes "meta"
+   (voiture/temps) du tableau complet : on ne garde que rang/nom/score. */
+.over-panel .leaderboard-row .meta{display:none}
+.over-panel .leaderboard-row{padding:7px 10px;gap:8px}
+.over-panel .leaderboard-row.top3{padding:9px 12px;gap:8px}
+@media (max-width:760px){ .over-panel{width:100%;flex:1 1 100%} #overCarSpin{order:-1} }
 .daily-card.done{cursor:default}
 .daily-card.done:hover{border-color:rgba(255,204,0,.35);background:linear-gradient(90deg,rgba(255,204,0,.14),rgba(255,149,0,.06))}
 
