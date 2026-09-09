@@ -46,6 +46,60 @@
     toRemove.forEach(n=>{ if(n.parent) n.parent.remove(n); });
   }
 
+  // Box3.setFromObject() ignore la pose du squelette d'un SkinnedMesh (limitation
+  // connue de three.js) : il ne mesure que la geometrie "bind pose" (repos), pas
+  // la forme reellement affichee une fois les os appliques. Ca ne se voit pas sur
+  // la plupart des modeles (repos ~= forme finale), mais certains exports riggent
+  // CHAQUE piece de carrosserie sur son propre os (ex. pour permettre l'animation
+  // de suspension) : leur bind pose n'a alors plus aucun rapport avec la voiture
+  // reelle, ce qui fausse completement le calcul de taille. On reproduit ici le
+  // calcul de skinning (identique a celui du shader GPU) pour mesurer la vraie
+  // position posee de chaque sommet.
+  // .getComponent() n'existe que sur BufferAttribute, pas sur InterleavedBufferAttribute
+  // (frequent pour les attributs skinIndex/skinWeight issus de GLTFLoader) : on passe par
+  // getX/getY/getZ/getW, supportes par les deux.
+  function attrComp(attr, i, k){
+    switch(k){ case 0: return attr.getX(i); case 1: return attr.getY(i); case 2: return attr.getZ(i); default: return attr.getW(i); }
+  }
+
+  function worldBox(T, root){
+    const box = new T.Box3();
+    const v = new T.Vector3();
+    const tmp4 = new T.Vector4();
+    const boneMat = new T.Matrix4();
+    const acc = new T.Vector4();
+    root.traverse(n=>{
+      if(!n.isMesh) return;
+      const geo = n.geometry;
+      const pos = geo && geo.attributes && geo.attributes.position;
+      if(!n.isSkinnedMesh || !n.skeleton || !pos || !geo.attributes.skinIndex || !geo.attributes.skinWeight){
+        box.expandByObject(n);
+        return;
+      }
+      n.skeleton.update();
+      const boneMatrices = n.skeleton.boneMatrices;
+      const skinIndex = geo.attributes.skinIndex, skinWeight = geo.attributes.skinWeight;
+      for(let i=0;i<pos.count;i++){
+        v.fromBufferAttribute(pos, i);
+        tmp4.set(v.x, v.y, v.z, 1).applyMatrix4(n.bindMatrix);
+        acc.set(0,0,0,0);
+        for(let k=0;k<4;k++){
+          const weight = attrComp(skinWeight, i, k);
+          if(!weight) continue;
+          boneMat.fromArray(boneMatrices, attrComp(skinIndex, i, k) * 16);
+          const px=tmp4.x, py=tmp4.y, pz=tmp4.z, pw=tmp4.w, e=boneMat.elements;
+          acc.x += weight*(e[0]*px+e[4]*py+e[8]*pz+e[12]*pw);
+          acc.y += weight*(e[1]*px+e[5]*py+e[9]*pz+e[13]*pw);
+          acc.z += weight*(e[2]*px+e[6]*py+e[10]*pz+e[14]*pw);
+          acc.w += weight*(e[3]*px+e[7]*py+e[11]*pz+e[15]*pw);
+        }
+        v.set(acc.x, acc.y, acc.z).applyMatrix4(n.bindMatrixInverse).applyMatrix4(n.matrixWorld);
+        box.expandByPoint(v);
+      }
+    });
+    return box;
+  }
+
   function normalizeModel(T, src, targetLen, rotY){
     // src.clone(true) ne recree pas correctement les os d'un modele rigge (SkinnedMesh) :
     // le clone garde une reference vers le squelette ORIGINAL, donc il continue de se
@@ -58,7 +112,7 @@
     stripGroundPlanes(obj);
     obj.rotation.y = rotY || 0;
     obj.updateMatrixWorld(true);
-    const box = new T.Box3().setFromObject(obj);
+    const box = worldBox(T, obj);
     const size = new T.Vector3(); box.getSize(size);
     const center = new T.Vector3(); box.getCenter(center);
     const maxDim = Math.max(size.x, size.z) || 1;

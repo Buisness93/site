@@ -214,20 +214,32 @@
     // differentes). Tout est calcule en espace local a `wrap` — independant de sa
     // rotation actuelle — pour rester correct meme quand la voiture tourne ensuite.
     wrap.updateMatrixWorld(true);
-    let seatCenterW = null, wheelCenterW = null, interiorCenterW = null;
+    // On garde le plus GROS noeud correspondant a chaque categorie, pas le premier
+    // trouve : certains modeles nomment une sous-piece (ex. garniture de porte)
+    // "..._interior_0" en reutilisant le nom du materiau, ce qui matche le motif
+    // avant d'atteindre le vrai groupe "habitacle" — prendre le plus volumineux
+    // evite de caler la camera dans une garniture au lieu du cockpit.
+    let seatBest = null, wheelBest = null, interiorBest = null;
     wrap.traverse(n=>{
       const nm = n.name || '';
-      let box = null;
-      if(/seat|si[eè]ge/i.test(nm)){ if(seatCenterW) return; box = new T.Box3().setFromObject(n); }
-      else if(/steer|volant/i.test(nm)){ if(wheelCenterW) return; box = new T.Box3().setFromObject(n); }
-      else if(/interior|int[ée]rieur|habitacle/i.test(nm)){ if(interiorCenterW) return; box = new T.Box3().setFromObject(n); }
+      let slot;
+      if(/seat|si[eè]ge/i.test(nm)) slot = 'seat';
+      else if(/steer|volant/i.test(nm)) slot = 'wheel';
+      else if(/interior|int[ée]rieur|habitacle/i.test(nm)) slot = 'interior';
       else return;
-      if(!box || !isFinite(box.min.x)) return;
+      const box = new T.Box3().setFromObject(n);
+      if(!isFinite(box.min.x)) return;
+      const size = new T.Vector3(); box.getSize(size);
+      const vol = size.x * size.y * size.z;
+      const best = slot === 'seat' ? seatBest : slot === 'wheel' ? wheelBest : interiorBest;
+      if(best && best.vol >= vol) return;
       const c = new T.Vector3(); box.getCenter(c);
-      if(/seat|si[eè]ge/i.test(nm)) seatCenterW = c;
-      else if(/steer|volant/i.test(nm)) wheelCenterW = c;
-      else interiorCenterW = c;
+      const rec = { vol, center:c };
+      if(slot === 'seat') seatBest = rec; else if(slot === 'wheel') wheelBest = rec; else interiorBest = rec;
     });
+    const seatCenterW = seatBest && seatBest.center;
+    const wheelCenterW = wheelBest && wheelBest.center;
+    const interiorCenterW = interiorBest && interiorBest.center;
     state.hasInterior = !!(seatCenterW || wheelCenterW || interiorCenterW);
     camIntBtn.classList.toggle('hidden', !state.hasInterior);
     if(state.hasInterior){
@@ -247,10 +259,22 @@
       // pare-brise (espace ouvert), l'autre le tableau de bord/arceau, tout proche.
       const meshes = [];
       wrap.traverse(n=>{ if(n.isMesh) meshes.push(n); });
-      const probeW = wrap.localToWorld(eyeBaseL.clone().addScaledVector(new T.Vector3(0,1,0), 0.3));
-      const dirW = forwardL.clone().transformDirection(wrap.matrixWorld).normalize();
       const raycaster = new T.Raycaster();
       raycaster.far = 6;
+
+      // Hauteur d'oeil adaptative : une remontee fixe de 0.3 (pensee pour un
+      // habitacle "normal") peut coller la camera dans le toit d'un cockpit
+      // tres bas et aplati (ex. hypercar a habitacle carbone bas). On sonde la
+      // vraie distance au plafond au-dessus du pivot et on ne monte que d'une
+      // fraction de cette marge, pour rester toujours sous la surface reelle.
+      const ceilRay = new T.Raycaster(); ceilRay.far = 1.2;
+      ceilRay.set(eyeBaseW.clone(), new T.Vector3(0,1,0));
+      const ceilHits = ceilRay.intersectObjects(meshes, false);
+      const ceilDist = ceilHits.length ? ceilHits[0].distance : 0.3;
+      const eyeUp = Math.min(0.3, Math.max(0.05, ceilDist * 0.55));
+
+      const probeW = wrap.localToWorld(eyeBaseL.clone().addScaledVector(new T.Vector3(0,1,0), eyeUp));
+      const dirW = forwardL.clone().transformDirection(wrap.matrixWorld).normalize();
       function clearAhead(dir){
         raycaster.set(probeW, dir);
         const hits = raycaster.intersectObjects(meshes, false);
@@ -260,7 +284,7 @@
       const distBack = clearAhead(dirW.clone().negate());
       if(distBack > distFwd) forwardL.negate();
 
-      const eyeL = eyeBaseL.clone().addScaledVector(new T.Vector3(0,1,0), 0.3).addScaledVector(forwardL, -0.08);
+      const eyeL = eyeBaseL.clone().addScaledVector(new T.Vector3(0,1,0), eyeUp).addScaledVector(forwardL, -0.08);
       const holder = new T.Object3D();
       holder.position.copy(eyeL);
       holder.quaternion.setFromUnitVectors(new T.Vector3(0,0,-1), forwardL);
