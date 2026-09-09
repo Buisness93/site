@@ -106,6 +106,7 @@ insert into public.cars_catalog (id, price) values
   ('centenario', 120000),
   ('huayra-bc', 135000),
   ('daytona-sp3', 145000),
+  ('apollo-ie', 180000),
   ('pagani-imola', 210000),
   ('mclaren-p1', 220000),
   ('laferrari', 420000),
@@ -725,7 +726,7 @@ as $$
 declare
   v_uid uuid := auth.uid();
   v_days integer := floor(extract(epoch from now()) / 86400)::integer;
-  v_ids text[] := array['citadine','audi-a3','golf-r','audi-a8','supra','m4-widebody','porsche-911','rs6-abt','huracan-performante','gt3-rs','812-competizione','aston-one77','aventador-svj','pagani-huayra-r','huayra-roadster','centenario','huayra-bc','daytona-sp3','pagani-imola','mclaren-p1','laferrari','gma-t50','aston-valhalla','revuelto','chiron','veyron-ettore','w16-mistral','centodieci','bolide'];
+  v_ids text[] := array['citadine','audi-a3','golf-r','audi-a8','supra','m4-widebody','porsche-911','rs6-abt','huracan-performante','gt3-rs','812-competizione','aston-one77','aventador-svj','pagani-huayra-r','huayra-roadster','centenario','huayra-bc','daytona-sp3','apollo-ie','pagani-imola','mclaren-p1','laferrari','gma-t50','aston-valhalla','revuelto','chiron','veyron-ettore','w16-mistral','centodieci','bolide'];
   v_car_id text;
   v_target integer;
   v_reward integer := 250;
