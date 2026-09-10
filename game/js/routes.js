@@ -129,10 +129,14 @@
   // vide a la bonne position des l'appel, puis le remplit une fois le modele
   // arrive (repli sur l'ancienne geometrie procedurale si le chargement echoue).
   let _palmModelP = null, _umbrellaModelP = null, _gasStationModelP = null, _lampModelP = null;
+  let _cyberBuildingP = null, _singaporeBuildingP = null, _asianSkylineP = null;
   function loadPalmModel(){ if(!_palmModelP) _palmModelP = DG.Loader.loadModel('../uploads/tropical_palm_tree.glb'); return _palmModelP; }
   function loadUmbrellaModel(){ if(!_umbrellaModelP) _umbrellaModelP = DG.Loader.loadModel('../uploads/umbrella_wooden_chair.glb'); return _umbrellaModelP; }
   function loadGasStationModel(){ if(!_gasStationModelP) _gasStationModelP = DG.Loader.loadModel('../uploads/gas-station.glb'); return _gasStationModelP; }
   function loadLampModel(){ if(!_lampModelP) _lampModelP = DG.Loader.loadModel('../uploads/lampadaire.glb'); return _lampModelP; }
+  function loadCyberBuilding(){ if(!_cyberBuildingP) _cyberBuildingP = DG.Loader.loadModel('../uploads/g1_cyberpunk_building.glb'); return _cyberBuildingP; }
+  function loadSingaporeBuilding(){ if(!_singaporeBuildingP) _singaporeBuildingP = DG.Loader.loadModel('../uploads/singapore_office_skyscraper_free.glb'); return _singaporeBuildingP; }
+  function loadAsianSkyline(){ if(!_asianSkylineP) _asianSkylineP = DG.Loader.loadModel('../uploads/asian_themed_low_poly_night_city_buildings.glb'); return _asianSkylineP; }
 
   // Redimensionne un modele charge a une HAUTEUR cible (palmier/parasol : ce qui
   // compte pour s'inserer dans le decor existant, c'est leur hauteur, pas leur
@@ -215,6 +219,41 @@
     return holder;
   }
 
+  // Batiment de la rue neon : pioche au hasard entre le batiment procedural
+  // (fenetres neon generees) et 2 vrais modeles .glb — sinon c'etait toujours
+  // la meme silhouette de boite qui se repetait le long de la rue.
+  function neonBuilding(T, x, z, colorHex){
+    const roll = Math.random();
+    if(roll < 0.34){
+      const h = 11 + Math.random()*30;
+      const m = building(T, 3.9, h, 3.9, 0x0a0812, colorHex);
+      m.position.set(x, h/2, z);
+      return m;
+    }
+    const holder = new T.Group();
+    holder.position.set(x, 0, z);
+    holder.rotation.y = Math.random()*Math.PI*2;
+    if(roll < 0.67){
+      const h = 18 + Math.random()*22;
+      loadCyberBuilding().then(src=>{ if(src) holder.add(sizeModelByHeight(T, src, h)); });
+    } else {
+      const h = 26 + Math.random()*22;
+      loadSingaporeBuilding().then(src=>{ if(src) holder.add(sizeModelByHeight(T, src, h)); });
+    }
+    return holder;
+  }
+
+  // Repere de fond occasionnel (grappe de buildings + enseignes lumineuses
+  // deja composee) : pose loin derriere les batiments du premier plan pour
+  // donner un peu de profondeur a la skyline, sans se substituer aux batiments
+  // au bord de la route (sa forme, large et basse, ne leur ressemble pas).
+  function neonSkylineBackdrop(T, x, z){
+    const holder = new T.Group();
+    holder.position.set(x, 0, z);
+    loadAsianSkyline().then(src=>{ if(src) holder.add(sizeModelByFootprint(T, src, 34)); });
+    return holder;
+  }
+
   // Parasol de plage colore (remplace les anciens "tas" violets qui ne lisaient
   // pas comme du sable) : mat + toile conique rayee, pose pres de la route.
   function beachUmbrella(T, x, z, hex){
@@ -279,9 +318,32 @@
         for(let i=0;i<N;i++){
           const side = i % 2 === 0 ? -1 : 1;
           const z = -12 - i*9;
+          // La station essence a besoin d'une ouverture dans la glissiere pour
+          // une vraie entree/sortie (sinon la barriere continue devant son
+          // acces donnait l'impression qu'on ne pouvait pas y acceder). Mais son
+          // cycle de retour est 5x plus long que celui du reste du decor (voir
+          // plus bas) : si on se contentait de ne jamais poser de glissiere ici,
+          // l'ouverture reviendrait a CHAQUE tour du decor (144 unites) alors
+          // que la station, elle, n'y est que 1 tour sur 5 — une glissiere
+          // cassee sans raison 4 fois sur 5. On pose donc 4 glissieres de
+          // secours qui partagent le meme cycle long que la station, decalees
+          // d'un tour chacune : elles occupent la place a tour de role pendant
+          // les 4 tours "sans station", et seul le tour de la station reste
+          // ouvert.
+          const wrap = this.spacing || 9;
+          const hasGasStation = i % 9 === 7;
 
-          const rail = guardrail(T, side*4.35, z, side);
-          scene.add(rail); items.push(rail);
+          if(hasGasStation){
+            const gasWrapDist = wrap * N * 5;
+            for(let k=1;k<5;k++){
+              const filler = guardrail(T, side*4.35, z - wrap*N*k, side);
+              filler.userData.wrapDist = gasWrapDist;
+              scene.add(filler); items.push(filler);
+            }
+          } else {
+            const rail = guardrail(T, side*4.35, z, side);
+            scene.add(rail); items.push(rail);
+          }
 
           if(i % 3 === 0){
             const t = pineTree(T, side*(6.4 + Math.random()*2.4), z + 2.5);
@@ -303,14 +365,16 @@
             scene.add(sl); items.push(sl);
           }
 
-          // Station essence : repere pose pres de la route pour bien la voir.
-          // Le decor scroll/boucle sur une distance courte (144 unites) partagee
-          // par tout le reste : sans wrapDist plus grand, ce repere "rare" repasse
-          // en fait toutes les quelques secondes a haute vitesse. On lui donne
-          // donc son propre cycle de retour, bien plus long.
-          if(i % 9 === 7){
-            const gs = gasStationModel(T, side*(24 + Math.random()*6), z - 4, side<0 ? Math.PI*0.5 : -Math.PI*0.5);
-            gs.userData.wrapDist = (this.spacing || 9) * N * 5;
+          // Station essence : collee au bord de la route (juste apres la
+          // glissiere, dont l'ouverture ci-dessus sert d'entree/sortie) pour
+          // bien la voir en passant. Le decor scroll/boucle sur une distance
+          // courte (144 unites) partagee par tout le reste : sans wrapDist plus
+          // grand, ce repere "rare" repasse en fait toutes les quelques
+          // secondes a haute vitesse. On lui donne donc son propre cycle de
+          // retour, bien plus long.
+          if(hasGasStation){
+            const gs = gasStationModel(T, side*(15 + Math.random()*3), z - 4, side<0 ? Math.PI*0.5 : -Math.PI*0.5);
+            gs.userData.wrapDist = wrap * N * 5;
             scene.add(gs); items.push(gs);
           }
         }
@@ -371,13 +435,18 @@
         const neon = [0xff3df0, 0x3df0ff, 0xffe23d, 0x7a3dff, 0x3dffb0];
         for(let i=0;i<N;i++){
           const side = i % 2 === 0 ? -1 : 1;
-          const h = 11 + Math.random()*30;
           const c = neon[i % neon.length];
-          const m = building(T, 3.9, h, 3.9, 0x0a0812, c);
-          m.position.set(side*(9 + Math.random()*7), h/2, -18 - i*8);
+          const m = neonBuilding(T, side*(9 + Math.random()*7), -18 - i*8, c);
           scene.add(m); items.push(m);
           const sl = lampModel(T, side*5.9, -12 - i*8, neon[(i+2) % neon.length]);
           scene.add(sl); items.push(sl);
+
+          // Skyline lointaine occasionnelle, en retrait derriere le premier
+          // plan, pour donner un peu de profondeur a la rue.
+          if(i % 6 === 3){
+            const bg = neonSkylineBackdrop(T, side*(30 + Math.random()*10), -18 - i*8 - 22);
+            scene.add(bg); items.push(bg);
+          }
         }
         return items;
       }
