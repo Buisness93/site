@@ -249,6 +249,11 @@
     this._personalBest = personalBest || 0;
     this._recordBroken = false;
     this._nearMissStreak = 0;
+    // Suit le temps recemment passe dans chaque voie (moyenne glissante, se
+    // desactive avec le temps) : sert a reperer la "planque" du joueur — les 2
+    // voies ou il se contente de rester — pour l'en deloger explicitement au
+    // lieu de bloquer 2 voies au hasard (voir la vague double dans _update).
+    this._laneUse = [0, 0, 0, 0];
 
     this.playing = true; this.paused = false;
     this.setCamLabel();
@@ -327,7 +332,11 @@
     if(this.renderer){ this.renderer.dispose(); if(this.renderer.domElement.parentNode) this.renderer.domElement.parentNode.removeChild(this.renderer.domElement); }
   };
 
-  GameEngine.prototype._spawnObstacle = function(forceLane){
+  // maxW : plafond de largeur (collision + choix du gabarit) utilise quand cet
+  // obstacle partage sa vague avec un autre sur une voie adjacente (voir la
+  // vague double dans _update) — evite qu'un bus/camion trop large chevauche
+  // visuellement le vehicule de la voie d'a cote.
+  GameEngine.prototype._spawnObstacle = function(forceLane, maxW){
     const T = window.THREE;
     const li = forceLane != null ? forceLane : Math.floor(Math.random()*4);
     const lane = LANES[li];
@@ -337,10 +346,11 @@
       mesh = DG.Loader.normalizeModel(T, this._coneModel, 1.0, 0);
       w = 0.5;
     } else if(this._trafficModels && this._trafficModels.length){
-      let ti = Math.floor(Math.random()*this._trafficModels.length);
-      if(this._trafficModels.length > 1 && ti === this._lastTrafficIdx) ti = (ti+1) % this._trafficModels.length;
-      this._lastTrafficIdx = ti;
-      const t = this._trafficModels[ti];
+      const pool = maxW != null ? this._trafficModels.filter(t=>t.len <= 4.0) : this._trafficModels;
+      const models = pool.length ? pool : this._trafficModels;
+      let t = models[Math.floor(Math.random()*models.length)];
+      if(models.length > 1 && t === this._lastTrafficModel) t = models[(models.indexOf(t)+1) % models.length];
+      this._lastTrafficModel = t;
       mesh = DG.Loader.normalizeModel(T, t.model, t.len, Math.PI);
       // Largeur de collision proportionnelle a la taille du vehicule, plafonnee pour
       // qu'un bus/camion reste toujours doublable depuis la voie d'a cote.
@@ -352,6 +362,7 @@
       mesh = DG.Loader.makeFallbackCar(T, { body:0x161b23 });
       w = 0.95;
     }
+    if(maxW != null) w = Math.min(w, maxW);
     mesh.position.set(lane, 0, -134);
     mesh.userData.w = w;
     this.scene.add(mesh);
@@ -472,6 +483,10 @@
       this._player.position.y = Math.sin(now*0.02)*0.02;
       this._player.rotation.z = (targetX - this._playerX) * 0.14;
     }
+    // Moyenne glissante du temps passe dans chaque voie (voir la vague double
+    // plus bas) : la voie courante monte, les 3 autres redescendent avec le temps.
+    this._laneUse[this._lane] += dt;
+    for(let k=0;k<4;k++) this._laneUse[k] *= Math.max(0, 1 - dt*0.12);
 
     this._spawnT -= dt;
     // Le trafic arrivait trop lentement et par voie unique la plupart du temps :
@@ -491,16 +506,16 @@
         const gapIdx = Math.floor(Math.random()*4);
         [0,1,2,3].filter(l=>l!==gapIdx).forEach(l=>this._spawnObstacle(l));
       } else if(roll < tripleChance + doubleChance){
-        const l1 = this._spawnObstacle();
-        // Les deux obstacles d'une meme vague apparaissent au meme endroit (z=-134) et
-        // avancent ensuite a la meme vitesse : ils restent donc cote a cote a l'ecran
-        // pendant toute leur traversee. Une voie d'ecart ne suffit pas — un camion/bus
-        // est assez large pour deborder sur la voie voisine et masquer/chevaucher le
-        // vehicule qui s'y trouve. On impose donc au moins 2 voies d'ecart entre les
-        // deux vehicules d'une meme vague.
-        const farLanes = [0,1,2,3].filter(l=>Math.abs(l-l1) >= 2);
-        const l2 = farLanes[Math.floor(Math.random()*farLanes.length)];
-        this._spawnObstacle(l2);
+        // Vise directement les 2 voies ou le joueur se planque (le plus utilise
+        // recemment, cf. _laneUse) au lieu de 2 voies prises au hasard : sinon il
+        // suffit de trouver une paire de voies jamais visee et de ne plus en
+        // bouger. Si ces 2 voies sont adjacentes, on plafonne leur largeur pour
+        // eviter que 2 gros vehicules (bus/camion) se chevauchent visuellement.
+        const order = [0,1,2,3].slice().sort((a,b)=>this._laneUse[b]-this._laneUse[a]);
+        const l1 = order[0], l2 = order[1];
+        const adjacent = Math.abs(l1-l2) === 1;
+        this._spawnObstacle(l1, adjacent ? 0.9 : null);
+        this._spawnObstacle(l2, adjacent ? 0.9 : null);
       } else {
         this._spawnObstacle();
       }

@@ -121,6 +121,77 @@
     return m;
   }
 
+  // Modeles .glb ponctuels (palmier/parasol de la plage, station essence de
+  // l'autoroute) : charges une seule fois (mis en cache par DG.Loader), puis
+  // clones/redimensionnes pour chaque instance posee dans le decor. buildDecor()
+  // est synchrone (pose les objets tout de suite, pour le calcul de defilement/
+  // wrap) alors que le chargement est async : chaque fonction pose donc un Group
+  // vide a la bonne position des l'appel, puis le remplit une fois le modele
+  // arrive (repli sur l'ancienne geometrie procedurale si le chargement echoue).
+  let _palmModelP = null, _umbrellaModelP = null, _gasStationModelP = null;
+  function loadPalmModel(){ if(!_palmModelP) _palmModelP = DG.Loader.loadModel('../uploads/tropical_palm_tree.glb'); return _palmModelP; }
+  function loadUmbrellaModel(){ if(!_umbrellaModelP) _umbrellaModelP = DG.Loader.loadModel('../uploads/umbrella_wooden_chair.glb'); return _umbrellaModelP; }
+  function loadGasStationModel(){ if(!_gasStationModelP) _gasStationModelP = DG.Loader.loadModel('../uploads/gas-station.glb'); return _gasStationModelP; }
+
+  // Redimensionne un modele charge a une HAUTEUR cible (palmier/parasol : ce qui
+  // compte pour s'inserer dans le decor existant, c'est leur hauteur, pas leur
+  // emprise au sol). Pose (0,0,0) = base au sol, centre en X/Z.
+  function sizeModelByHeight(T, src, targetHeight){
+    const clone = src.clone(true);
+    const box = new T.Box3().setFromObject(clone);
+    const size = new T.Vector3(); box.getSize(size);
+    const center = new T.Vector3(); box.getCenter(center);
+    const s = targetHeight / (size.y || 1);
+    clone.position.set(-center.x, -box.min.y, -center.z);
+    const inner = new T.Group(); inner.add(clone); inner.scale.setScalar(s);
+    const wrap = new T.Group(); wrap.add(inner);
+    return wrap;
+  }
+  // Meme chose mais a partir de la plus grande EMPRISE au sol (station essence :
+  // structure large et basse, sa largeur compte plus que sa hauteur pour la
+  // placer sans qu'elle deborde sur la route ou le decor voisin).
+  function sizeModelByFootprint(T, src, targetWidth){
+    const clone = src.clone(true);
+    const box = new T.Box3().setFromObject(clone);
+    const size = new T.Vector3(); box.getSize(size);
+    const center = new T.Vector3(); box.getCenter(center);
+    const s = targetWidth / (Math.max(size.x, size.z) || 1);
+    clone.position.set(-center.x, -box.min.y, -center.z);
+    const inner = new T.Group(); inner.add(clone); inner.scale.setScalar(s);
+    const wrap = new T.Group(); wrap.add(inner);
+    return wrap;
+  }
+
+  function palmTreeModel(T, x, z, targetHeight, rotY){
+    const holder = new T.Group();
+    holder.position.set(x, 0, z);
+    holder.rotation.y = rotY != null ? rotY : Math.random()*Math.PI*2;
+    loadPalmModel().then(src=>{
+      holder.add(src ? sizeModelByHeight(T, src, targetHeight) : palmTree(T, 0, 0));
+    });
+    return holder;
+  }
+
+  function umbrellaModelDecor(T, x, z, hex){
+    const holder = new T.Group();
+    holder.position.set(x, 0, z);
+    loadUmbrellaModel().then(src=>{
+      holder.add(src ? sizeModelByHeight(T, src, 2.3) : beachUmbrella(T, 0, 0, hex));
+    });
+    return holder;
+  }
+
+  function gasStationModel(T, x, z, rotY){
+    const holder = new T.Group();
+    holder.position.set(x, 0, z);
+    holder.rotation.y = rotY || 0;
+    loadGasStationModel().then(src=>{
+      if(!src) return; // pas de repli procedural : element rare, on saute juste s'il echoue
+      holder.add(sizeModelByFootprint(T, src, 26));
+    });
+    return holder;
+  }
+
   // Parasol de plage colore (remplace les anciens "tas" violets qui ne lisaient
   // pas comme du sable) : mat + toile conique rayee, pose pres de la route.
   function beachUmbrella(T, x, z, hex){
@@ -208,6 +279,14 @@
             const sl = streetlight(T, side*5.9, z - 3, 0xffc36b);
             scene.add(sl); items.push(sl);
           }
+
+          // Station essence : repere rare (pas a chaque tour de decor), posee
+          // loin sur le cote pour ne jamais deborder sur la route malgre sa
+          // largeur (structure + auvent + parking).
+          if(i % 9 === 7){
+            const gs = gasStationModel(T, side*(42 + Math.random()*14), z - 4, side<0 ? Math.PI*0.5 : -Math.PI*0.5);
+            scene.add(gs); items.push(gs);
+          }
         }
         return items;
       }
@@ -219,9 +298,9 @@
       sky:{ top:0x3a2350, bottom:0xff9a5a },
       light:{ key:0xffb27a, keyI:1.15, hemiSky:0xff9d6b, hemiGround:0x2a1810, hemiI:0.55, ambient:0xffcfa0, ambientI:0.3 },
       // Cote fixe : l'ocean reste toujours du meme cote de la route (comme une
-      // vraie route cotiere), le sable/les palmiers de l'autre — avant, palmiers
-      // et "dunes" alternaient des deux cotes sans aucune eau visible, ca ne
-      // ressemblait pas a une plage.
+      // vraie route cotiere). Palmiers et parasols (vrais modeles .glb) ne sont
+      // poses QUE cote plage/mer, entre la route et l'eau — l'autre cote (sable
+      // nu + quelques dunes) n'en a plus du tout.
       buildDecor(T, scene, N){
         const items = [];
         const umbrellaColors = [0xe2432f, 0x2fa6a0, 0xf2c23d, 0xe8734a, 0x3d6fd9];
@@ -232,24 +311,22 @@
           const o = oceanPlane(T, 13 + 23, z, 9.3);
           scene.add(o); items.push(o);
 
-          // Cote gauche (-x) : sable avec palmiers/parasols pres de la route,
-          // quelques dunes plus loin pour casser la ligne d'horizon plate.
+          // Cote gauche (-x) : sable nu, seulement quelques dunes au loin pour
+          // casser la ligne d'horizon plate.
           if(i % 7 === 6){
             const d = duneRidge(T, -(16+Math.random()*8), z, 8+Math.random()*5, 6+Math.random()*4, 0xc9a869);
             scene.add(d); items.push(d);
-          } else if(i % 3 === 1){
-            const u = beachUmbrella(T, -(6.5+Math.random()*2.5), z + (Math.random()*2-1), umbrellaColors[i % umbrellaColors.length]);
-            scene.add(u); items.push(u);
-          } else {
-            const p = palmTree(T, -(7.5+Math.random()*3.5), z);
-            scene.add(p); items.push(p);
           }
 
-          // Une poignee de palmiers/parasols cote ocean, entre la route et l'eau,
-          // pour eviter la coupure trop nette route -> mer.
-          if(i % 4 === 2){
-            const p2 = palmTree(T, 6.5 + Math.random()*3, z + 3);
-            scene.add(p2); items.push(p2);
+          // Cote plage/mer (droite), entre la route et l'eau : palmiers et
+          // parasols+chaise en alternance, c'est desormais le seul endroit ou
+          // ils apparaissent.
+          if(i % 2 === 0){
+            const p = palmTreeModel(T, 6.5 + Math.random()*3, z + (Math.random()*3-1.5), 5.5 + Math.random()*2);
+            scene.add(p); items.push(p);
+          } else {
+            const u = umbrellaModelDecor(T, 6.5 + Math.random()*3, z + (Math.random()*3-1.5), umbrellaColors[i % umbrellaColors.length]);
+            scene.add(u); items.push(u);
           }
         }
         return items;
