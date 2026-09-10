@@ -222,6 +222,11 @@
   // Batiment de la rue neon : pioche au hasard entre le batiment procedural
   // (fenetres neon generees) et 2 vrais modeles .glb — sinon c'etait toujours
   // la meme silhouette de boite qui se repetait le long de la rue.
+  // IMPORTANT : dimensionne au GABARIT AU SOL (largeur/profondeur), pas a la
+  // hauteur — le gratte-ciel de Singapour a un socle tres large par rapport a
+  // sa hauteur (podium vitre) ; le dimensionner par hauteur le rendait 3-4x
+  // plus large qu'un batiment procedural une fois mis a la meme echelle,
+  // assez pour deborder sur la route et la cacher completement.
   function neonBuilding(T, x, z, colorHex){
     const roll = Math.random();
     if(roll < 0.34){
@@ -233,12 +238,11 @@
     const holder = new T.Group();
     holder.position.set(x, 0, z);
     holder.rotation.y = Math.random()*Math.PI*2;
+    const footprint = 5 + Math.random()*3; // 5-8, coherent avec le 3.9x3.9 procedural
     if(roll < 0.67){
-      const h = 18 + Math.random()*22;
-      loadCyberBuilding().then(src=>{ if(src) holder.add(sizeModelByHeight(T, src, h)); });
+      loadCyberBuilding().then(src=>{ if(src) holder.add(sizeModelByFootprint(T, src, footprint)); });
     } else {
-      const h = 26 + Math.random()*22;
-      loadSingaporeBuilding().then(src=>{ if(src) holder.add(sizeModelByHeight(T, src, h)); });
+      loadSingaporeBuilding().then(src=>{ if(src) holder.add(sizeModelByFootprint(T, src, footprint)); });
     }
     return holder;
   }
@@ -436,7 +440,7 @@
         for(let i=0;i<N;i++){
           const side = i % 2 === 0 ? -1 : 1;
           const c = neon[i % neon.length];
-          const m = neonBuilding(T, side*(9 + Math.random()*7), -18 - i*8, c);
+          const m = neonBuilding(T, side*(12 + Math.random()*8), -18 - i*8, c);
           scene.add(m); items.push(m);
           const sl = lampModel(T, side*5.9, -12 - i*8, neon[(i+2) % neon.length]);
           scene.add(sl); items.push(sl);
