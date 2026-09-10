@@ -32,7 +32,7 @@
     { id:'aventador-svj',          brand:'Lamborghini', name:'Aventador SVJ',              tier:'hypercar', price:92000,  model:'uploads/lamborghini-aventador-svj.glb',      rotY:0, glow:0x2fea6a, body:0x0c1408, stats:{speed:8.9,  accel:9.2, handling:8.7, boost:9.3} },
     { id:'pagani-huayra-r',        brand:'Pagani',      name:'Huayra R',                   tier:'hypercar', price:88000,  model:'uploads/pagani-huayra-r.glb',                rotY:0, glow:0xc0392b, body:0x120c08, stats:{speed:9.05, accel:9,   handling:8,   boost:10} },
     { id:'huayra-roadster',        brand:'Pagani',      name:'Huayra Roadster',            tier:'hypercar', price:65000,  model:'uploads/updated_pagani_huayra_roadster.glb', rotY:0, glow:0xd98a3d, body:0x140f08, stats:{speed:9,    accel:8.9, handling:8,   boost:9.5} },
-    { id:'centenario',             brand:'Lamborghini', name:'Centenario Roadster',        tier:'hypercar', price:120000,  model:'uploads/2017_lamborghini_centenario_roadster.glb', rotY:Math.PI, glow:0xff9d2f, body:0x121212, stats:{speed:9.1,  accel:9.5, handling:8.6, boost:9.2} },
+    { id:'centenario',             brand:'Lamborghini', name:'Centenario Roadster',        tier:'hypercar', price:120000,  model:'uploads/2017_lamborghini_centenario_roadster.glb', rotY:0, glow:0xff9d2f, body:0x121212, stats:{speed:9.1,  accel:9.5, handling:8.6, boost:9.2} },
     { id:'huayra-bc',              brand:'Pagani',      name:'Huayra BC',                  tier:'hypercar', price:135000, model:'uploads/2016_pagani_huayra_bc.glb',          rotY:0, glow:0x3d6fd9, body:0x0a0d14, stats:{speed:9.15, accel:9.3, handling:8.5, boost:9.6} },
     { id:'daytona-sp3',            brand:'Ferrari',     name:'Daytona SP3',                tier:'hypercar', price:145000, model:'uploads/ferrari-daytona-sp3.glb',            rotY:0, glow:0xff2200, body:0x140505, stats:{speed:9.2,  accel:9.4, handling:8.8, boost:9.4} },
     { id:'apollo-ie',              brand:'Apollo',      name:'Intensa Emozione',           tier:'hypercar', price:180000, model:'uploads/apollo_intensa_emozione.glb',        rotY:0, glow:0xff2a2a, body:0x100606, stats:{speed:9,    accel:9.2, handling:9.5, boost:8.6} },
@@ -41,7 +41,7 @@
     { id:'laferrari',              brand:'Ferrari',     name:'LaFerrari',                  tier:'hypercar', price:420000, model:'uploads/ferrari-laferrari.glb',              rotY:0, glow:0xff0000, body:0x140505, stats:{speed:9.5,  accel:10,  handling:9,   boost:10} },
     { id:'gma-t50',                brand:'Gordon Murray', name:'T.50',                     tier:'hypercar', price:195000, model:'uploads/2023_gordon_murray_automotive_t.50.glb', rotY:0, glow:0x3dd9c8, body:0x0d1414, stats:{speed:9.4,  accel:9.5, handling:9.4, boost:8.8} },
     { id:'aston-valhalla',         brand:'Aston Martin', name:'Valhalla',                  tier:'hypercar', price:340000, model:'uploads/2025_aston_martin_valhalla.glb',     rotY:0, glow:0xaaff2f, body:0x0a0b08, stats:{speed:9.55, accel:9.9, handling:9.2, boost:9.7} },
-    { id:'revuelto',               brand:'Lamborghini', name:'Revuelto',                   tier:'hypercar', price:280000, model:'uploads/lamborghini_revuelto.glb', rotY:Math.PI, glow:0x39ff6a, body:0x081208, stats:{speed:9.6,  accel:9.85, handling:9.1, boost:9.5} },
+    { id:'revuelto',               brand:'Lamborghini', name:'Revuelto',                   tier:'hypercar', price:280000, model:'uploads/lamborghini_revuelto.glb', rotY:-Math.PI/2, glow:0x39ff6a, body:0x081208, stats:{speed:9.6,  accel:9.85, handling:9.1, boost:9.5} },
     { id:'chiron',                 brand:'Bugatti',     name:'Chiron',                     tier:'hypercar', price:110000, model:'uploads/bugatti-chiron.glb',                 rotY:0, glow:0x2244ff, body:0x0a0d1a, stats:{speed:9.65, accel:9.6, handling:7.5, boost:9.6} },
     { id:'veyron-ettore',          brand:'Bugatti',     name:'Veyron Legend Ettore',       tier:'hypercar', price:95000, model:'uploads/bugatti-veyron-ettore.glb',          rotY:0, glow:0xe8d98a, body:0x0d0d0d, stats:{speed:9.75, accel:9.5, handling:7.3, boost:9.7} },
     { id:'w16-mistral',            brand:'Bugatti',     name:'W16 Mistral',                tier:'hypercar', price:175000, model:'uploads/bugatti-w16-mistral.glb',            rotY:0, glow:0x3dd6ff, body:0x0a1418, stats:{speed:9.85, accel:9.7, handling:7.6, boost:9.8} },
@@ -64,13 +64,20 @@
   const byId = {};
   CARS.forEach(c=>byId[c.id]=c);
 
-  // Note globale 0-1 basee sur les 4 stats -> multiplicateur de score (jusqu'a
-  // quasi x2 avec la meilleure voiture). Utilisee par le moteur (engine.js) et
-  // par l'affichage du garage/choix de voiture pour montrer l'enjeu au joueur.
+  // Multiplicateur de score : chaque tier a son propre palier (debutant/avance/
+  // sportive/hypercar), et a l'interieur d'un tier les stats affinent le classement.
+  // Avant, le multiplicateur n'allait que de x1.25 a x1.98 (~x1.6 d'ecart) : avec
+  // le jeu plus facile qu'il ne devrait, la difference entre une bonne et une
+  // mauvaise voiture etait noyee dans le score de distance/esquive. Les paliers
+  // par tier rendent la hierarchie beaucoup plus nette (x1 a x2.5, debutant ->
+  // hypercar) : progresser de voiture devient un vrai levier de score, pas
+  // seulement cosmetique.
+  const TIER_SCORE_BASE = { debutant:0, avance:0.4, sportive:0.9, hypercar:1.5 };
   function carScoreFactor(car){
     const s = car.stats;
     const rating = (s.speed + s.accel + s.handling + s.boost) / 40;
-    return 1 + rating;
+    const tierBase = TIER_SCORE_BASE[car.tier] != null ? TIER_SCORE_BASE[car.tier] : 0;
+    return 1 + tierBase + rating;
   }
 
   DG.TIERS = TIERS;

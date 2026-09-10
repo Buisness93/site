@@ -254,111 +254,50 @@
     this.setCamLabel();
   };
 
-  // Camera interieure : ancre un point de vue habitacle au vehicule du joueur.
+  // Camera "capot" : point de vue fixe juste au-dessus du capot, centre, comme
+  // dans la plupart des jeux de course (hood cam) — au lieu de deviner un siege/
+  // volant par nom de mesh (fragile et incoherent selon les exports, parfois
+  // place hors de la voiture ou tourne vers l'arriere). Meme calcul pour toutes
+  // les voitures : fiable, previsible, et pas de detection a corriger par modele.
   // Comme _player garde toujours la meme orientation pendant la course (seul un
-  // leger roulis en z change de voie), "l'avant" reste local -Z de _player — pas
-  // besoin de deviner le sens comme dans la fiche 3D du garage (voitures libres
-  // de tourner dans tous les sens). Si aucun siege/habitacle n'est detecte dans le
-  // modele, on retombe sur une hauteur d'oeil generique deduite de la boite englobante.
+  // leger roulis en z change de voie), "l'avant" reste local -Z de _player.
   GameEngine.prototype._buildInteriorHolder = function(){
     const T = window.THREE;
     const wrap = this._player;
     wrap.updateMatrixWorld(true);
     const box = new T.Box3().setFromObject(wrap);
-    const h = box.max.y - box.min.y;
     const zLen = box.max.z - box.min.z;
     const xLen = box.max.x - box.min.x;
+    // Quelques exports (ex: Supra Dekztrax) embarquent un residu de geometrie
+    // invisible/degenerescente qui couvre a lui seul toute la longueur ET toute
+    // la largeur de la voiture, et gonfle enormement la hauteur mesuree (plus de
+    // 2x la longueur, alors qu'aucune carrosserie reelle n'est aussi haute) : sans
+    // filtre, la camera capot calculee a partir de cette hauteur se retrouve a
+    // flotter tres au-dessus du vehicule. Un vrai panneau de carrosserie (capot,
+    // portiere, aileron...) ne couvre jamais a lui seul tout l'empreinte au sol de
+    // la voiture ; on ignore donc, pour la hauteur, tout maillage qui le fait —
+    // presque toujours un residu/proxy, jamais une piece visible de la caisse.
+    let maxBodyY = box.min.y;
+    wrap.traverse(n=>{
+      if(!n.isMesh) return;
+      const b = new T.Box3().setFromObject(n);
+      if(!isFinite(b.max.y)) return;
+      if((b.max.x-b.min.x) > xLen*0.9 && (b.max.z-b.min.z) > zLen*0.9) return;
+      if(b.max.y > maxBodyY) maxBodyY = b.max.y;
+    });
+    const h = maxBodyY - box.min.y;
     // La largeur de collision suivait une constante fixe (0.55) qui ne correspondait
     // pas aux voitures "widebody" (GT3 RS, M4 Widebody...) : leur carrosserie visuelle
     // depassait la zone de collision, donnant l'impression de "passer a travers" les
     // obstacles avant meme un vrai contact. On la derive maintenant de la largeur reelle
     // du modele charge.
     this._playerHalfW = Math.max(0.42, Math.min(0.95, xLen/2 * 0.86));
-    // Un vrai siege/habitacle a un volume plausible et "trapu" (pas un fil/une
-    // laniere). Le mot-cle seul ne suffit pas : certains modeles l'utilisent aussi
-    // pour un petit badge sur l'appuie-tete (Golf R : "Int_Seat_R_Badge") ou une
-    // ceinture de securite (RS6-R : "BSeatBelt_Geo...", fine et haute). On cherche
-    // d'abord un vrai "siege" nomme (le plus precis) ; seulement s'il n'y en a pas
-    // de fiable, on retombe sur un gros bloc "interieur" generique — sinon un gros
-    // bloc interieur (Centenario : "Interior_6", qui englobe aussi le plancher/les
-    // pieds) l'emportait par volume sur le vrai siege ("Seats_9"), plaçant la
-    // camera sous la caisse au lieu du siege.
-    const minSize = Math.min(xLen, zLen) * 0.12;
-    // Certains modeles n'ont pas de vrai noeud "siege" mais un tapis/moquette nomme
-    // avec "interior" dedans (ex: "rugs_all_rug_interior_0") : plausible en taille,
-    // mais au niveau du plancher et decale sur le cote — pire que le repli generique.
-    // On exclut ces pieces de garnissage evidentes de la categorie "interieur".
-    const EXCLUDE_RE = /rug|carpet|tapis|moquette|floor|plancher|mat\b|grid|trim|garnish|console|plastic|panel|badge|logo|belt|ceinture/i;
-    function bestMatch(re){
-      let found = null, bestVol = 0;
-      wrap.traverse(n=>{
-        const nm = n.name || '';
-        if(!re.test(nm) || EXCLUDE_RE.test(nm)) return;
-        const b = new T.Box3().setFromObject(n);
-        if(!isFinite(b.min.x)) return;
-        const s = new T.Vector3(); b.getSize(s);
-        const dims = [s.x, s.y, s.z].sort((a,c)=>a-c);
-        if(dims[2] < minSize) return;        // trop petit dans l'ensemble
-        if(dims[0] < dims[2] * 0.12) return;  // trop fin (laniere/cable) dans au moins un axe
-        const vol = s.x * s.y * s.z;
-        if(vol > bestVol){ bestVol = vol; found = b; }
-      });
-      return found;
-    }
-    let seatBox = bestMatch(/seat|si[eè]ge/i) || bestMatch(/interior|int[ée]rieur|habitacle/i);
-
-    // Le noeud "siege" trouve regroupe souvent LES DEUX sieges (ex: "Seats_9") : son
-    // centre X tombe au milieu de l'habitacle, pas cote conducteur, d'ou la plainte
-    // "etre siege conducteur pas milieu". On cherche un volant ("steering"/"volant")
-    // pour savoir de quel cote se trouve reellement le conducteur ; a defaut, on suppose
-    // une conduite a gauche (repli raisonnable, la majorite du catalogue est LHD).
-    // Le T.50 a une VRAIE position de conduite centrale : on ne decale rien pour lui.
-    const isCentralDriving = this.car && this.car.id === 'gma-t50';
-    let driverSign = -1;
-    if(!isCentralDriving){
-      let swBox = null, swVol = 0;
-      wrap.traverse(n=>{
-        const nm = n.name || '';
-        if(!/steer|volant/i.test(nm)) return;
-        const b = new T.Box3().setFromObject(n);
-        if(!isFinite(b.min.x)) return;
-        const s = new T.Vector3(); b.getSize(s);
-        const vol = s.x * s.y * s.z;
-        if(vol > swVol){ swVol = vol; swBox = b; }
-      });
-      if(swBox) driverSign = ((swBox.min.x + swBox.max.x)/2) < (box.min.x + box.max.x)/2 ? -1 : 1;
-    }
-
-    let eyeL;
-    if(seatBox){
-      // Aux 3/4 de la hauteur du volume trouve (pas le sommet exact : pour un gros
-      // bloc "habitacle complet", le sommet peut deborder jusqu'au pavillon).
-      // _player garde une orientation fixe pendant la course, "avant" est toujours
-      // -Z local, la camera regarde deja dans cette direction par defaut.
-      const sh = seatBox.max.y - seatBox.min.y;
-      const sw = seatBox.max.x - seatBox.min.x;
-      const cx = (seatBox.min.x + seatBox.max.x)/2;
-      const cz = (seatBox.min.z + seatBox.max.z)/2;
-      const offsetX = isCentralDriving ? 0 : driverSign * Math.max(sw*0.22, 0.16);
-      // Petite avancee vers l'avant (-Z) depuis le centre du volume siege : sinon la
-      // camera reste calee au milieu du coussin/appuie-tete et se retrouve quasi dans
-      // la geometrie du siege, d'ou "on voit rien devant" (vue bouchee par le siege).
-      const forwardPush = Math.min(zLen*0.07, 0.34);
-      const topW = new T.Vector3(cx + offsetX, seatBox.min.y + sh*0.75, cz - forwardPush);
-      eyeL = wrap.worldToLocal(topW);
-      // Garde-fou : si malgre les filtres le point tombe hors de la voiture (fausse
-      // detection), on ignore et bascule sur le repli generique ci-dessous.
-      if(eyeL.y < box.min.y - 0.05 || eyeL.y > box.max.y + 0.35 || eyeL.z < box.min.z - 0.1 || eyeL.z > box.max.z + 0.1) seatBox = null;
-    }
-    if(!seatBox){
-      // Aucun siege fiable detecte (souvent un seul mesh fusionne, carrosserie +
-      // interieur, sans sous-objets identifiables) : on se cale a hauteur de base de
-      // pare-brise — assez haut et assez recule pour rester au-dessus du capot (pas
-      // de clipping) tout en gardant une vraie sensation d'habitacle (essuie-glaces/
-      // capot visibles en bas de cadre), plutot qu'une vue de toit detachee.
-      const offsetX = isCentralDriving ? 0 : driverSign * xLen * 0.16;
-      eyeL = new T.Vector3(offsetX, box.min.y + h * 0.74, box.min.z + zLen * 0.38);
-    }
+    // Centree en X (pas de cote conducteur), tres pres du sommet de la caisse
+    // (hauteur du bas de pare-brise, au-dessus du volant/tableau de bord) et vers
+    // l'avant du vehicule (au-dessus du capot, pas au milieu de l'habitacle) :
+    // le capot reste visible en bas de cadre, vue road-clear comme dans la
+    // plupart des jeux de course.
+    const eyeL = new T.Vector3(0, box.min.y + h * 0.95, box.min.z + zLen * 0.40);
     const holder = new T.Object3D();
     holder.position.copy(eyeL);
     wrap.add(holder);
@@ -429,7 +368,19 @@
       const m = new T.Mesh(new T.OctahedronGeometry(0.55), new T.MeshStandardMaterial({ color:0xff5ad1, emissive:0xff2fc0, emissiveIntensity:0.9, metalness:0.5, roughness:0.2 }));
       return m;
     }
-    const m = new T.Mesh(new T.CapsuleGeometry(0.32, 0.6, 4, 8), new T.MeshStandardMaterial({ color:0x3df0ff, emissive:0x18c8ff, emissiveIntensity:0.9, metalness:0.5, roughness:0.2 }));
+    // CapsuleGeometry n'existe pas dans cette version de three.js (r128, ajoutee
+    // en r142) : ça levait une exception a chaque apparition d'un bonus nitro,
+    // qui sautait donc le rendu de cette frame (et l'objet n'etait jamais ajoute
+    // a la scene). Un cylindre a bouts arrondis (spheres) donne une forme de
+    // bonbonne tres proche, compatible avec cette version.
+    const m = new T.Group();
+    const mat = new T.MeshStandardMaterial({ color:0x3df0ff, emissive:0x18c8ff, emissiveIntensity:0.9, metalness:0.5, roughness:0.2 });
+    const body = new T.Mesh(new T.CylinderGeometry(0.32, 0.32, 0.6, 12), mat);
+    m.add(body);
+    [-0.3, 0.3].forEach(y=>{
+      const cap = new T.Mesh(new T.SphereGeometry(0.32, 12, 8), mat);
+      cap.position.y = y; m.add(cap);
+    });
     m.rotation.z = Math.PI/2; return m;
   }
 
@@ -523,11 +474,24 @@
     }
 
     this._spawnT -= dt;
-    const interval = Math.max(0.42, 1.0 - this._time*0.018);
+    // Le trafic arrivait trop lentement et par voie unique la plupart du temps :
+    // il suffisait de se caler entre 2 voies voisines pour ne quasi jamais changer
+    // de cote, d'ou des scores enormes sans vraie difficulte. La cadence de base
+    // monte plus vite avec le temps, et des vagues a 2 voies (tot) puis 3 voies —
+    // un vrai "mur" qui ne laisse qu'un seul passage — forcent a utiliser toute la
+    // largeur de la route. Il reste toujours au moins une voie praticable : jamais
+    // impossible, juste plus exigeant.
+    const interval = Math.max(0.32, 1.0 - this._time*0.024);
     if(this._spawnT <= 0){
       this._spawnT = interval;
-      const l1 = this._spawnObstacle();
-      if(this._time > 18 && Math.random() < Math.min(0.4, (this._time-18)*0.016)){
+      const tripleChance = this._time > 35 ? Math.min(0.22, (this._time-35)*0.006) : 0;
+      const doubleChance = this._time > 8 ? Math.min(0.55, (this._time-8)*0.02) : 0;
+      const roll = Math.random();
+      if(roll < tripleChance){
+        const gapIdx = Math.floor(Math.random()*4);
+        [0,1,2,3].filter(l=>l!==gapIdx).forEach(l=>this._spawnObstacle(l));
+      } else if(roll < tripleChance + doubleChance){
+        const l1 = this._spawnObstacle();
         // Les deux obstacles d'une meme vague apparaissent au meme endroit (z=-134) et
         // avancent ensuite a la meme vitesse : ils restent donc cote a cote a l'ecran
         // pendant toute leur traversee. Une voie d'ecart ne suffit pas — un camion/bus
@@ -537,6 +501,8 @@
         const farLanes = [0,1,2,3].filter(l=>Math.abs(l-l1) >= 2);
         const l2 = farLanes[Math.floor(Math.random()*farLanes.length)];
         this._spawnObstacle(l2);
+      } else {
+        this._spawnObstacle();
       }
     }
     this._pickupT -= dt;
