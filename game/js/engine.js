@@ -466,7 +466,15 @@
 
     for(const st of this._stripes){ st.position.z += scroll; if(st.position.z > 10) st.position.z -= 240; }
     const wrap = this._decorWrap || 140;
-    for(const d of this._decor){ d.position.z += scroll; if(d.position.z > 30) d.position.z -= wrap; }
+    // wrapDist : un decor peut demander un cycle de retour plus long que les
+    // autres (ex: station essence, repere rare) — sinon tout le decor partage
+    // la meme boucle courte et un objet cense etre rare repasse en fait toutes
+    // les quelques secondes a haute vitesse.
+    for(const d of this._decor){
+      d.position.z += scroll;
+      const w = (d.userData && d.userData.wrapDist) || wrap;
+      if(d.position.z > 30) d.position.z -= w;
+    }
 
     if(!this.playing) return;
 

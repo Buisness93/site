@@ -128,10 +128,11 @@
   // wrap) alors que le chargement est async : chaque fonction pose donc un Group
   // vide a la bonne position des l'appel, puis le remplit une fois le modele
   // arrive (repli sur l'ancienne geometrie procedurale si le chargement echoue).
-  let _palmModelP = null, _umbrellaModelP = null, _gasStationModelP = null;
+  let _palmModelP = null, _umbrellaModelP = null, _gasStationModelP = null, _lampModelP = null;
   function loadPalmModel(){ if(!_palmModelP) _palmModelP = DG.Loader.loadModel('../uploads/tropical_palm_tree.glb'); return _palmModelP; }
   function loadUmbrellaModel(){ if(!_umbrellaModelP) _umbrellaModelP = DG.Loader.loadModel('../uploads/umbrella_wooden_chair.glb'); return _umbrellaModelP; }
   function loadGasStationModel(){ if(!_gasStationModelP) _gasStationModelP = DG.Loader.loadModel('../uploads/gas-station.glb'); return _gasStationModelP; }
+  function loadLampModel(){ if(!_lampModelP) _lampModelP = DG.Loader.loadModel('../uploads/lampadaire.glb'); return _lampModelP; }
 
   // Redimensionne un modele charge a une HAUTEUR cible (palmier/parasol : ce qui
   // compte pour s'inserer dans le decor existant, c'est leur hauteur, pas leur
@@ -187,7 +188,29 @@
     holder.rotation.y = rotY || 0;
     loadGasStationModel().then(src=>{
       if(!src) return; // pas de repli procedural : element rare, on saute juste s'il echoue
-      holder.add(sizeModelByFootprint(T, src, 26));
+      holder.add(sizeModelByFootprint(T, src, 40));
+    });
+    return holder;
+  }
+
+  // Reprend le vrai modele de lampadaire (garde son metal sombre naturel — le
+  // teindre en entier avec tintModel() ecrasait tout le detail du fer forge en
+  // un aplat de couleur) et n'ajoute que le point lumineux neon pres de la
+  // lanterne, comme le faisait l'ancien streetlight() procedural.
+  function lampModel(T, x, z, headColor, targetHeight){
+    const holder = new T.Group();
+    holder.position.set(x, 0, z);
+    loadLampModel().then(src=>{
+      if(!src){ holder.add(streetlight(T, 0, 0, headColor)); return; }
+      const h = targetHeight || 4.5;
+      holder.add(sizeModelByHeight(T, src, h));
+      const glowY = h * 0.965;
+      const glow = new T.Mesh(new T.SphereGeometry(h*0.03, 10, 8), new T.MeshBasicMaterial({ color: headColor }));
+      glow.position.set(0, glowY, 0);
+      holder.add(glow);
+      const light = new T.PointLight(headColor, 1.1, 9);
+      light.position.set(0, glowY - 0.05, 0);
+      holder.add(light);
     });
     return holder;
   }
@@ -280,11 +303,14 @@
             scene.add(sl); items.push(sl);
           }
 
-          // Station essence : repere rare (pas a chaque tour de decor), posee
-          // loin sur le cote pour ne jamais deborder sur la route malgre sa
-          // largeur (structure + auvent + parking).
+          // Station essence : repere pose pres de la route pour bien la voir.
+          // Le decor scroll/boucle sur une distance courte (144 unites) partagee
+          // par tout le reste : sans wrapDist plus grand, ce repere "rare" repasse
+          // en fait toutes les quelques secondes a haute vitesse. On lui donne
+          // donc son propre cycle de retour, bien plus long.
           if(i % 9 === 7){
-            const gs = gasStationModel(T, side*(42 + Math.random()*14), z - 4, side<0 ? Math.PI*0.5 : -Math.PI*0.5);
+            const gs = gasStationModel(T, side*(24 + Math.random()*6), z - 4, side<0 ? Math.PI*0.5 : -Math.PI*0.5);
+            gs.userData.wrapDist = (this.spacing || 9) * N * 5;
             scene.add(gs); items.push(gs);
           }
         }
@@ -298,9 +324,9 @@
       sky:{ top:0x3a2350, bottom:0xff9a5a },
       light:{ key:0xffb27a, keyI:1.15, hemiSky:0xff9d6b, hemiGround:0x2a1810, hemiI:0.55, ambient:0xffcfa0, ambientI:0.3 },
       // Cote fixe : l'ocean reste toujours du meme cote de la route (comme une
-      // vraie route cotiere). Palmiers et parasols (vrais modeles .glb) ne sont
-      // poses QUE cote plage/mer, entre la route et l'eau — l'autre cote (sable
-      // nu + quelques dunes) n'en a plus du tout.
+      // vraie route cotiere). Les parasols+chaise ne sont poses QUE cote plage/
+      // mer (entre la route et l'eau) ; les palmiers, eux, poussent des deux
+      // cotes (sable cote route aussi), juste sans parasol de ce cote-la.
       buildDecor(T, scene, N){
         const items = [];
         const umbrellaColors = [0xe2432f, 0x2fa6a0, 0xf2c23d, 0xe8734a, 0x3d6fd9];
@@ -311,16 +337,18 @@
           const o = oceanPlane(T, 13 + 23, z, 9.3);
           scene.add(o); items.push(o);
 
-          // Cote gauche (-x) : sable nu, seulement quelques dunes au loin pour
-          // casser la ligne d'horizon plate.
+          // Cote gauche (-x) : palmiers (pas de parasol de ce cote), quelques
+          // dunes au loin pour casser la ligne d'horizon plate.
           if(i % 7 === 6){
             const d = duneRidge(T, -(16+Math.random()*8), z, 8+Math.random()*5, 6+Math.random()*4, 0xc9a869);
             scene.add(d); items.push(d);
+          } else {
+            const pl = palmTreeModel(T, -(7.5+Math.random()*3.5), z, 5.5 + Math.random()*2);
+            scene.add(pl); items.push(pl);
           }
 
           // Cote plage/mer (droite), entre la route et l'eau : palmiers et
-          // parasols+chaise en alternance, c'est desormais le seul endroit ou
-          // ils apparaissent.
+          // parasols+chaise en alternance.
           if(i % 2 === 0){
             const p = palmTreeModel(T, 6.5 + Math.random()*3, z + (Math.random()*3-1.5), 5.5 + Math.random()*2);
             scene.add(p); items.push(p);
@@ -348,7 +376,7 @@
           const m = building(T, 3.9, h, 3.9, 0x0a0812, c);
           m.position.set(side*(9 + Math.random()*7), h/2, -18 - i*8);
           scene.add(m); items.push(m);
-          const sl = streetlight(T, side*5.9, -12 - i*8, neon[(i+2) % neon.length]);
+          const sl = lampModel(T, side*5.9, -12 - i*8, neon[(i+2) % neon.length]);
           scene.add(sl); items.push(sl);
         }
         return items;
