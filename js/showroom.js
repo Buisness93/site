@@ -191,6 +191,84 @@
     return entry;
   };
 
+  // Scene de showroom sous la voiture du hero : ombre de contact, halo et anneau
+  // lumineux a la couleur du theme, sol quadrille qui s'estompe. Tout en textures
+  // canvas generees ici (aucun fichier a telecharger).
+  Showroom.prototype.makeStage = function(car){
+    const T = window.THREE;
+    car.updateMatrixWorld(true);
+    const box = new T.Box3().setFromObject(car);
+    const floorY = isFinite(box.min.y) ? box.min.y + 0.01 : -0.6;
+    // Centre sur le pivot de la voiture (elle tourne autour), pas sur sa boite du moment
+    const cx = car.position.x, cz = car.position.z;
+    const css = getComputedStyle(document.documentElement);
+    const accent = (css.getPropertyValue('--accent-rgb').trim() || '159,180,199');
+    function canvasTex(size, draw){
+      const c = document.createElement('canvas'); c.width = c.height = size;
+      draw(c.getContext('2d'), size);
+      const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return t;
+    }
+    function flat(tex, size, blending, opacity){
+      const m = new T.MeshBasicMaterial({ map:tex, transparent:true, opacity:opacity, depthWrite:false, blending:blending || T.NormalBlending });
+      const mesh = new T.Mesh(new T.PlaneGeometry(size, size), m);
+      mesh.rotation.x = -Math.PI / 2;
+      return mesh;
+    }
+    const g = new T.Group();
+    g.position.set(cx, floorY, cz);
+
+    const gridTex = canvasTex(512, (x, n)=>{
+      x.strokeStyle = 'rgba(' + accent + ',0.55)'; x.lineWidth = 1;
+      for(let i = 0; i <= n; i += 32){ x.beginPath(); x.moveTo(i, 0); x.lineTo(i, n); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(n, i); x.stroke(); }
+      x.globalCompositeOperation = 'destination-in';
+      const f = x.createRadialGradient(n/2, n/2, 0, n/2, n/2, n/2);
+      f.addColorStop(0, 'rgba(0,0,0,1)'); f.addColorStop(0.55, 'rgba(0,0,0,.5)'); f.addColorStop(1, 'rgba(0,0,0,0)');
+      x.fillStyle = f; x.fillRect(0, 0, n, n);
+    });
+    const grid = flat(gridTex, 22, T.AdditiveBlending, 0.22);
+    grid.position.y = -0.005;
+    g.add(grid);
+
+    const haloTex = canvasTex(256, (x, n)=>{
+      const f = x.createRadialGradient(n/2, n/2, 0, n/2, n/2, n/2);
+      f.addColorStop(0, 'rgba(' + accent + ',.55)'); f.addColorStop(0.45, 'rgba(' + accent + ',.18)'); f.addColorStop(1, 'rgba(' + accent + ',0)');
+      x.fillStyle = f; x.fillRect(0, 0, n, n);
+    });
+    const halo = flat(haloTex, 9, T.AdditiveBlending, 0.6);
+    g.add(halo);
+
+    const shadowTex = canvasTex(256, (x, n)=>{
+      const f = x.createRadialGradient(n/2, n/2, 0, n/2, n/2, n/2);
+      f.addColorStop(0, 'rgba(0,0,0,.92)'); f.addColorStop(0.5, 'rgba(0,0,0,.55)'); f.addColorStop(1, 'rgba(0,0,0,0)');
+      x.fillStyle = f; x.fillRect(0, 0, n, n);
+    });
+    const shadow = flat(shadowTex, 6.2, T.NormalBlending, 1);
+    shadow.scale.set(1, 0.62, 1);
+    shadow.position.y = 0.004;
+    g.add(shadow);
+
+    const ringTex = canvasTex(512, (x, n)=>{
+      const c = n / 2;
+      x.lineCap = 'round';
+      x.strokeStyle = 'rgba(' + accent + ',.95)'; x.lineWidth = 5;
+      x.shadowColor = 'rgba(' + accent + ',1)'; x.shadowBlur = 18;
+      x.beginPath(); x.arc(c, c, c * 0.86, 0.1, Math.PI * 1.35); x.stroke();
+      x.beginPath(); x.arc(c, c, c * 0.86, Math.PI * 1.5, Math.PI * 1.9); x.stroke();
+      x.lineWidth = 1.5; x.shadowBlur = 6; x.strokeStyle = 'rgba(' + accent + ',.5)';
+      x.beginPath(); x.arc(c, c, c * 0.93, 0, Math.PI * 2); x.stroke();
+      for(let i = 0; i < 48; i++){
+        const a = i / 48 * Math.PI * 2, r1 = c * 0.955, r2 = c * (i % 4 ? 0.975 : 0.99);
+        x.beginPath(); x.moveTo(c + Math.cos(a) * r1, c + Math.sin(a) * r1); x.lineTo(c + Math.cos(a) * r2, c + Math.sin(a) * r2); x.stroke();
+      }
+    });
+    const ring = flat(ringTex, 6.4, T.AdditiveBlending, 0.85);
+    ring.position.y = 0.008;
+    g.add(ring);
+
+    g.userData = { ring, halo };
+    return g;
+  };
+
   Showroom.prototype.initHero = async function(el, carDef){
     const T = window.THREE;
     const s = this.makeScene(el, { glow:0x7aa2ff, glowI:2.2 });
@@ -199,6 +277,8 @@
     const car = model ? this.normalizeModel(model, 4.6, carDef.rotY || 0) : new T.Group();
     car.position.x = 2.6;
     s.scene.add(car);
+    const stage = this.makeStage(car);
+    s.scene.add(stage);
     const N = 850;
     const pos = new Float32Array(N*3);
     for(let i=0;i<N;i++){ pos[i*3]=(Math.random()-0.5)*48; pos[i*3+1]=(Math.random()-0.5)*26; pos[i*3+2]=(Math.random()-0.5)*48; }
@@ -206,6 +286,21 @@
     const pts = new T.Points(pg, new T.PointsMaterial({ color:0x9fc0ff, size:0.07, transparent:true, opacity:0.72, blending:T.AdditiveBlending, depthWrite:false }));
     s.scene.add(pts);
     const self = this;
+    // Cadrage selon l'ecran : a droite du texte sur grand ecran, centree au-dessus
+    // du texte (et plus loin) sur mobile, sinon la voiture sort du cadre.
+    const view = { camX:0.5, camY:1.7, camZ:8.6, lookY:0.55 };
+    function layout(){
+      const narrow = s.camera.aspect < 0.95;
+      car.position.x = narrow ? 0 : 2.6;
+      stage.position.x = car.position.x;
+      view.camX = narrow ? 0 : 0.5;
+      view.camZ = narrow ? 11.5 : 8.6;
+      view.camY = narrow ? 2.6 : 1.7;
+      view.lookY = narrow ? -2.6 : 0.55;
+    }
+    layout();
+    s.camera.position.z = view.camZ;
+    addEventListener('resize', ()=>requestAnimationFrame(layout));
     s.update = function(dt){
       const sp = self._heroSpin;
       const boost = sp > 0 ? (11*sp*sp) : 0;
@@ -213,9 +308,12 @@
       car.rotation.y += dt*(0.32 + boost);
       car.scale.setScalar(1 + 0.07*Math.sin((1-sp)*Math.PI)*(sp>0?1:0));
       pts.rotation.y += dt*(0.02 + boost*0.22);
-      s.camera.position.x += (0.5 + self._heroTarget.x*1.8 - s.camera.position.x)*0.05;
-      s.camera.position.y += (1.7 + self._heroTarget.y*0.9 - s.camera.position.y)*0.05;
-      s.camera.lookAt(0,0.55,0);
+      stage.userData.ring.rotation.z -= dt*(0.12 + boost*0.4);
+      stage.userData.halo.material.opacity = 0.55 + 0.15*Math.sin(performance.now()*0.0016) + boost*0.04;
+      s.camera.position.x += (view.camX + self._heroTarget.x*1.8 - s.camera.position.x)*0.05;
+      s.camera.position.y += (view.camY + self._heroTarget.y*0.9 - s.camera.position.y)*0.05;
+      s.camera.position.z += (view.camZ - s.camera.position.z)*0.05;
+      s.camera.lookAt(0,view.lookY,0);
     };
     el.addEventListener('pointermove', (e)=>{
       const r = el.getBoundingClientRect();

@@ -127,7 +127,8 @@
   };
 
   GameFX.prototype.emit = function(x, y, z, count, color, speed, up, life){
-    const c = new window.THREE.Color(color);
+    const c = this._tmpC || (this._tmpC = new window.THREE.Color());
+    c.setHex(color);
     for(let k=0;k<count;k++){
       const i = this._pNext; this._pNext = (this._pNext + 1) % this._pN;
       const a = Math.random() * Math.PI * 2, e = Math.random() * Math.PI - Math.PI/2;
@@ -241,6 +242,17 @@
       const pp = this._player.position;
       this._underLight.position.set(pp.x, 0.35, pp.z);
       if(this._boostOff) this._boostLight.position.set(pp.x, this._boostOff.y, pp.z + this._boostOff.z);
+    }
+    // Chaussee mouillee : fine gerbe d'eau soulevee par les roues arriere, plus
+    // fournie avec la vitesse (reutilise le pool de particules, zero allocation).
+    const route = this.engine.route;
+    if(playing && route && route.wet && this._player && this._boostOff){
+      this._sprayAcc = (this._sprayAcc || 0) + dt * (18 + speedK * 40 + b * 30);
+      const pp = this._player.position, hw = (this.engine._playerHalfW || 0.55) * 0.8;
+      while(this._sprayAcc >= 1){
+        this._sprayAcc -= 1;
+        this.emit(pp.x + (Math.random() < 0.5 ? -hw : hw), 0.12, pp.z + this._boostOff.z - 0.9, 1, 0x9fb2d6, 1.6, 1.8, 0.32);
+      }
     }
     this._underLight.intensity = playing ? 1.6 + b * 1.2 : 1.1;
     this._underMat.opacity = 0.42 + Math.sin(this._t * 3) * 0.06 + b * 0.25;

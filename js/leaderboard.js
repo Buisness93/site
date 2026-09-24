@@ -20,25 +20,34 @@
     } catch(e){ return []; }
   }
 
+  // Teinte stable par pseudo, pour l'avatar a initiale
+  function hue(name){ let h = 0; for(const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; }
+  function myName(){ try { return DG.Auth && DG.Auth.isLoggedIn() ? DG.Auth.displayName() : null; } catch(e){ return null; } }
+
   function rowHTML(entry, i){
     const car = DG.carById ? DG.carById(entry.car) : null;
-    const rankColor = RANK_COLORS[i] || (i < 10 ? '#9fb4c7' : '#8a8f98');
+    const rankColor = RANK_COLORS[i] || (i < 10 ? 'var(--accent-light)' : 'var(--text-3)');
     const time = entry.time_seconds != null ? Number(entry.time_seconds).toFixed(1) + 's' : '—';
     const isTop3 = i < 3;
-    const cls = 'leaderboard-row' + (isTop3 ? ' top3 rank-' + (i+1) : '');
-    const bg = isTop3 ? '' : ' style="background:' + (i % 2 === 0 ? 'rgba(255,255,255,.035)' : 'rgba(255,255,255,.015)') + '"';
+    const name = entry.name || 'Pilote';
+    const me = myName() && myName() === entry.name;
+    const cls = 'leaderboard-row' + (isTop3 ? ' top3 rank-' + (i+1) : '') + (me ? ' me' : '');
+    const bg = isTop3 ? '' : ' style="background:' + (i % 2 === 0 ? 'rgba(var(--line-rgb),.035)' : 'rgba(var(--line-rgb),.015)') + '"';
+    const carName = car ? escapeHTML(car.name) : '—';
     return (
       '<div class="' + cls + '"' + bg + '>' +
         '<span class="rank" style="color:' + rankColor + '">#' + (i+1) + '</span>' +
-        '<span class="name">' + escapeHTML(entry.name || 'Pilote') + '</span>' +
-        '<span class="meta">' + (car ? escapeHTML(car.name) : '—') + '</span>' +
-        '<span class="meta">' + time + '</span>' +
-        '<span class="score">' + entry.score + '</span>' +
+        '<span class="who"><span class="av" style="--h:' + hue(name) + '">' + escapeHTML(name.charAt(0).toUpperCase()) + '</span>' +
+          '<span style="min-width:0"><span class="name">' + escapeHTML(name) + (me ? '<span class="you">VOUS</span>' : '') + '</span>' +
+          '<span class="sub">' + carName + ' · ' + time + '</span></span></span>' +
+        '<span class="meta">' + carName + '</span>' +
+        '<span class="meta" style="min-width:56px">' + time + '</span>' +
+        '<span class="score">' + Number(entry.score).toLocaleString('fr-FR') + '</span>' +
       '</div>'
     );
   }
 
   function escapeHTML(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-  DG.Leaderboard = { fetchBoard, rowHTML, escapeHTML };
+  DG.Leaderboard = { fetchBoard, rowHTML, escapeHTML, hue };
 })();

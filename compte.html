@@ -12,74 +12,123 @@
 <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Saira:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/site.css">
 <link rel="stylesheet" href="css/fx.css">
+<style>
+ .auth-wrap{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;min-height:calc(100vh - 260px)}
+ @media (max-width:880px){ .auth-wrap{grid-template-columns:1fr;gap:26px} .auth-side{display:none} }
+ .auth-side h1{font-size:clamp(40px,5.4vw,68px)}
+ .perks{display:flex;flex-direction:column;gap:12px;margin-top:28px}
+ .perk{display:flex;gap:14px;align-items:flex-start}
+ .perk .pi{width:42px;height:42px;border-radius:12px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.28);font-size:18px}
+ .perk b{display:block;font-family:'Saira Condensed';font-size:17px;text-transform:uppercase;letter-spacing:.03em}
+ .perk span{font-size:13.5px;color:var(--text-3);line-height:1.5}
+ .auth-card{padding:28px}
+ .btn-discord{background:#5865f2;color:#fff!important;border-color:rgba(255,255,255,.18);box-shadow:0 14px 34px -14px #5865f2,inset 0 1px 0 rgba(255,255,255,.3)}
+ .btn-discord:hover{background:#6873ff;transform:translateY(-2px)}
+ .or{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--text-4);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+ .or span{flex:1;height:1px;background:var(--line-2)}
+ .profile-head{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:26px;border-radius:24px;border:1px solid rgba(var(--accent-rgb),.28);background:radial-gradient(90% 140% at 100% 0%,rgba(var(--accent-rgb),.22),transparent 60%),linear-gradient(180deg,var(--card-1),var(--card-2))}
+ .p-avatar{width:84px;height:84px;border-radius:24px;flex:0 0 auto;overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:'Saira Condensed';font-weight:900;font-size:40px;color:#fff;background:linear-gradient(150deg,var(--accent-pale),var(--accent-deep));box-shadow:0 18px 40px -18px var(--accent),inset 0 1px 0 rgba(255,255,255,.4)}
+ .p-avatar img{width:100%;height:100%;object-fit:cover}
+ .p-rank{display:inline-flex;align-items:center;gap:8px;margin-top:8px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-light)}
+ .acc-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+ @media (max-width:760px){ .acc-grid{grid-template-columns:1fr} }
+ .inline-form{display:flex;gap:10px}
+ .inline-form .input{flex:1}
+ @media (max-width:420px){ .inline-form{flex-direction:column} }
+</style>
 </head>
 <body>
 <div class="fx-curtain" aria-hidden="true"><b>DEYLO<i>·</i>GARAGE</b></div>
 <div id="site-nav" data-active="compte.html"></div>
 <main>
-  <div class="container" style="padding-top:50px;padding-bottom:70px;max-width:520px">
+  <div class="container" style="padding-top:40px;padding-bottom:70px">
 
-    <div id="loggedOutView">
-      <div class="eyebrow"><span class="dash"></span>Compte joueur</div>
-      <h1 class="h1" style="font-size:38px">Connexion</h1>
-      <p class="lead">Créez un compte pour sauvegarder votre progression (argent, voitures débloquées, records) sur tous vos appareils.</p>
-      <button class="btn btn-block" id="btnDiscord" style="margin-top:22px;background:#5865f2;color:#fff;border:0">
-        <svg width="20" height="20" viewBox="0 0 127.14 96.36" fill="currentColor" style="flex:0 0 auto"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
-        Continuer avec Discord
-      </button>
-      <div style="display:flex;align-items:center;gap:12px;margin:18px 0;color:var(--text-4);font-size:11px;letter-spacing:.1em;text-transform:uppercase"><span style="flex:1;height:1px;background:rgba(var(--line-rgb),.14)"></span>ou<span style="flex:1;height:1px;background:rgba(var(--line-rgb),.14)"></span></div>
-      <div class="tabs" style="display:flex;gap:8px;margin-bottom:18px">
-        <button class="btn btn-ghost" id="tabLogin" style="flex:1">Connexion</button>
-        <button class="btn btn-ghost" id="tabSignup" style="flex:1">Créer un compte</button>
+    <div id="loggedOutView" class="auth-wrap">
+      <div class="auth-side">
+        <div class="eyebrow"><span class="dash"></span>Compte joueur</div>
+        <h1 class="h1">Votre garage, partout avec vous</h1>
+        <div class="perks">
+          <div class="perk"><span class="pi">💾</span><div><b>Progression sauvegardée</b><span>Crédits, voitures et records synchronisés sur tous vos appareils.</span></div></div>
+          <div class="perk"><span class="pi">🏆</span><div><b>Votre nom au classement</b><span>Chaque partie compte pour le Top 25 mondial.</span></div></div>
+          <div class="perk"><span class="pi">🎯</span><div><b>Défis et succès</b><span>Défi du jour, tirages et trophées à débloquer.</span></div></div>
+        </div>
       </div>
-      <div id="msgArea"></div>
 
-      <form id="loginForm" class="card">
-        <div class="field"><label>Email</label><input type="email" id="loginEmail" required></div>
-        <div class="field"><label>Mot de passe</label><input type="password" id="loginPassword" required></div>
-        <button class="btn btn-primary btn-block" type="submit">Se connecter →</button>
-      </form>
+      <div class="card auth-card">
+        <h2 style="font-size:28px">Bienvenue, pilote</h2>
+        <p style="color:var(--text-3);font-size:14px;margin:6px 0 20px">Connectez-vous ou créez un compte en quelques secondes.</p>
+        <button class="btn btn-block btn-lg btn-discord" id="btnDiscord">
+          <svg width="20" height="20" viewBox="0 0 127.14 96.36" fill="currentColor" style="flex:0 0 auto"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+          Continuer avec Discord
+        </button>
+        <div class="or"><span></span>ou par email<span></span></div>
+        <div class="seg full" role="tablist" style="margin-bottom:20px">
+          <button type="button" role="tab" class="on" id="tabLogin" aria-selected="true">Connexion</button>
+          <button type="button" role="tab" id="tabSignup" aria-selected="false">Créer un compte</button>
+        </div>
+        <div id="msgArea"></div>
 
-      <form id="signupForm" class="card" style="display:none">
-        <div class="field"><label>Pseudo</label><input type="text" id="suUsername" maxlength="16" required></div>
-        <div class="field"><label>Email</label><input type="email" id="suEmail" required></div>
-        <div class="field"><label>Mot de passe (8 caractères min.)</label><input type="password" id="suPassword" minlength="8" required></div>
-        <button class="btn btn-primary btn-block" type="submit">Créer mon compte →</button>
-      </form>
+        <form id="loginForm">
+          <div class="field"><label for="loginEmail">Email</label><input type="email" id="loginEmail" autocomplete="email" placeholder="pilote@exemple.fr" required></div>
+          <div class="field"><label for="loginPassword">Mot de passe</label><div class="input-wrap"><input type="password" id="loginPassword" autocomplete="current-password" required><button type="button" class="input-btn" data-reveal-pw="loginPassword">Afficher</button></div></div>
+          <button class="btn btn-primary btn-block btn-lg" type="submit">Se connecter <span class="arr">→</span></button>
+        </form>
+
+        <form id="signupForm" style="display:none">
+          <div class="field"><label for="suUsername">Pseudo</label><input type="text" id="suUsername" maxlength="16" autocomplete="nickname" placeholder="16 caractères max." required></div>
+          <div class="field"><label for="suEmail">Email</label><input type="email" id="suEmail" autocomplete="email" placeholder="pilote@exemple.fr" required></div>
+          <div class="field"><label for="suPassword">Mot de passe</label><div class="input-wrap"><input type="password" id="suPassword" minlength="8" autocomplete="new-password" placeholder="8 caractères minimum" required><button type="button" class="input-btn" data-reveal-pw="suPassword">Afficher</button></div></div>
+          <button class="btn btn-primary btn-block btn-lg" type="submit">Créer mon compte <span class="arr">→</span></button>
+        </form>
+      </div>
     </div>
 
-    <div id="loggedInView" style="display:none">
-      <div class="eyebrow"><span class="dash"></span>Mon profil</div>
-      <div style="display:flex;align-items:center;gap:16px;margin-top:8px">
-        <img id="avatarImg" src="" alt="" style="display:none;width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid rgba(var(--accent-rgb),.5)">
-        <h1 class="h1" style="font-size:38px;margin-top:0" id="welcomeName">Pilote</h1>
+    <div id="loggedInView" style="display:none;max-width:980px;margin:0 auto">
+      <div class="eyebrow" style="margin-bottom:14px"><span class="dash"></span>Mon profil</div>
+      <div class="profile-head">
+        <div class="p-avatar" id="avatarBox"><img id="avatarImg" src="" alt="" style="display:none"><span id="avatarInitial">P</span></div>
+        <div style="flex:1;min-width:200px">
+          <h1 class="h1" style="font-size:clamp(30px,4.4vw,46px);margin-top:0" id="welcomeName">Pilote</h1>
+          <div class="p-rank" id="pRank">🏁 Pilote</div>
+        </div>
+        <a href="game/index.html" class="btn btn-primary btn-lg">▶ Jouer</a>
       </div>
-      <div class="grid grid-auto" style="margin-top:26px">
-        <div class="card"><div style="font-size:11px;letter-spacing:.14em;color:var(--text-3);text-transform:uppercase">Crédits</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:30px;margin-top:6px" id="statMoney">—</div></div>
-        <div class="card"><div style="font-size:11px;letter-spacing:.14em;color:var(--text-3);text-transform:uppercase">Voitures débloquées</div><div style="font-family:'Saira Condensed';font-weight:900;font-size:30px;margin-top:6px" id="statCars">—</div></div>
+
+      <div class="kpis" style="margin-top:18px">
+        <div class="kpi"><div class="k">🪙 Crédits</div><div class="v" id="statMoney">—</div></div>
+        <div class="kpi"><div class="k">🔑 Voitures</div><div class="v" id="statCars">—</div><div class="progress" style="margin-top:12px;height:5px"><i id="statCarsBar"></i></div></div>
+        <div class="kpi"><div class="k">🏆 Succès</div><div class="v" id="statBadges">—</div></div>
       </div>
+
       <div class="card" style="margin-top:18px">
-        <div style="font-size:11px;letter-spacing:.14em;color:var(--text-3);text-transform:uppercase;margin-bottom:10px">🏆 Succès</div>
-        <div class="badge-grid" id="badgeGrid"><div class="skeleton">Chargement…</div></div>
+        <div class="card-title"><span class="ic">🏆</span>Succès</div>
+        <div class="badge-grid" id="badgeGrid"><div class="skel" style="height:96px"></div><div class="skel" style="height:96px"></div><div class="skel" style="height:96px"></div></div>
       </div>
-      <div class="card" style="margin-top:18px">
-        <div style="font-size:11px;letter-spacing:.14em;color:var(--text-3);text-transform:uppercase;margin-bottom:10px">🎟️ Code promo</div>
-        <div id="codeMsg"></div>
-        <div class="field"><input type="text" id="codeInput" maxlength="24" placeholder="Ex. DEYLO2026" style="text-transform:uppercase"></div>
-        <button class="btn btn-primary btn-block" id="btnRedeemCode">Utiliser le code</button>
+
+      <div class="acc-grid">
+        <div class="card">
+          <div class="card-title"><span class="ic">🎟️</span>Code promo</div>
+          <div id="codeMsg"></div>
+          <form class="inline-form" id="codeForm">
+            <input class="input" type="text" id="codeInput" maxlength="24" placeholder="Ex. DEYLO2026" style="text-transform:uppercase" aria-label="Code promo">
+            <button class="btn btn-primary" id="btnRedeemCode" type="submit">Utiliser</button>
+          </form>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="ic">✏️</span>Changer de pseudo</div>
+          <form class="inline-form" id="nameForm">
+            <input class="input" type="text" id="newUsername" maxlength="16" aria-label="Nouveau pseudo">
+            <button class="btn btn-ghost" id="btnSaveUsername" type="submit">Enregistrer</button>
+          </form>
+        </div>
       </div>
-      <div class="card" style="margin-top:18px">
-        <div class="field"><label>Changer de pseudo</label><input type="text" id="newUsername" maxlength="16"></div>
-        <button class="btn btn-ghost btn-block" id="btnSaveUsername">Enregistrer</button>
+      <div style="display:flex;justify-content:flex-end;margin-top:18px">
+        <button class="btn btn-danger btn-sm" id="btnLogout">⎋ Se déconnecter</button>
       </div>
-      <button class="btn btn-ghost btn-block" id="btnLogout" style="margin-top:14px">Se déconnecter</button>
     </div>
   </div>
 </main>
-<footer class="footer">
-  <div style="font-family:'Saira Condensed';font-weight:900;letter-spacing:.16em;color:var(--text-2);font-size:16px">DEYLO<span style="color:var(--accent)">·</span>GARAGE</div>
-  <a href="index.html">← Retour à l'accueil</a>
-</footer>
+<footer class="footer" id="site-footer"></footer>
 <script src="js/supabase-client.js"></script>
 <script src="js/cars.js"></script>
 <script src="js/auth.js"></script>
@@ -91,21 +140,46 @@
   const msgArea = document.getElementById('msgArea');
   function msg(text, ok){ msgArea.innerHTML = '<div class="msg ' + (ok?'msg-ok':'msg-error') + '">' + text + '</div>'; }
 
-  document.getElementById('tabLogin').addEventListener('click', ()=>{ document.getElementById('loginForm').style.display='block'; document.getElementById('signupForm').style.display='none'; });
-  document.getElementById('tabSignup').addEventListener('click', ()=>{ document.getElementById('loginForm').style.display='none'; document.getElementById('signupForm').style.display='block'; });
+  function setTab(signup){
+    document.getElementById('loginForm').style.display = signup ? 'none' : 'block';
+    document.getElementById('signupForm').style.display = signup ? 'block' : 'none';
+    const tl = document.getElementById('tabLogin'), ts = document.getElementById('tabSignup');
+    tl.classList.toggle('on', !signup); ts.classList.toggle('on', signup);
+    tl.setAttribute('aria-selected', !signup); ts.setAttribute('aria-selected', signup);
+    msgArea.innerHTML = '';
+  }
+  document.getElementById('tabLogin').addEventListener('click', ()=>setTab(false));
+  document.getElementById('tabSignup').addEventListener('click', ()=>setTab(true));
+  document.querySelectorAll('[data-reveal-pw]').forEach(b=>b.addEventListener('click', ()=>{
+    const inp = document.getElementById(b.getAttribute('data-reveal-pw'));
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    b.textContent = show ? 'Masquer' : 'Afficher';
+  }));
+  // Bouton en etat "chargement" pendant une action asynchrone
+  async function busy(btn, fn){
+    btn.classList.add('loading'); btn.disabled = true;
+    try { return await fn(); } finally { btn.classList.remove('loading'); btn.disabled = false; }
+  }
 
   document.getElementById('loginForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
-    try { await DG.Auth.signIn(document.getElementById('loginEmail').value, document.getElementById('loginPassword').value); }
-    catch(err){ msg(err.message || 'Connexion impossible', false); }
+    const btn = e.target.querySelector('[type=submit]');
+    await busy(btn, async ()=>{
+      try { await DG.Auth.signIn(document.getElementById('loginEmail').value, document.getElementById('loginPassword').value); }
+      catch(err){ msg(err.message || 'Connexion impossible', false); }
+    });
   });
 
   document.getElementById('signupForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
-    try {
-      await DG.Auth.signUp(document.getElementById('suEmail').value, document.getElementById('suPassword').value, document.getElementById('suUsername').value);
-      msg('Compte créé — vérifiez votre email si une confirmation est requise, puis connectez-vous.', true);
-    } catch(err){ msg(err.message || 'Inscription impossible', false); }
+    const btn = e.target.querySelector('[type=submit]');
+    await busy(btn, async ()=>{
+      try {
+        await DG.Auth.signUp(document.getElementById('suEmail').value, document.getElementById('suPassword').value, document.getElementById('suUsername').value);
+        msg('Compte créé — vérifiez votre email si une confirmation est requise, puis connectez-vous.', true);
+      } catch(err){ msg(err.message || 'Inscription impossible', false); }
+    });
   });
 
   document.getElementById('btnLogout').addEventListener('click', ()=>DG.Auth.signOut());
@@ -114,18 +188,23 @@
     try { await DG.Auth.signInWithDiscord(); } catch(err){ msg(err.message || 'Connexion Discord impossible', false); }
   });
 
-  document.getElementById('btnSaveUsername').addEventListener('click', async ()=>{
+  document.getElementById('nameForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
     const v = document.getElementById('newUsername').value.trim();
-    if(!v) return;
-    try { await DG.Auth.updateUsername(v); render(); } catch(err){ if(DG.FX) DG.FX.toast('⚠ ' + err.message, 'bad'); else alert(err.message); }
+    if(!v || v === DG.Auth.displayName()) return;
+    await busy(document.getElementById('btnSaveUsername'), async ()=>{
+      try { await DG.Auth.updateUsername(v); render(); if(DG.FX) DG.FX.toast('✓ Pseudo mis à jour', 'good'); }
+      catch(err){ if(DG.FX) DG.FX.toast('⚠ ' + err.message, 'bad'); else alert(err.message); }
+    });
   });
 
-  document.getElementById('btnRedeemCode').addEventListener('click', async ()=>{
+  document.getElementById('codeForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
     const input = document.getElementById('codeInput');
     const codeMsg = document.getElementById('codeMsg');
     const code = input.value.trim();
     if(!code) return;
-    const res = await DG.Economy.redeemCode(code);
+    const res = await busy(document.getElementById('btnRedeemCode'), ()=>DG.Economy.redeemCode(code));
     if(res.ok){
       const car = res.carId ? DG.carById(res.carId) : null;
       const parts = [];
@@ -140,15 +219,15 @@
 
   // Succès/trophées calcules a partir de my_stats() (parties jouees, records battus, etc).
   const BADGES = [
-    { icon:'🔑', label:'Premier volant',    check:s=>s.cars_unlocked >= 2 },
-    { icon:'🚗', label:'Collectionneur',    check:s=>s.cars_unlocked >= 6 },
-    { icon:'🏁', label:'Garage complet',    check:s=>s.cars_unlocked >= DG.CARS.length },
-    { icon:'🛣️', label:'Petit rouleur',     check:s=>s.games_played >= 10 },
-    { icon:'⏱️', label:'Vétéran',           check:s=>s.games_played >= 50 },
-    { icon:'💪', label:'Increvable',        check:s=>s.games_played >= 200 },
-    { icon:'📈', label:'Recordman',         check:s=>s.records_beaten >= 5 },
-    { icon:'👑', label:'Légende',           check:s=>s.records_beaten >= 15 },
-    { icon:'🎯', label:'Défi relevé',       check:s=>s.daily_challenges_claimed >= 1 },
+    { icon:'🔑', label:'Premier volant',    req:'2 voitures',          check:s=>s.cars_unlocked >= 2 },
+    { icon:'🚗', label:'Collectionneur',    req:'6 voitures',          check:s=>s.cars_unlocked >= 6 },
+    { icon:'🏁', label:'Garage complet',    req:'Toutes les voitures', check:s=>s.cars_unlocked >= DG.CARS.length },
+    { icon:'🛣️', label:'Petit rouleur',     req:'10 parties',          check:s=>s.games_played >= 10 },
+    { icon:'⏱️', label:'Vétéran',           req:'50 parties',          check:s=>s.games_played >= 50 },
+    { icon:'💪', label:'Increvable',        req:'200 parties',         check:s=>s.games_played >= 200 },
+    { icon:'📈', label:'Recordman',         req:'5 records',           check:s=>s.records_beaten >= 5 },
+    { icon:'👑', label:'Légende',           req:'15 records',          check:s=>s.records_beaten >= 15 },
+    { icon:'🎯', label:'Défi relevé',       req:'1 défi du jour',      check:s=>s.daily_challenges_claimed >= 1 },
   ];
 
   let achievementsLoadedFor = null;
@@ -159,10 +238,15 @@
     try{
       const { data, error } = await DG.supabase.rpc('my_stats');
       if(error) throw error;
+      let got = 0;
       grid.innerHTML = BADGES.map(b=>{
         const unlocked = b.check(data);
-        return '<div class="badge' + (unlocked?' unlocked':'') + '"><div class="icon">' + b.icon + '</div><div class="label">' + b.label + '</div></div>';
+        if(unlocked) got++;
+        return '<div class="badge' + (unlocked?' unlocked':'') + '" title="' + b.req + '"><div class="icon">' + b.icon + '</div><div class="label">' + b.label + '</div><div class="req">' + (unlocked ? '✓ Obtenu' : b.req) + '</div></div>';
       }).join('');
+      document.getElementById('statBadges').textContent = got + ' / ' + BADGES.length;
+      const ranks = ['🏁 Pilote débutant', '🛣️ Pilote confirmé', '⚡ Pilote expert', '👑 Légende du garage'];
+      document.getElementById('pRank').textContent = ranks[Math.min(ranks.length - 1, Math.floor(got / 3))];
     } catch(e){
       grid.innerHTML = '<div class="skeleton">Indisponible</div>';
     }
@@ -170,16 +254,21 @@
 
   function render(){
     const loggedIn = DG.Auth.isLoggedIn();
-    document.getElementById('loggedOutView').style.display = loggedIn ? 'none' : 'block';
+    document.getElementById('loggedOutView').style.display = loggedIn ? 'none' : '';
     document.getElementById('loggedInView').style.display = loggedIn ? 'block' : 'none';
     if(loggedIn){
-      document.getElementById('welcomeName').textContent = 'Salut, ' + DG.Auth.displayName();
-      document.getElementById('statMoney').textContent = '🪙 ' + DG.Economy.money.toLocaleString('fr-FR');
+      const name = DG.Auth.displayName();
+      document.getElementById('welcomeName').textContent = 'Salut, ' + name;
+      document.getElementById('statMoney').textContent = DG.Economy.money.toLocaleString('fr-FR');
       document.getElementById('statCars').textContent = DG.Economy.unlocked.length + ' / ' + DG.CARS.length;
-      document.getElementById('newUsername').value = DG.Auth.displayName();
+      document.getElementById('statCarsBar').style.width = Math.max(2, DG.Economy.unlocked.length / DG.CARS.length * 100) + '%';
+      const nameInput = document.getElementById('newUsername');
+      if(document.activeElement !== nameInput) nameInput.value = name;
       const avatarImg = document.getElementById('avatarImg');
       const avatar = DG.Auth.avatarUrl();
-      if(avatar){ avatarImg.src = avatar; avatarImg.style.display = 'block'; } else { avatarImg.style.display = 'none'; }
+      document.getElementById('avatarInitial').textContent = (name || 'P').charAt(0).toUpperCase();
+      if(avatar){ avatarImg.src = avatar; avatarImg.style.display = 'block'; document.getElementById('avatarInitial').style.display = 'none'; }
+      else { avatarImg.style.display = 'none'; document.getElementById('avatarInitial').style.display = ''; }
       loadAchievements();
     } else {
       achievementsLoadedFor = null;

@@ -131,11 +131,41 @@
     const road = new T.Mesh(new T.PlaneGeometry(14, 260), this.roadMat);
     road.rotation.x = -Math.PI/2; road.position.z = -100; scene.add(road);
 
+    // Ciel en degrade calcule au pixel (4 teintes + halo autour de l'astre +
+    // tramage anti-bandes) : l'horizon prend exactement la couleur du brouillard,
+    // si bien que le sol/la mer embrumes se fondent dans le ciel sans ligne dure.
+    this._skyU = {
+      top:{ value:new T.Color() }, mid:{ value:new T.Color() }, bottom:{ value:new T.Color() }, haze:{ value:new T.Color() },
+      sunDir:{ value:new T.Vector3(0, 0.2, -1).normalize() }, sunCol:{ value:new T.Color(0) }, band:{ value:0.07 }
+    };
     this._skyDome = new T.Mesh(
-      new T.SphereGeometry(280, 20, 14),
-      new T.MeshBasicMaterial({ side:T.BackSide, fog:false, vertexColors:true })
+      new T.SphereGeometry(280, 32, 16),
+      new T.ShaderMaterial({
+        uniforms:this._skyU, side:T.BackSide, fog:false, depthWrite:false,
+        vertexShader:'varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader:[
+          'uniform vec3 top; uniform vec3 mid; uniform vec3 bottom; uniform vec3 haze; uniform vec3 sunDir; uniform vec3 sunCol; uniform float band;',
+          'varying vec3 vDir;',
+          'void main(){',
+          '  vec3 d = normalize(vDir); float el = d.y; vec3 c = haze;',
+          '  if(el > 0.0){',
+          '    vec3 up = el < 0.32 ? mix(bottom, mid, smoothstep(band * 0.6, 0.32, el)) : mix(mid, top, pow(smoothstep(0.32, 1.0, el), 0.8));',
+          '    c = mix(haze, up, smoothstep(0.0, band, el));',
+          '  }',
+          '  float s = max(dot(d, sunDir), 0.0);',
+          '  c += sunCol * (pow(s, 6.0) * 0.28 + pow(s, 48.0) * 0.55) * smoothstep(0.0, 0.05, el);',
+          '  c += (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) / 180.0;',
+          '  gl_FragColor = vec4(c, 1.0);',
+          '  #include <tonemapping_fragment>',
+          '  #include <encodings_fragment>',
+          '}'
+        ].join('\n')
+      })
     );
+    this._skyDome.renderOrder = -10;
     scene.add(this._skyDome);
+    this._tickers = [];
+    this._scrollTex = [];
 
     this.stripeMat = new T.MeshBasicMaterial({ color:0x39404d });
     for(const lane of [-2.2, 0, 2.2]){
@@ -201,48 +231,66 @@
     this.camera.updateProjectionMatrix();
   };
 
-  GameEngine.prototype._applySkyGradient = function(topHex, bottomHex){
-    const T = window.THREE;
-    const geo = this._skyDome.geometry;
-    const pos = geo.attributes.position;
-    const colors = geo.attributes.color && geo.attributes.color.count === pos.count
-      ? geo.attributes.color
-      : new T.BufferAttribute(new Float32Array(pos.count*3), 3);
-    const top = new T.Color(topHex), bottom = new T.Color(bottomHex);
-    const c = new T.Color();
-    let minY = Infinity, maxY = -Infinity;
-    for(let i=0;i<pos.count;i++){ const y = pos.getY(i); if(y<minY) minY=y; if(y>maxY) maxY=y; }
-    const span = (maxY - minY) || 1;
-    for(let i=0;i<pos.count;i++){
-      const t = Math.max(0, Math.min(1, (pos.getY(i) - minY) / span));
-      c.copy(bottom).lerp(top, Math.pow(t, 0.7));
-      colors.setXYZ(i, c.r, c.g, c.b);
-    }
-    geo.setAttribute('color', colors);
+  GameEngine.prototype._applySky = function(route){
+    const U = this._skyU, sky = route.sky || { top:0x020207, bottom:0x121a2e };
+    U.top.value.setHex(sky.top);
+    U.bottom.value.setHex(sky.bottom);
+    if(sky.mid != null) U.mid.value.setHex(sky.mid); else U.mid.value.setHex(sky.bottom).lerp(U.top.value, 0.4);
+    U.haze.value.setHex(sky.haze != null ? sky.haze : route.fog);
+    U.band.value = sky.band || 0.07;
+    const c = route.celestial;
+    if(c){
+      U.sunDir.value.set(c.x, c.y, -254).normalize();
+      U.sunCol.value.setHex(sky.glow != null ? sky.glow : c.halo).multiplyScalar(sky.glowI != null ? sky.glowI : 0.6);
+    } else U.sunCol.value.setRGB(0, 0, 0);
   };
+
+  // Libere tout ce qu'un objet (et ses enfants) possede sur le GPU.
+  function disposeDeep(o){
+    o.traverse(n=>{
+      if(n.geometry) n.geometry.dispose();
+      if(n.material){
+        const mats = Array.isArray(n.material) ? n.material : [n.material];
+        mats.forEach(m=>{ if(m.emissiveMap) m.emissiveMap.dispose(); if(m.map) m.map.dispose(); m.dispose(); });
+      }
+    });
+  }
 
   GameEngine.prototype.setRoute = function(routeId){
     const T = window.THREE;
     const route = DG.routeById(routeId);
     this.route = route;
-    this._decor.forEach(o=>{
-      this.scene.remove(o);
-      o.traverse(n=>{
-        if(n.geometry) n.geometry.dispose();
-        if(n.material){
-          const mats = Array.isArray(n.material) ? n.material : [n.material];
-          mats.forEach(m=>{ if(m.emissiveMap) m.emissiveMap.dispose(); if(m.map) m.map.dispose(); m.dispose(); });
-        }
-      });
-    });
+    this._decor.forEach(o=>{ this.scene.remove(o); disposeDeep(o); });
     this._decor = [];
     this.scene.fog = new T.Fog(route.fog, route.fogNear, route.fogFar);
+    this.renderer.toneMappingExposure = route.exposure || 1.05;
     this.roadMat.color.setHex(route.road);
     this.stripeMat.color.setHex(route.stripe);
     this.edgeMat.color.setHex(route.edge);
     this.edgeMat.emissive.setHex(route.edgeEmissive);
     this.groundMat.color.setHex(route.ground != null ? route.ground : route.road);
-    if(route.sky) this._applySkyGradient(route.sky.top, route.sky.bottom);
+    // Sol texture (herbe, sable...) qui defile a la meme vitesse que la route.
+    const gt = route.groundTex ? route.groundTex(T) : null;
+    if(gt){ gt.tex.repeat.set(gt.rx, gt.ry); this._groundK = gt.ry / 320; }
+    this.groundMat.map = gt ? gt.tex : null;
+    this.groundMat.needsUpdate = true;
+    this._applySky(route);
+    // Chaussee mouillee : vrais reflets colores via une carte d'environnement
+    // procedurale (PMREM calcule une seule fois par route, puis garde en cache).
+    let env = null;
+    if(route.roadEnv){
+      if(!route._envRT){
+        const pm = new T.PMREMGenerator(this.renderer);
+        const src = route.roadEnv(T);
+        route._envRT = pm.fromEquirectangular(src);
+        src.dispose(); pm.dispose();
+      }
+      env = route._envRT.texture;
+    }
+    this.roadMat.envMap = env;
+    this.roadMat.envMapIntensity = route.roadEnvI || 1;
+    this.roadMat.needsUpdate = true;
+    this._env = env;
     if(route.light){
       const L = route.light;
       this.keyLight.color.setHex(L.key); this.keyLight.intensity = L.keyI;
@@ -327,8 +375,10 @@
   // Decor fixe (ne defile pas) : astres, etoiles, pluie, halo de ville.
   GameEngine.prototype._buildRouteExtras = function(route){
     const T = window.THREE;
-    this._routeExtras.forEach(o=>{ this.scene.remove(o); if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); });
+    this._routeExtras.forEach(o=>{ this.scene.remove(o); disposeDeep(o); });
     this._routeExtras = [];
+    this._tickers = [];
+    this._scrollTex = [];
     this._rain = null;
     const add = (o)=>{ this.scene.add(o); this._routeExtras.push(o); return o; };
     const sprite = (color, size, x, y, z, op)=>{
@@ -336,18 +386,43 @@
       s.scale.set(size, size, 1); s.position.set(x, y, z); return add(s);
     };
     if(route.stars){
-      const n = 700, pos = new Float32Array(n*3);
-      for(let i=0;i<n;i++){
-        const a = Math.random()*Math.PI*2, e = 0.12 + Math.random()*1.3, r = 250;
-        pos[i*3] = Math.cos(a)*Math.cos(e)*r; pos[i*3+1] = Math.sin(e)*r; pos[i*3+2] = Math.sin(a)*Math.cos(e)*r - 60;
-      }
-      const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(pos, 3));
-      add(new T.Points(g, new T.PointsMaterial({ color:0xdfe8ff, size:1.4, sizeAttenuation:false, transparent:true, opacity:.8, fog:false, depthWrite:false })));
+      // 2 couches : poussiere d'etoiles fine + quelques etoiles vives qui scintillent,
+      // plus denses vers le zenith et le long d'une "voie lactee" diagonale.
+      const mk = (n, size, op, bright)=>{
+        const pos = new Float32Array(n*3), col = new Float32Array(n*3), tint = new T.Color();
+        for(let i=0;i<n;i++){
+          let a = Math.random()*Math.PI*2, e = 0.06 + Math.pow(Math.random(), 0.8)*1.35;
+          if(!bright && i % 3 === 0){ a = -1.2 + Math.random()*2.4; e = 0.25 + (a + 1.2) * 0.42 + (Math.random()-.5)*0.18; }
+          const r = 250;
+          pos[i*3] = Math.cos(a)*Math.cos(e)*r; pos[i*3+1] = Math.sin(e)*r; pos[i*3+2] = Math.sin(a)*Math.cos(e)*r - 60;
+          tint.setHSL(Math.random() < 0.5 ? 0.6 : 0.1, 0.35, 0.72 + Math.random()*0.28);
+          col[i*3] = tint.r; col[i*3+1] = tint.g; col[i*3+2] = tint.b;
+        }
+        const g = new T.BufferGeometry();
+        g.setAttribute('position', new T.BufferAttribute(pos, 3)); g.setAttribute('color', new T.BufferAttribute(col, 3));
+        return add(new T.Points(g, new T.PointsMaterial({ size, sizeAttenuation:false, vertexColors:true, transparent:true, opacity:op, fog:false, depthWrite:false })));
+      };
+      mk(1100, 1.1, .75, false);
+      const bright = mk(110, 2.3, .95, true);
+      this._tickers.push((dt, t)=>{ bright.material.opacity = 0.78 + Math.sin(t*2.3)*0.12 + Math.sin(t*5.1)*0.06; });
     }
     const c = route.celestial;
     if(c){
       sprite(c.halo, c.size*3.2, c.x, c.y, -255, c.haloOp || .45);
-      sprite(c.color, c.size, c.x, c.y, -254, 1);
+      if(c.tex){
+        const disc = new T.Sprite(new T.SpriteMaterial({ map:c.tex(T), color:0xffffff, transparent:true, depthWrite:false, fog:false }));
+        disc.scale.set(c.size, c.size, 1); disc.position.set(c.x, c.y, -254); add(disc);
+      } else sprite(c.color, c.size, c.x, c.y, -254, 1);
+    }
+    // Decor fixe propre a la route (silhouettes lointaines, nuages, mer...) :
+    // la route peut aussi enregistrer des animations legeres (tick) et des
+    // textures a faire defiler avec la vitesse (scrollTex, k = repetitions/unite).
+    if(route.extras){
+      route.extras(T, {
+        add, env:this._env,
+        tick:(f)=>this._tickers.push(f),
+        scrollTex:(tex, k)=>this._scrollTex.push({ tex, k })
+      });
     }
     if(route.horizonGlow){
       const h = route.horizonGlow;
@@ -596,7 +671,11 @@
     const dt = Math.min(raw/1000, 0.05);
     this._last = now;
     this._lastDt = dt;
-    if(!this.paused) this._update(dt, now);
+    if(!this.paused){
+      this._tNow = (this._tNow || 0) + dt;
+      for(let i=0;i<this._tickers.length;i++) this._tickers[i](dt, this._tNow);
+      this._update(dt, now);
+    }
     this.renderer.render(this.scene, this.camera);
     if(active && !this.paused) this._adaptResolution(raw);
   };
@@ -828,15 +907,19 @@
   GameEngine.prototype._scrollWorld = function(scroll){
     for(const st of this._stripes){ st.position.z += scroll; if(st.position.z > 10) st.position.z -= 240; }
     if(this._roadTex) this._roadTex.offset.y += scroll * 60 / 260;
+    if(this.groundMat.map) this.groundMat.map.offset.y += scroll * this._groundK;
+    for(let i=0;i<this._scrollTex.length;i++){ const s = this._scrollTex[i]; s.tex.offset.y = (s.tex.offset.y + scroll * s.k) % 1; }
     const wrap = this._decorWrap || 140;
     // wrapDist : un decor peut demander un cycle de retour plus long que les
     // autres (ex: station essence, repere rare) — sinon tout le decor partage
     // la meme boucle courte et un objet cense etre rare repasse en fait toutes
     // les quelques secondes a haute vitesse.
+    const tNow = this._tNow || 0, dt = this._lastDt || 0.016;
     for(const d of this._decor){
       d.position.z += scroll;
-      const w = (d.userData && d.userData.wrapDist) || wrap;
+      const w = d.userData.wrapDist || wrap;
       if(d.position.z > 30) d.position.z -= w;
+      if(d.userData.tick) d.userData.tick(tNow, dt);
     }
     this._updateRain(this._lastDt || 0.016, scroll);
   };

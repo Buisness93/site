@@ -17,21 +17,26 @@
 <div class="fx-curtain" aria-hidden="true"><b>DEYLO<i>·</i>GARAGE</b></div>
 <div id="site-nav" data-active="classement.html"></div>
 <main>
-  <div class="container" style="padding-top:40px;padding-bottom:60px">
+  <div class="container" style="padding-top:40px;padding-bottom:60px;max-width:1000px">
     <div class="eyebrow"><span class="dash"></span>Classement mondial</div>
     <h1 class="h1">Top 25 pilotes</h1>
-    <p class="lead">Mis à jour automatiquement à chaque partie terminée.</p>
-    <div class="card" style="margin-top:26px">
+    <p class="lead">Mis à jour automatiquement à chaque partie terminée. Un seul score par pilote : son meilleur.</p>
+    <div class="podium" id="podium" data-reveal></div>
+    <div class="card" style="margin-top:0;border-top-left-radius:0;border-top-right-radius:0">
+      <div class="page-head" style="margin-bottom:14px;align-items:center">
+        <div class="card-title" style="margin:0"><span class="ic">🏁</span>Classement complet</div>
+        <a href="game/index.html" class="btn btn-primary btn-sm">▶ Tenter ma chance</a>
+      </div>
+      <div class="leaderboard-row" style="border:0;padding-top:0;padding-bottom:6px;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-4)" aria-hidden="true">
+        <span class="rank" style="font-family:inherit;font-size:inherit;font-weight:500">#</span><span class="who">Pilote</span><span class="meta">Voiture</span><span class="meta" style="min-width:56px">Temps</span><span class="score" style="font-family:inherit;font-size:inherit;color:inherit;font-weight:500">Score</span>
+      </div>
       <div id="board" data-stagger style="display:flex;flex-direction:column;gap:6px">
-        <div class="skeleton">Chargement du classement…</div>
+        <div class="skel" style="height:54px"></div><div class="skel" style="height:54px"></div><div class="skel" style="height:54px"></div><div class="skel" style="height:54px"></div>
       </div>
     </div>
   </div>
 </main>
-<footer class="footer">
-  <div style="font-family:'Saira Condensed';font-weight:900;letter-spacing:.16em;color:var(--text-2);font-size:16px">DEYLO<span style="color:var(--accent)">·</span>GARAGE</div>
-  <a href="index.html">← Retour à l'accueil</a>
-</footer>
+<footer class="footer" id="site-footer"></footer>
 <script src="js/supabase-client.js"></script>
 <script src="js/cars.js"></script>
 <script src="js/auth.js"></script>
@@ -43,9 +48,28 @@
 (async function(){
   await DG.ready;
   const board = await DG.Leaderboard.fetchBoard(25);
-  document.getElementById('board').innerHTML = board.length
-    ? board.map((e,i)=>DG.Leaderboard.rowHTML(e,i)).join('')
-    : '<div style="text-align:center;color:var(--text-3);padding:30px">Aucun score encore — soyez le premier !</div>';
+  const esc = DG.Leaderboard.escapeHTML;
+  const pod = document.getElementById('podium');
+  if(!board.length){
+    pod.style.display = 'none';
+    document.getElementById('board').innerHTML = '<div class="empty"><div class="ei">🏁</div><div>Aucun score encore — soyez le premier !</div><a href="game/index.html" class="btn btn-primary btn-sm">▶ Jouer</a></div>';
+    return;
+  }
+  // Podium : 2e a gauche, 1er au centre, 3e a droite
+  const slot = (e, n)=>{
+    if(!e) return '<div></div>';
+    const car = DG.carById(e.car);
+    return '<div class="pod p' + n + '">' + (n === 1 ? '<div style="font-size:26px;margin-bottom:-4px">👑</div>' : '') +
+      '<div class="medal">' + n + '</div><div class="pn">' + esc(e.name || 'Pilote') + '</div>' +
+      '<div class="pc">' + (car ? esc(car.name) : '—') + '</div><div class="ps" data-score="' + e.score + '">' + Number(e.score).toLocaleString('fr-FR') + '</div>' +
+      '<div class="base">' + n + '</div></div>';
+  };
+  pod.innerHTML = slot(board[1], 2) + slot(board[0], 1) + slot(board[2], 3);
+  if(DG.FX) pod.querySelectorAll('[data-score]').forEach(el=>DG.FX.countWhenVisible(el, +el.getAttribute('data-score')));
+  const rest = board.slice(3);
+  document.getElementById('board').innerHTML = rest.length
+    ? rest.map((e,i)=>DG.Leaderboard.rowHTML(e,i+3)).join('')
+    : '<div class="empty" style="padding:24px">Le reste du classement vous attend.</div>';
 })();
 </script>
 </body>

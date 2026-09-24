@@ -13,31 +13,77 @@
 <link rel="stylesheet" href="css/site.css">
 <link rel="stylesheet" href="css/fx.css">
 <style>
- .car-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px;margin-top:30px}
- .car-card{position:relative;background:linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid rgba(255,255,255,.1);border-radius:18px}
- .car-card .bar{height:5px;border-radius:17px 17px 0 0}
- .car-card .body{padding:18px 20px 20px}
- .stat-bars{display:flex;gap:3px;margin:12px 0}
- .stat-bars .b{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
- .stat-bars .b i{display:block;height:100%}
- .car-card.locked{opacity:.7}
- .btn-view3d{width:100%;margin-top:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:var(--text-1);border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;cursor:pointer}
- .btn-view3d:hover{border-color:rgba(255,255,255,.32)}
- #viewerModal{position:fixed;inset:0;background:rgba(4,5,8,.82);backdrop-filter:blur(6px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+ .garage-top{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-top:30px}
+ @media (max-width:860px){ .garage-top{grid-template-columns:1fr} }
+ .coll{display:flex;flex-direction:column;gap:14px}
+ .coll-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+ .coll-big{font-family:'Saira Condensed';font-weight:900;font-size:44px;line-height:1}
+ .coll-big small{font-size:20px;color:var(--text-3)}
+ .coll-tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+ .coll-tier{padding:10px 12px;border-radius:12px;background:rgba(var(--line-rgb),.03);border:1px solid var(--line);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3)}
+ .coll-tier b{display:block;font-family:'Saira Condensed';font-size:18px;letter-spacing:0;color:var(--text-1);margin-top:4px}
+ .coll-tier .tl{display:flex;align-items:center;gap:6px}
+ .coll-tier .tl i{width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor}
+ @media (max-width:520px){ .coll-tiers{grid-template-columns:repeat(2,1fr)} }
+ .next-card{display:flex;flex-direction:column;gap:10px;justify-content:center}
+ .next-card .nn{font-family:'Saira Condensed';font-weight:900;font-size:26px;line-height:1;text-transform:uppercase}
+ .next-card .nb{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3)}
+ .next-card .nm{display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-3)}
+ .toolbar{position:sticky;top:70px;z-index:20;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:26px;padding:10px;border-radius:18px;background:rgba(var(--bg-rgb),.78);border:1px solid var(--line);backdrop-filter:blur(16px)}
+ .sort{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3)}
+ .sort select{height:40px;padding:0 34px 0 14px;border-radius:11px;border:1px solid var(--line-2);background:rgba(0,0,0,.35) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23999' stroke-width='1.5'/></svg>") no-repeat right 12px center;color:var(--text-1);font-size:13px;appearance:none;-webkit-appearance:none;cursor:pointer;outline:none}
+ .sort select:focus{border-color:var(--accent);box-shadow:var(--ring)}
+ .sort select option{background:#0b0d12}
+ .car-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px;margin-top:20px;min-height:200px}
+ .car-card{--tc:#9fb4c7;position:relative;display:flex;flex-direction:column;background:radial-gradient(120% 60% at 100% 0%,color-mix(in srgb,var(--tc) 14%,transparent),transparent 60%),linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid var(--line);border-radius:20px}
+ .car-card .bar{height:3px;border-radius:20px 20px 0 0;background:linear-gradient(90deg,var(--tc),transparent 80%)}
+ .car-card .body{position:relative;display:flex;flex-direction:column;flex:1;padding:18px 20px 20px}
+ .car-card .cc-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+ .car-card .tier-dot{display:flex;align-items:center;gap:7px;font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:var(--tc)}
+ .car-card .tier-dot i{width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 10px currentColor}
+ .car-card .cc-num{position:absolute;right:18px;top:52px;font-family:'Saira Condensed';font-weight:900;font-size:60px;line-height:1;color:transparent;-webkit-text-stroke:1px rgba(var(--line-rgb),.08);pointer-events:none}
+ .car-card .cc-brand{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);margin-top:18px}
+ .car-card h3{font-size:25px;line-height:1;margin-top:4px;padding-right:50px}
+ .spec-list{display:flex;flex-direction:column;gap:9px;margin:18px 0 4px}
+ .spec{display:grid;grid-template-columns:62px 1fr 26px;align-items:center;gap:10px;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+ .spec .tr{height:4px;border-radius:9px;background:rgba(var(--line-rgb),.1);overflow:hidden}
+ .spec .tr b{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,color-mix(in srgb,var(--tc) 40%,transparent),var(--tc))}
+ .spec .n{font-family:'Saira Condensed';font-weight:800;font-size:13px;color:var(--text-1);text-align:right;letter-spacing:0}
+ .cc-foot{margin-top:auto;padding-top:16px;display:flex;flex-direction:column;gap:10px}
+ .cc-price{display:flex;justify-content:space-between;align-items:center;padding-top:14px;border-top:1px solid var(--line)}
+ .cc-price .pv{font-family:'Saira Condensed';font-weight:900;font-size:22px}
+ .cc-price .pl{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3)}
+ .cc-missing{font-size:11.5px;color:var(--text-3);display:flex;justify-content:space-between;gap:8px}
+ .cc-missing b{color:#ff9a9a;font-weight:600}
+ .cc-afford{height:4px;border-radius:9px;background:rgba(var(--line-rgb),.08);overflow:hidden}
+ .cc-afford i{display:block;height:100%;background:linear-gradient(90deg,rgba(255,204,0,.4),#ffcc00)}
+ .cc-actions{display:grid;grid-template-columns:1fr auto;gap:8px}
+ .car-card.locked .cc-name-lock{display:inline-block}
+ .car-card.owned{border-color:rgba(78,227,154,.22)}
+ .car-card.affordable{border-color:rgba(255,204,0,.35);box-shadow:0 0 0 1px rgba(255,204,0,.12) inset,0 20px 50px -30px rgba(255,204,0,.5)}
+ .car-card .lock{width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4);border:1px solid var(--line-2);font-size:12px}
+ .btn-3d{width:48px;padding:0}
+ .btn-3d svg{width:18px;height:18px}
+ #viewerModal{position:fixed;inset:0;background:rgba(var(--bg-rgb),.78);backdrop-filter:blur(10px);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px}
  #viewerModal.hidden{display:none}
- .viewer-panel{width:min(980px,96vw);height:min(680px,90vh);background:#0b0c11;border:1px solid rgba(255,255,255,.12);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;position:relative}
- .viewer-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08)}
- .viewer-head h3{font-size:20px;margin:0}
- .viewer-close{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:var(--text-1);border-radius:10px;width:36px;height:36px;cursor:pointer;font-size:16px}
+ .viewer-panel{width:min(1040px,96vw);height:min(700px,90vh);background:radial-gradient(80% 60% at 50% 110%,rgba(var(--accent-rgb),.2),transparent 70%),linear-gradient(180deg,var(--card-1),#07080c);border:1px solid var(--line-2);border-radius:24px;overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:0 60px 140px -40px rgba(0,0,0,.95)}
+ .viewer-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line)}
+ .viewer-head .vk{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-3)}
+ .viewer-head h3{font-size:24px;margin:2px 0 0;line-height:1}
+ .viewer-close{background:var(--glass);border:1px solid var(--line-2);color:var(--text-1);border-radius:12px;width:42px;height:42px;cursor:pointer;font-size:16px;flex:0 0 auto}
+ .viewer-close:hover{background:rgba(255,90,90,.14);border-color:rgba(255,90,90,.5)}
  #viewerCanvasHost{flex:1;position:relative;touch-action:none}
  #viewerCanvasHost canvas{display:block}
- #viewerLoading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-2);font-size:13px;letter-spacing:.1em;text-transform:uppercase}
- .viewer-controls{display:flex;gap:8px;flex-wrap:wrap;padding:14px 20px;border-top:1px solid rgba(255,255,255,.08)}
- .viewer-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:var(--text-1);border-radius:10px;padding:9px 14px;font-family:inherit;font-size:13px;cursor:pointer}
- .viewer-btn:hover{border-color:rgba(255,255,255,.32)}
- .viewer-btn.active{background:var(--accent);border-color:var(--accent);color:#0a0a0a}
+ #viewerLoading{position:absolute;inset:0;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;color:var(--text-3);font-size:11px;letter-spacing:.2em;text-transform:uppercase}
+ #viewerLoading::before{content:'';width:34px;height:34px;border-radius:50%;border:2px solid rgba(var(--line-rgb),.12);border-top-color:var(--accent);animation:dgSpin .8s linear infinite}
+ .viewer-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:14px 20px;border-top:1px solid var(--line)}
+ .viewer-btn{display:inline-flex;align-items:center;gap:8px;height:40px;background:var(--glass);border:1px solid var(--line-2);color:var(--text-2);border-radius:11px;padding:0 16px;font-family:inherit;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+ .viewer-btn:hover{border-color:rgba(var(--accent-rgb),.5);color:var(--text-1)}
+ .viewer-btn.active{background:linear-gradient(180deg,var(--accent-light) -40%,var(--accent));border-color:transparent;color:var(--on-accent)}
  .viewer-btn.hidden{display:none}
- .viewer-hint{margin-left:auto;align-self:center;font-size:11px;color:var(--text-3)}
+ .viewer-hint{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.08em;color:var(--text-3)}
+ .viewer-hint kbd{font-family:inherit;font-size:10px;padding:3px 7px;border-radius:6px;border:1px solid var(--line-2);background:var(--glass)}
+ @media (max-width:560px){ .viewer-hint{display:none} .viewer-panel{height:86vh} }
 </style>
 </head>
 <body>
@@ -48,8 +94,30 @@
     <div class="eyebrow"><span class="dash"></span>Garage</div>
     <h1 class="h1">Votre collection</h1>
     <p class="lead">Débloquez de nouvelles voitures avec les crédits gagnés en jouant. Chaque voiture a ses propres statistiques : vitesse, accélération, maniabilité et efficacité du nitro.</p>
-    <div class="card" id="loginHint" style="margin-top:20px;display:none">
-      Vous jouez en invité : votre argent et vos voitures restent sur cet appareil. <a href="compte.html">Créez un compte</a> pour les sauvegarder définitivement.
+    <div class="msg" id="loginHint" style="margin-top:20px;display:none;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.3);color:var(--text-2)">
+      <span>Vous jouez en invité : votre argent et vos voitures restent sur cet appareil. <a href="compte.html" style="color:var(--accent-light);text-decoration:underline">Créez un compte</a> pour les sauvegarder définitivement.</span>
+    </div>
+
+    <div class="garage-top">
+      <div class="card coll">
+        <div class="card-title" style="margin:0"><span class="ic">🔑</span>Progression de la collection</div>
+        <div class="coll-row"><div class="coll-big" id="collCount">1<small> / 30</small></div><div style="font-size:12px;color:var(--text-3)" id="collPct">3 %</div></div>
+        <div class="progress"><i id="collBar"></i></div>
+        <div class="coll-tiers" id="collTiers"></div>
+      </div>
+      <div class="card next-card" id="nextCard"></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="seg" id="tierFilter" role="tablist" aria-label="Filtrer par catégorie"></div>
+      <label class="sort">Trier
+        <select id="sortSel">
+          <option value="tier">Progression</option>
+          <option value="price-asc">Prix croissant</option>
+          <option value="price-desc">Prix décroissant</option>
+          <option value="score">Multiplicateur</option>
+        </select>
+      </label>
     </div>
     <div class="car-grid" id="carGrid" data-stagger></div>
   </div>
@@ -58,8 +126,8 @@
 <div id="viewerModal" class="hidden">
   <div class="viewer-panel">
     <div class="viewer-head">
-      <h3 id="viewerTitle">—</h3>
-      <button class="viewer-close" id="viewerClose" title="Fermer">✕</button>
+      <div><div class="vk">Fiche 3D</div><h3 id="viewerTitle">—</h3></div>
+      <button class="viewer-close" id="viewerClose" title="Fermer (Échap)" aria-label="Fermer">✕</button>
     </div>
     <div id="viewerCanvasHost">
       <div id="viewerLoading">Chargement du modèle…</div>
@@ -68,14 +136,11 @@
       <button class="viewer-btn active" id="viewerCamExt">↻ Extérieur</button>
       <button class="viewer-btn hidden" id="viewerCamInt">🚗 Intérieur</button>
       <button class="viewer-btn hidden" id="viewerDoors">🚪 Ouvrir les portes</button>
-      <span class="viewer-hint">Glissez pour tourner la voiture</span>
+      <span class="viewer-hint">Glissez pour tourner · <kbd>Échap</kbd> pour fermer</span>
     </div>
   </div>
 </div>
-<footer class="footer">
-  <div style="font-family:'Saira Condensed';font-weight:900;letter-spacing:.16em;color:var(--text-2);font-size:16px">DEYLO<span style="color:var(--accent)">·</span>GARAGE</div>
-  <a href="index.html">← Retour à l'accueil</a>
-</footer>
+<footer class="footer" id="site-footer"></footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
@@ -90,36 +155,128 @@
 <script src="js/showroom.js"></script>
 <script>
 (function(){
-  function hexAlpha(hex, a){ const n = parseInt(hex.replace('#',''),16); return 'rgba(' + [(n>>16)&255,(n>>8)&255,n&255].join(',') + ',' + a + ')'; }
-  function statBar(v, color){ return '<div class="b"><i style="width:' + (v*10) + '%;background:' + color + '"></i></div>'; }
+  const STAT_LABELS = [['speed','Vitesse'],['accel','Accél.'],['handling','Maniab.'],['boost','Nitro']];
+  const TIER_ORDER = Object.keys(DG.TIERS);
+  const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>';
+  const fmt = (n)=>Math.round(n).toLocaleString('fr-FR');
+  let filter = 'all', sortMode = 'tier';
+  try { filter = sessionStorage.getItem('dg_garage_filter') || 'all'; sortMode = sessionStorage.getItem('dg_garage_sort') || 'tier'; } catch(e){}
+
+  function specList(c){
+    return '<div class="spec-list stat-bars">' + STAT_LABELS.map(([k, l])=>
+      '<div class="spec"><span>' + l + '</span><span class="tr"><b style="width:' + (c.stats[k]*10) + '%"></b></span><span class="n">' + (+c.stats[k]).toFixed(1).replace('.0','') + '</span></div>'
+    ).join('') + '</div>';
+  }
+
+  function renderSummary(unlocked){
+    const total = DG.CARS.length, owned = DG.CARS.filter(c=>unlocked.indexOf(c.id) !== -1).length;
+    const pct = Math.round(owned / total * 100);
+    document.getElementById('collCount').innerHTML = owned + '<small> / ' + total + '</small>';
+    document.getElementById('collPct').textContent = pct + ' % complété';
+    requestAnimationFrame(()=>{ document.getElementById('collBar').style.width = Math.max(2, pct) + '%'; });
+    document.getElementById('collTiers').innerHTML = TIER_ORDER.map(t=>{
+      const list = DG.CARS.filter(c=>c.tier === t), got = list.filter(c=>unlocked.indexOf(c.id) !== -1).length;
+      return '<div class="coll-tier"><span class="tl" style="color:' + DG.TIERS[t].color + '"><i></i>' + DG.TIERS[t].label + '</span><b>' + got + ' / ' + list.length + '</b></div>';
+    }).join('');
+
+    // Prochaine voiture a viser : la moins chere pas encore debloquee
+    const next = DG.CARS.filter(c=>unlocked.indexOf(c.id) === -1).sort((a, b)=>a.price - b.price)[0];
+    const nc = document.getElementById('nextCard');
+    if(!next){
+      nc.innerHTML = '<div class="card-title" style="margin:0"><span class="ic">🏁</span>Garage complet</div><div class="nn">Toutes les voitures sont à vous</div><div class="nm">Il ne reste plus qu\'à grimper au classement.</div>';
+      return;
+    }
+    const money = DG.Economy.money, k = Math.min(1, money / next.price);
+    nc.innerHTML =
+      '<div class="card-title" style="margin:0"><span class="ic">🎯</span>Prochain objectif</div>' +
+      '<div><div class="nb">' + next.brand + '</div><div class="nn">' + next.name + '</div></div>' +
+      '<div class="progress"><i style="width:' + Math.max(2, k * 100) + '%;background:linear-gradient(90deg,rgba(255,204,0,.5),#ffcc00);box-shadow:0 0 14px rgba(255,204,0,.5)"></i></div>' +
+      '<div class="nm"><span>🪙 ' + fmt(money) + ' / ' + fmt(next.price) + '</span><span>' + (k >= 1 ? '<b style="color:var(--gold)">Disponible !</b>' : 'encore ' + fmt(next.price - money)) + '</span></div>' +
+      (k >= 1 ? '<button class="btn btn-primary btn-block" data-buy="' + next.id + '">🔑 Débloquer maintenant</button>' : '<a href="game/index.html" class="btn btn-ghost btn-block">▶ Gagner des crédits</a>');
+  }
+
+  function renderFilters(unlocked){
+    const count = (f)=>f === 'all' ? DG.CARS.length : f === 'owned' ? unlocked.length : DG.CARS.filter(c=>c.tier === f).length;
+    const opts = [['all','Toutes'], ['owned','Débloquées']].concat(TIER_ORDER.map(t=>[t, DG.TIERS[t].label]));
+    const el = document.getElementById('tierFilter');
+    el.innerHTML = opts.map(([id, l])=>'<button type="button" role="tab" aria-selected="' + (filter===id) + '" class="' + (filter===id?'on':'') + '" data-filter="' + id + '">' + l + '<span class="ct">' + count(id) + '</span></button>').join('');
+    el.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click', ()=>{
+      filter = b.getAttribute('data-filter');
+      try { sessionStorage.setItem('dg_garage_filter', filter); } catch(e){}
+      replay();
+    }));
+  }
+
+  // Rejoue l'entree en cascade quand l'utilisateur change de filtre/tri
+  function replay(){
+    const grid = document.getElementById('carGrid');
+    grid.removeAttribute('data-stagger-done');
+    render();
+  }
 
   function render(){
-    document.getElementById('loginHint').style.display = DG.Auth.isLoggedIn() ? 'none' : 'block';
+    document.getElementById('loginHint').style.display = DG.Auth.isLoggedIn() ? 'none' : 'flex';
     const unlocked = DG.Economy.unlocked;
-    document.getElementById('carGrid').innerHTML = DG.CARS.map(c=>{
-      const color = (DG.TIERS[c.tier]||{}).color || '#9fb4c7';
+    const money = DG.Economy.money;
+    renderSummary(unlocked);
+    renderFilters(unlocked);
+    document.getElementById('sortSel').value = sortMode;
+
+    let list = DG.CARS.map((c, i)=>({ c, i }));
+    if(filter === 'owned') list = list.filter(x=>unlocked.indexOf(x.c.id) !== -1);
+    else if(filter !== 'all') list = list.filter(x=>x.c.tier === filter);
+    if(sortMode === 'price-asc') list.sort((a, b)=>a.c.price - b.c.price);
+    else if(sortMode === 'price-desc') list.sort((a, b)=>b.c.price - a.c.price);
+    else if(sortMode === 'score') list.sort((a, b)=>DG.carScoreFactor(b.c) - DG.carScoreFactor(a.c));
+
+    const grid = document.getElementById('carGrid');
+    if(!list.length){
+      grid.innerHTML = '<div class="card empty" style="grid-column:1 / -1"><div class="ei">🔒</div><div>Aucune voiture ici pour l\'instant.</div><a href="game/index.html" class="btn btn-primary btn-sm">▶ Jouer pour en débloquer</a></div>';
+      bindButtons();
+      return;
+    }
+    grid.innerHTML = list.map(({ c, i })=>{
+      const tier = DG.TIERS[c.tier] || {};
+      const color = tier.color || '#9fb4c7';
       const isUnlocked = unlocked.indexOf(c.id) !== -1;
-      const canAfford = DG.Economy.money >= c.price;
+      const canAfford = money >= c.price;
+      const k = c.price ? Math.min(1, money / c.price) : 1;
+      let foot;
+      if(isUnlocked){
+        foot =
+          '<div class="cc-price"><span class="pill pill-owned">✓ Dans votre garage</span><span class="pl">×' + DG.carScoreFactor(c).toFixed(2) + ' score</span></div>' +
+          '<div class="cc-actions"><a href="game/index.html" class="btn btn-ghost btn-block">▶ Piloter</a>' +
+          '<button class="btn btn-ghost btn-3d" data-view3d="' + c.id + '" title="Voir en 3D" aria-label="Voir ' + c.name + ' en 3D">' + EYE + '</button></div>';
+      } else {
+        foot =
+          '<div class="cc-price"><div><div class="pl">Prix</div><div class="pv">🪙 ' + fmt(c.price) + '</div></div><span class="pill pill-gold">×' + DG.carScoreFactor(c).toFixed(2) + ' score</span></div>' +
+          (canAfford ? '' : '<div class="cc-afford" title="Votre progression"><i style="width:' + (k * 100) + '%"></i></div><div class="cc-missing"><span>Il manque <b>🪙 ' + fmt(c.price - money) + '</b></span><span>' + Math.floor(k * 100) + ' %</span></div>') +
+          '<div class="cc-actions"><button class="btn ' + (canAfford ? 'btn-primary' : 'btn-ghost') + ' btn-block" data-buy="' + c.id + '" ' + (canAfford ? '' : 'disabled') + '>' + (canAfford ? '🔑 Débloquer' : '🔒 Verrouillée') + '</button>' +
+          '<button class="btn btn-ghost btn-3d" data-view3d="' + c.id + '" title="Voir en 3D" aria-label="Voir ' + c.name + ' en 3D">' + EYE + '</button></div>';
+      }
       return (
-        '<div class="car-card' + (isUnlocked?'':' locked') + '">' +
-          '<div class="bar" style="background:' + color + '"></div>' +
+        '<div class="car-card' + (isUnlocked ? ' owned' : ' locked') + (!isUnlocked && canAfford ? ' affordable' : '') + '" style="--tc:' + color + '">' +
+          '<div class="bar"></div>' +
           '<div class="body">' +
-            '<div class="pill pill-tier" style="margin-bottom:8px">' + c.brand + ' · ' + ((DG.TIERS[c.tier]||{}).label||c.tier) + '</div>' +
-            '<h3 style="font-size:22px">' + c.name + '</h3>' +
-            '<div class="pill" style="color:#ffcc00;background:rgba(255,204,0,.12);border:1px solid rgba(255,204,0,.35);margin:2px 0 10px">🏆 Score ×' + DG.carScoreFactor(c).toFixed(2) + '</div>' +
-            '<div class="stat-bars">' + statBar(c.stats.speed,color)+statBar(c.stats.accel,color)+statBar(c.stats.handling,color)+statBar(c.stats.boost,color) + '</div>' +
-            (isUnlocked
-              ? '<span class="pill pill-owned">✓ Débloquée</span>'
-              : '<button class="btn btn-primary btn-block" data-buy="' + c.id + '" ' + (canAfford?'':'disabled') + '>🔒 Débloquer — 🪙 ' + c.price.toLocaleString('fr-FR') + '</button>') +
-            '<button class="btn-view3d" data-view3d="' + c.id + '">👁 Voir en 3D</button>' +
+            '<div class="cc-head"><span class="tier-dot"><i></i>' + (tier.label || c.tier) + '</span>' +
+            (isUnlocked ? '' : '<span class="lock" aria-hidden="true">' + (canAfford ? '✨' : '🔒') + '</span>') + '</div>' +
+            '<span class="cc-num">' + String(i + 1).padStart(2, '0') + '</span>' +
+            '<div class="cc-brand">' + c.brand + '</div>' +
+            '<h3>' + c.name + '</h3>' +
+            specList(c) +
+            '<div class="cc-foot">' + foot + '</div>' +
           '</div>' +
         '</div>'
       );
     }).join('');
+    bindButtons();
+  }
+
+  function bindButtons(){
     document.querySelectorAll('[data-buy]').forEach(btn=>btn.addEventListener('click', async ()=>{
       const r = btn.getBoundingClientRect();
       const car = DG.carById(btn.getAttribute('data-buy'));
-      btn.disabled = true; btn.textContent = 'Achat…';
+      btn.disabled = true; btn.classList.add('loading');
       const res = await DG.Economy.buyCar(btn.getAttribute('data-buy'));
       if(!res.ok){
         if(DG.FX) DG.FX.toast('⚠ ' + (res.error || 'Achat impossible'), 'bad'); else alert(res.error || 'Achat impossible');
@@ -131,6 +288,12 @@
     }));
     document.querySelectorAll('[data-view3d]').forEach(btn=>btn.addEventListener('click', ()=>openViewer(btn.getAttribute('data-view3d'))));
   }
+
+  document.getElementById('sortSel').addEventListener('change', (e)=>{
+    sortMode = e.target.value;
+    try { sessionStorage.setItem('dg_garage_sort', sortMode); } catch(e2){}
+    replay();
+  });
 
   DG.Economy.onChange(render);
   render();
@@ -156,6 +319,7 @@
       // mais partage les geometries/materiaux avec le modele source mis en cache
       // (loadModelFull), reutilise a chaque ouverture. Seul le contexte WebGL (renderer)
       // doit etre libere pour ne pas en accumuler un par voiture consultee.
+      if(viewerState.stage) viewerState.stage.traverse(n=>{ if(n.isMesh){ n.geometry.dispose(); if(n.material.map) n.material.map.dispose(); n.material.dispose(); } });
       s.renderer.dispose();
     }
     document.getElementById('viewerCanvasHost').innerHTML = '<div id="viewerLoading">Chargement du modèle…</div>';
@@ -215,6 +379,7 @@
     wrap.position.y = -0.55;
     wrap.rotation.y = state.rotY;
     s.scene.add(wrap);
+    if(viewerRoom.makeStage){ const stage = viewerRoom.makeStage(wrap); s.scene.add(stage); state.stage = stage; }
 
     if(full.animations && full.animations.length){
       state.mixer = new T.AnimationMixer(wrap);
@@ -325,7 +490,7 @@
     state.cleanup = ()=>{ dom.removeEventListener('pointerdown', onDown); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
 
     let last = performance.now();
-    const extTarget = new T.Vector3(4.4, 1.5, 6.2);
+    const extTarget = new T.Vector3(3.7, 1.35, 5.2);
     const lookFwd = new T.Vector3(0,0,-1);
     function loop(now){
       state.raf = requestAnimationFrame(loop);
@@ -336,6 +501,7 @@
         else state.rotY += dt*0.22;
       }
       wrap.rotation.y = state.rotY;
+      if(state.stage) state.stage.userData.ring.rotation.z -= dt*0.15;
       if(state.camMode === 'int' && state.hasInterior){
         const pos = new T.Vector3(); state.camHolder.getWorldPosition(pos);
         const quat = new T.Quaternion(); state.camHolder.getWorldQuaternion(quat);
