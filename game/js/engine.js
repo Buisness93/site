@@ -29,6 +29,36 @@
   ];
 
 
+  function asphaltTexture(T){
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const g = c.getContext('2d');
+    const img = g.createImageData(256, 256);
+    for(let i=0;i<img.data.length;i+=4){
+      const v = 150 + Math.random()*80 + (Math.random() < 0.03 ? 25 : 0);
+      img.data[i] = img.data[i+1] = img.data[i+2] = v; img.data[i+3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    // traces d'usure longitudinales dans l'axe des roues
+    g.globalAlpha = 0.08; g.fillStyle = '#000';
+    [40, 90, 166, 216].forEach(x=>g.fillRect(x, 0, 14, 256));
+    const tex = new T.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = T.RepeatWrapping;
+    tex.repeat.set(2, 60);
+    tex.anisotropy = 4;
+    return tex;
+  }
+
+  let _glowTex = null;
+  function glow(T){
+    if(_glowTex) return _glowTex;
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(32,32,0,32,32,32);
+    grad.addColorStop(0,'rgba(255,255,255,1)'); grad.addColorStop(.3,'rgba(255,255,255,.4)'); grad.addColorStop(1,'rgba(255,255,255,0)');
+    g.fillStyle = grad; g.fillRect(0,0,64,64);
+    return (_glowTex = new T.CanvasTexture(c));
+  }
+
   function GameEngine(container, cb){
     this.container = container;
     this.cb = cb || {};
@@ -94,7 +124,10 @@
     const ground = new T.Mesh(new T.PlaneGeometry(340, 320), this.groundMat);
     ground.rotation.x = -Math.PI/2; ground.position.set(0, -0.03, -100); scene.add(ground);
 
-    this.roadMat = new T.MeshStandardMaterial({ color:0x050609, metalness:0.35, roughness:0.7 });
+    // Asphalte : grain procedural qui defile avec la vitesse (sinon la route
+    // parait peinte et immobile sous les bandes qui, elles, bougent).
+    this._roadTex = asphaltTexture(T);
+    this.roadMat = new T.MeshStandardMaterial({ color:0x050609, metalness:0.35, roughness:0.7, map:this._roadTex, roughnessMap:this._roadTex });
     const road = new T.Mesh(new T.PlaneGeometry(14, 260), this.roadMat);
     road.rotation.x = -Math.PI/2; road.position.z = -100; scene.add(road);
 
@@ -119,6 +152,26 @@
       return edge;
     });
 
+    // Lignes de rive continues (comme sur une vraie 2x4 voies)
+    this.edgeLineMat = new T.MeshBasicMaterial({ color:0xd8dee6 });
+    [-4.45, 4.45].forEach(x=>{
+      const l = new T.Mesh(new T.PlaneGeometry(0.14, 260), this.edgeLineMat);
+      l.rotation.x = -Math.PI/2; l.position.set(x, 0.021, -100); scene.add(l);
+    });
+
+    this.fx = DG.GameFX ? new DG.GameFX(this) : null;
+    this._routeExtras = [];
+    this._maxPR = Math.min(window.devicePixelRatio||1, 1.75);
+    this._pr = this._maxPR;
+    this._frameAvg = 16.7; this._prCheckT = 0;
+
+    // Phares du joueur : un seul spot (couteux sinon), accroche a la voiture au depart.
+    this._headlight = new T.SpotLight(0xfff1dc, 0, 48, 0.42, 0.65, 1.4);
+    this._headlightTarget = new T.Object3D();
+    this._headlight.target = this._headlightTarget;
+    this._headlightI = 2.2;
+    scene.add(this._headlight); scene.add(this._headlightTarget);
+
     this._ro = new ResizeObserver(()=>this._onResize());
     this._ro.observe(this.container);
 
@@ -142,6 +195,7 @@
   GameEngine.prototype._onResize = function(){
     const w = this.container.clientWidth, h = this.container.clientHeight;
     if(!w || !h) return;
+    this.renderer.setPixelRatio(this._pr || 1);
     this.renderer.setSize(w, h);
     this.camera.aspect = w/h;
     this.camera.updateProjectionMatrix();
@@ -196,6 +250,11 @@
       this.ambientLight.color.setHex(L.ambient); this.ambientLight.intensity = L.ambientI;
       this._routeAmbientI = L.ambientI;
     }
+    this.roadMat.roughness = route.wet ? 0.32 : 0.78;
+    this.roadMat.metalness = route.wet ? 0.55 : 0.3;
+    this.edgeLineMat.color.setHex(route.stripe);
+    this._headlightI = route.headlights != null ? route.headlights : 2.2;
+    this._buildRouteExtras(route);
     const DECOR_N = 16;
     this._decor = route.buildDecor(T, this.scene, DECOR_N) || [];
     this._decorWrap = (route.spacing || 8.5) * DECOR_N;
@@ -239,6 +298,12 @@
     this._player.position.set(0,0,0);
     this.scene.add(this._player);
     this._buildInteriorHolder();
+    if(this.fx) this.fx.attachPlayer(this._player, car);
+    this._player.add(this._headlightTarget);
+    this._headlightTarget.position.set(0, 0, -26);
+    this._crash = null;
+    this._countdown = 3.0; this._countStep = 4;
+    this._drafting = false;
 
     this._lane = 1; this._playerX = LANES[1];
     this._speed = this.mult.baseSpeed;
@@ -257,6 +322,60 @@
 
     this.playing = true; this.paused = false;
     this.setCamLabel();
+  };
+
+  // Decor fixe (ne defile pas) : astres, etoiles, pluie, halo de ville.
+  GameEngine.prototype._buildRouteExtras = function(route){
+    const T = window.THREE;
+    this._routeExtras.forEach(o=>{ this.scene.remove(o); if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); });
+    this._routeExtras = [];
+    this._rain = null;
+    const add = (o)=>{ this.scene.add(o); this._routeExtras.push(o); return o; };
+    const sprite = (color, size, x, y, z, op)=>{
+      const s = new T.Sprite(new T.SpriteMaterial({ map:glow(T), color, transparent:true, opacity:op==null?1:op, blending:T.AdditiveBlending, depthWrite:false, fog:false }));
+      s.scale.set(size, size, 1); s.position.set(x, y, z); return add(s);
+    };
+    if(route.stars){
+      const n = 700, pos = new Float32Array(n*3);
+      for(let i=0;i<n;i++){
+        const a = Math.random()*Math.PI*2, e = 0.12 + Math.random()*1.3, r = 250;
+        pos[i*3] = Math.cos(a)*Math.cos(e)*r; pos[i*3+1] = Math.sin(e)*r; pos[i*3+2] = Math.sin(a)*Math.cos(e)*r - 60;
+      }
+      const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(pos, 3));
+      add(new T.Points(g, new T.PointsMaterial({ color:0xdfe8ff, size:1.4, sizeAttenuation:false, transparent:true, opacity:.8, fog:false, depthWrite:false })));
+    }
+    const c = route.celestial;
+    if(c){
+      sprite(c.halo, c.size*3.2, c.x, c.y, -255, c.haloOp || .45);
+      sprite(c.color, c.size, c.x, c.y, -254, 1);
+    }
+    if(route.horizonGlow){
+      const h = route.horizonGlow;
+      const s = sprite(h.color, 1, h.x || 0, h.y || 6, -240, h.op || .5);
+      s.scale.set(h.w || 260, h.h || 40, 1);
+    }
+    if(route.rain){
+      const n = 900, pos = new Float32Array(n*6), seeds = [];
+      for(let i=0;i<n;i++) seeds.push({ x:(Math.random()-.5)*34, y:Math.random()*18, z:-70 + Math.random()*82, v:26 + Math.random()*10 });
+      const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(pos, 3));
+      const lines = add(new T.LineSegments(g, new T.LineBasicMaterial({ color:0xb8c8ff, transparent:true, opacity:.32, blending:T.AdditiveBlending, depthWrite:false })));
+      lines.frustumCulled = false;
+      this._rain = { lines, pos, seeds };
+    }
+  };
+
+  GameEngine.prototype._updateRain = function(dt, scroll){
+    const r = this._rain; if(!r) return;
+    const slant = 0.06 + Math.min(0.5, scroll * 0.9);
+    for(let i=0;i<r.seeds.length;i++){
+      const s = r.seeds[i];
+      s.y -= s.v * dt; s.z += scroll * 0.6;
+      if(s.y < 0 || s.z > 12){ s.y = 14 + Math.random()*6; s.z = -70 + Math.random()*80; s.x = (Math.random()-.5)*34; }
+      const j = i*6;
+      r.pos[j] = s.x; r.pos[j+1] = s.y; r.pos[j+2] = s.z;
+      r.pos[j+3] = s.x; r.pos[j+4] = s.y + 0.55; r.pos[j+5] = s.z - slant;
+    }
+    r.lines.geometry.attributes.position.needsUpdate = true;
   };
 
   // Camera "capot" : point de vue fixe juste au-dessus du capot, centre, comme
@@ -313,7 +432,7 @@
   GameEngine.prototype.resume = function(){ if(this.playing){ this.paused = false; this._last = performance.now(); if(this.cb.onPauseChange) this.cb.onPauseChange(false); } };
 
   GameEngine.prototype.quit = function(){
-    this.playing = false; this.paused = false;
+    this.playing = false; this.paused = false; this._crash = null;
     if(this._player){ this.scene.remove(this._player); this._player = null; }
     this._interiorHolder = null;
     this._obstacles.forEach(o=>this.scene.remove(o.mesh)); this._obstacles = [];
@@ -342,8 +461,9 @@
     const lane = LANES[li];
     let mesh, w = 0.95;
     const r = Math.random();
+    let kind = 'cone', v = 0;
     if(r < 0.35 && this._coneModel){
-      mesh = DG.Loader.normalizeModel(T, this._coneModel, 1.0, 0);
+      mesh = this._instance(this._coneModel, 1.0, 0, false);
       w = 0.5;
     } else if(this._trafficModels && this._trafficModels.length){
       const pool = maxW != null ? this._trafficModels.filter(t=>t.len <= 4.0) : this._trafficModels;
@@ -351,12 +471,16 @@
       let t = models[Math.floor(Math.random()*models.length)];
       if(models.length > 1 && t === this._lastTrafficModel) t = models[(models.indexOf(t)+1) % models.length];
       this._lastTrafficModel = t;
-      mesh = DG.Loader.normalizeModel(T, t.model, t.len, Math.PI);
+      mesh = this._instance(t.model, t.len, Math.PI, true);
+      kind = 'car';
+      // Le trafic roule dans le meme sens que le joueur, a sa propre allure :
+      // poids lourds plus lents, citadines un peu plus vives.
+      v = t.len > 6 ? 3.5 + Math.random()*1.5 : 5 + Math.random()*3.5;
       // Largeur de collision proportionnelle a la taille du vehicule, plafonnee pour
       // qu'un bus/camion reste toujours doublable depuis la voie d'a cote.
       w = Math.min(1.3, 0.95 * (t.len / 3.6));
     } else if(this._coneModel){
-      mesh = DG.Loader.normalizeModel(T, this._coneModel, 1.0, 0);
+      mesh = this._instance(this._coneModel, 1.0, 0, false);
       w = 0.5;
     } else {
       mesh = DG.Loader.makeFallbackCar(T, { body:0x161b23 });
@@ -366,8 +490,46 @@
     mesh.position.set(lane, 0, -134);
     mesh.userData.w = w;
     this.scene.add(mesh);
-    this._obstacles.push({ mesh, hit:false, scored:false, laneX:lane });
+    this._obstacles.push({ mesh, hit:false, scored:false, laneX:lane, li, kind, v, solo:forceLane == null, lc:null,
+      blinkL:mesh.getObjectByName('dgBlinkL'), blinkR:mesh.getObjectByName('dgBlinkR') });
     return li;
+  };
+
+  // Un modele n'est mesure/normalise qu'UNE fois : les apparitions suivantes
+  // clonent ce gabarit deja pret (recalculer la boite englobante a chaque
+  // apparition, toutes les ~0.3 s, provoquait des micro-saccades en course).
+  GameEngine.prototype._instance = function(model, len, rotY, lights){
+    const T = window.THREE;
+    this._tpl = this._tpl || new Map();
+    const key = model.uuid + ':' + len + ':' + rotY;
+    let tpl = this._tpl.get(key);
+    if(!tpl){
+      let skinned = false; model.traverse(n=>{ if(n.isSkinnedMesh) skinned = true; });
+      tpl = { obj: DG.Loader.normalizeModel(T, model, len, rotY), skinned };
+      if(lights) this._addVehicleLights(tpl.obj);
+      this._tpl.set(key, tpl);
+    }
+    if(tpl.skinned){ const o = DG.Loader.normalizeModel(T, model, len, rotY); if(lights) this._addVehicleLights(o); return o; }
+    return tpl.obj.clone(true);
+  };
+
+  // Feux arriere (toujours allumes) + clignotants (allumes pendant un
+  // changement de voie) en sprites additifs : lisibles la nuit, quasi gratuits.
+  GameEngine.prototype._addVehicleLights = function(wrap){
+    const T = window.THREE;
+    if(!this._tailMat){
+      this._tailMat = new T.SpriteMaterial({ map:glow(T), color:0xff2a1a, transparent:true, opacity:.95, blending:T.AdditiveBlending, depthWrite:false });
+      this._blinkMat = new T.SpriteMaterial({ map:glow(T), color:0xffa21a, transparent:true, opacity:1, blending:T.AdditiveBlending, depthWrite:false });
+    }
+    wrap.updateMatrixWorld(true);
+    const box = new T.Box3().setFromObject(wrap);
+    const sx = box.max.x - box.min.x, sy = box.max.y - box.min.y;
+    const y = box.min.y + Math.min(sy * 0.42, 1.1), z = box.max.z + 0.03;
+    [-1, 1].forEach(side=>{
+      const t = new T.Sprite(this._tailMat); t.scale.set(0.55, 0.38, 1); t.position.set(side * sx * 0.36, y, z); wrap.add(t);
+      const b = new T.Sprite(this._blinkMat); b.scale.set(0.75, 0.75, 1); b.position.set(side * sx * 0.47, y + 0.05, z); b.visible = false;
+      b.name = side < 0 ? 'dgBlinkL' : 'dgBlinkR'; wrap.add(b);
+    });
   };
 
   function pickupMesh(T, kind){
@@ -411,18 +573,47 @@
     const li = freeLanes[Math.floor(Math.random()*freeLanes.length)];
     const roll = Math.random();
     const kind = roll < 0.72 ? 'coin' : (roll < 0.88 ? 'nitro' : 'multiplier');
-    const mesh = pickupMesh(T, kind);
+    // Geometrie/materiaux crees une seule fois par type puis partages (avant :
+    // nouvelle geometrie a chaque bonus, jamais liberee -> fuite memoire GPU).
+    this._pickupProto = this._pickupProto || {};
+    if(!this._pickupProto[kind]){
+      const proto = pickupMesh(T, kind);
+      if(this.fx) this.fx.decoratePickup(proto, kind);
+      this._pickupProto[kind] = proto;
+    }
+    const mesh = this._pickupProto[kind].clone(true);
     mesh.position.set(LANES[li], 1.05, -130);
     this.scene.add(mesh);
-    this._pickups.push({ mesh, kind, taken:false });
+    this._pickups.push({ mesh, kind, taken:false, phase:Math.random()*6.28 });
   };
 
   GameEngine.prototype._loop = function(now){
     this._raf = requestAnimationFrame((t)=>this._loop(t));
-    const dt = Math.min((now - this._last)/1000, 0.05);
+    const raw = now - this._last;
+    // Hors course (menus opaques par-dessus) : 30 fps suffisent largement.
+    const active = this.playing || this._crash;
+    if(!active && raw < 30) return;
+    const dt = Math.min(raw/1000, 0.05);
     this._last = now;
+    this._lastDt = dt;
     if(!this.paused) this._update(dt, now);
     this.renderer.render(this.scene, this.camera);
+    if(active && !this.paused) this._adaptResolution(raw);
+  };
+
+  // Resolution dynamique : si les images mettent trop de temps a sortir, on
+  // baisse un peu la definition interne (quasi invisible en mouvement) plutot
+  // que de laisser le jeu saccader ; on remonte des que la machine suit.
+  GameEngine.prototype._adaptResolution = function(frameMs){
+    if(frameMs > 100) return; // onglet en arriere-plan, pas representatif
+    this._frameAvg += (frameMs - this._frameAvg) * 0.05;
+    this._prCheckT += frameMs;
+    if(this._prCheckT < 1500) return;
+    this._prCheckT = 0;
+    let pr = this._pr;
+    if(this._frameAvg > 21 && pr > 0.75) pr = Math.max(0.75, pr - 0.2);
+    else if(this._frameAvg < 14.5 && pr < this._maxPR) pr = Math.min(this._maxPR, pr + 0.1);
+    if(pr !== this._pr){ this._pr = pr; this._onResize(); }
   };
 
   GameEngine.prototype._update = function(dt, now){
@@ -431,17 +622,19 @@
     if(cp.interior && this._interiorHolder){
       // Vue habitacle : la camera est rigidement calee sur le siege (aucun lissage,
       // sinon elle semble flotter hors de la carrosserie pendant les changements de voie).
-      const pos = new T.Vector3(); this._interiorHolder.getWorldPosition(pos);
-      const quat = new T.Quaternion(); this._interiorHolder.getWorldQuaternion(quat);
+      const pos = this._tmpV || (this._tmpV = new T.Vector3()); this._interiorHolder.getWorldPosition(pos);
+      const quat = this._tmpQ || (this._tmpQ = new T.Quaternion()); this._interiorHolder.getWorldQuaternion(quat);
       this.camera.position.copy(pos);
       this.camera.quaternion.copy(quat);
-      this.camera.fov += (76 - this.camera.fov) * Math.min(1, dt*6);
+      const sh = this.fx ? this.fx.shake * 0.25 : 0;
+      if(sh){ this.camera.position.x += (Math.random()-.5)*sh; this.camera.position.y += (Math.random()-.5)*sh; }
+      this.camera.fov += ((76 + this._fovKick()) - this.camera.fov) * Math.min(1, dt*6);
       this.camera.updateProjectionMatrix();
       if(this._camLight) this._camLight.intensity += (3.4 - this._camLight.intensity) * Math.min(1, dt*6);
       this.ambientLight.intensity += ((this._routeAmbientI + 0.4) - this.ambientLight.intensity) * Math.min(1, dt*6);
     } else {
       const bz = (this.playing && this._boostActive) ? -1.0 : 0;
-      const shake = (this.playing && this._boostActive) ? Math.sin(now*0.05)*0.05 : 0;
+      const shake = (this.playing && this._boostActive) ? Math.sin(now*0.05)*0.07 : 0;
       this.camera.position.x += (cp.pos[0]+shake - this.camera.position.x)*0.07;
       this.camera.position.y += (cp.pos[1] - this.camera.position.y)*0.07;
       this.camera.position.z += (cp.pos[2]+bz - this.camera.position.z)*0.07;
@@ -449,14 +642,47 @@
       this._look.y += (cp.look[1]-this._look.y)*0.07;
       this._look.z += (cp.look[2]-this._look.z)*0.07;
       this.camera.lookAt(this._look);
-      this.camera.fov += (50 - this.camera.fov) * Math.min(1, dt*6);
+      const sh = this.fx ? this.fx.shake : 0;
+      if(sh){ this.camera.position.x += (Math.random()-.5)*sh; this.camera.position.y += (Math.random()-.5)*sh*0.7; }
+      this.camera.fov += ((50 + this._fovKick()) - this.camera.fov) * Math.min(1, dt*6);
       this.camera.updateProjectionMatrix();
       if(this._camLight) this._camLight.intensity += (0 - this._camLight.intensity) * Math.min(1, dt*6);
       this.ambientLight.intensity += (this._routeAmbientI - this.ambientLight.intensity) * Math.min(1, dt*6);
     }
 
     let scroll = (this.playing ? this._speed : 7) * dt;
-    if(this.playing){
+    if(this._crash){
+      // Ralenti du crash : le monde freine brutalement, la voiture part en toupie.
+      const c = this._crash;
+      c.t += dt;
+      const sdt = dt * (c.t < 0.9 ? 0.28 : 0.6);
+      c.speed *= Math.pow(0.08, sdt);
+      scroll = c.speed * sdt;
+      if(this._player){
+        c.vy -= 22 * sdt;
+        this._player.position.y = Math.max(0, this._player.position.y + c.vy * sdt);
+        if(this._player.position.y <= 0 && c.vy < 0) c.vy *= -0.3;
+        this._player.rotation.y += c.spin * sdt;
+        this._player.rotation.z += (c.roll - this._player.rotation.z) * Math.min(1, sdt*4);
+        this._player.position.x += c.vx * sdt;
+        if(this.fx && Math.random() < 0.5) this.fx.emit(this._player.position.x, 0.2, 0.6, 2, 0xff8a2a, 3, 1, 0.5);
+      }
+      if(c.obs){ c.obs.mesh.position.z -= 6 * sdt; c.obs.mesh.rotation.y -= c.spin * 0.25 * sdt; }
+      this._scrollWorld(scroll);
+      if(this.fx) this.fx.update(dt, scroll, 0, false, false);
+      if(c.t > 1.25){ this._crash = null; this._gameOver(); }
+      return;
+    }
+    let counting = false;
+    if(this.playing && this._countdown > 0){
+      // Depart lance : on roule au pas pendant le 3-2-1, pleine allure au GO.
+      counting = true;
+      this._countdown -= dt;
+      const step = Math.ceil(Math.max(0, this._countdown));
+      if(step !== this._countStep){ this._countStep = step; if(this.cb.onCountdown) this.cb.onCountdown(step); }
+      scroll = this._speed * dt * (0.35 + (1 - Math.max(0, this._countdown) / 3) * 0.45);
+    }
+    if(this.playing && !counting){
       const want = this._boostHeld && this._boostFuel > 0.02;
       this._boostActive = want;
       if(want) this._boostFuel = Math.max(0, this._boostFuel - dt*this.mult.boostDrain);
@@ -464,19 +690,26 @@
       if(want) scroll *= this.mult.boostPower;
     }
 
-    for(const st of this._stripes){ st.position.z += scroll; if(st.position.z > 10) st.position.z -= 240; }
-    const wrap = this._decorWrap || 140;
-    // wrapDist : un decor peut demander un cycle de retour plus long que les
-    // autres (ex: station essence, repere rare) — sinon tout le decor partage
-    // la meme boucle courte et un objet cense etre rare repasse en fait toutes
-    // les quelques secondes a haute vitesse.
-    for(const d of this._decor){
-      d.position.z += scroll;
-      const w = (d.userData && d.userData.wrapDist) || wrap;
-      if(d.position.z > 30) d.position.z -= w;
-    }
+    this._scrollWorld(scroll);
+    const speedK = this.playing && this.mult ? Math.max(0, Math.min(1, (this._speed - this.mult.baseSpeed*0.7) / (this.mult.maxSpeed - this.mult.baseSpeed*0.7))) : 0;
+    this._speedK = speedK;
+    if(this.fx) this.fx.update(dt, scroll, speedK, this.playing && this._boostActive, this.playing);
 
     if(!this.playing) return;
+
+    // Deplacement lateral (aussi pendant le compte a rebours) : roulis +
+    // leger braquage du nez dans le sens du changement de voie.
+    const targetX = LANES[this._lane];
+    this._playerX += (targetX - this._playerX) * Math.min(1, dt * this.mult.handlingRate);
+    if(this._player){
+      this._player.position.x = this._playerX;
+      this._player.position.y = Math.sin(now*0.02)*0.02 + (this._boostActive ? Math.sin(now*0.09)*0.012 : 0);
+      this._player.rotation.z = (targetX - this._playerX) * 0.14;
+      this._player.rotation.y = -(targetX - this._playerX) * 0.07;
+    }
+    this._headlight.intensity += (this._headlightI - this._headlight.intensity) * Math.min(1, dt*3);
+    this._headlight.position.set(this._playerX, 1.1, -1.6);
+    if(counting) return;
 
     this._time += dt;
     this._speed += (this.mult.maxSpeed - this._speed) * Math.min(1, dt * this.mult.accelRamp * 0.4);
@@ -484,13 +717,6 @@
 
     if(this._multiplierT > 0){ this._multiplierT -= dt; if(this._multiplierT <= 0){ this._multiplier = 1; if(this.cb.onPickup) this.cb.onPickup('multiplier-end'); } }
 
-    const targetX = LANES[this._lane];
-    this._playerX += (targetX - this._playerX) * Math.min(1, dt * this.mult.handlingRate);
-    if(this._player){
-      this._player.position.x = this._playerX;
-      this._player.position.y = Math.sin(now*0.02)*0.02;
-      this._player.rotation.z = (targetX - this._playerX) * 0.14;
-    }
     // Moyenne glissante du temps passe dans chaque voie (voir la vague double
     // plus bas) : la voie courante monte, les 3 autres redescendent avec le temps.
     this._laneUse[this._lane] += dt;
@@ -532,11 +758,17 @@
     if(this._pickupT <= 0){ this._pickupT = 1.1 + Math.random()*1.0; this._spawnPickup(); }
 
     const playerHalfW = this._playerHalfW || 0.55;
+    let drafting = false;
     for(let i=this._obstacles.length-1; i>=0; i--){
       const o = this._obstacles[i];
-      o.mesh.position.z += scroll;
+      o.mesh.position.z += scroll - o.v * dt;
+      this._trafficAI(o, dt, now);
       const gap = Math.abs(o.mesh.position.x - this._playerX) - ((o.mesh.userData.w||1.2) + playerHalfW);
-      if(!o.hit && Math.abs(o.mesh.position.z) < 1.5 && gap < 0){ o.hit = true; this._gameOver(); return; }
+      if(!o.hit && Math.abs(o.mesh.position.z) < 1.5 && gap < 0){ o.hit = true; this._startCrash(o); return; }
+      // Aspiration : dans le sillage d'un vehicule (meme voie, juste derriere),
+      // le nitro se recharge bien plus vite — moins de resistance de l'air,
+      // comme en vrai. Recompense le fait de coller le trafic avant de deboiter.
+      if(o.kind === 'car' && o.mesh.position.z < -3.5 && o.mesh.position.z > -17 && Math.abs(o.mesh.position.x - this._playerX) < 0.9) drafting = true;
       if(!o.scored && o.mesh.position.z > 2){
         o.scored = true;
         this._obstacleBonus += 50 * this._multiplier;
@@ -544,20 +776,25 @@
           this._nearMissStreak++;
           const streakBonus = Math.min(5, this._nearMissStreak) * 10;
           this._nearMissBonus += (30 + streakBonus) * this._multiplier;
-          if(this.cb.onPickup) this.cb.onPickup('near-miss', { streak: this._nearMissStreak });
+          if(this.fx) this.fx.nearMiss(o.mesh.position.x, this._playerX, this._nearMissStreak);
+          if(this.cb.onPickup) this.cb.onPickup('near-miss', { streak: this._nearMissStreak, side: o.mesh.position.x < this._playerX ? -1 : 1 });
         } else {
           this._nearMissStreak = 0;
         }
       }
       if(o.mesh.position.z > 11){ this.scene.remove(o.mesh); this._obstacles.splice(i,1); }
     }
+    if(drafting && !this._boostActive) this._boostFuel = Math.min(1, this._boostFuel + dt * 0.3);
+    if(drafting !== this._drafting){ this._drafting = drafting; if(this.cb.onDraft) this.cb.onDraft(drafting); }
 
     for(let i=this._pickups.length-1; i>=0; i--){
       const p = this._pickups[i];
       p.mesh.position.z += scroll;
       p.mesh.rotation.y += dt*3;
+      p.mesh.position.y = 1.05 + Math.sin(now*0.004 + p.phase) * 0.16;
       if(!p.taken && Math.abs(p.mesh.position.z) < 1.6 && Math.abs(p.mesh.position.x - this._playerX) < 1.1){
         p.taken = true;
+        if(this.fx) this.fx.pickup(p.kind, p.mesh.position);
         if(p.kind === 'coin'){ this._coinCredits += 10 * this._multiplier; if(this.cb.onPickup) this.cb.onPickup('coin'); }
         else if(p.kind === 'nitro'){ this._boostFuel = 1; if(this.cb.onPickup) this.cb.onPickup('nitro'); }
         else { this._multiplier = 2; this._multiplierT = 8; if(this.cb.onPickup) this.cb.onPickup('multiplier'); }
@@ -581,8 +818,77 @@
       multiplierT: this._multiplierT,
       personalBest: this._personalBest,
       recordBroken: this._recordBroken,
-      scoreToRecord: this._recordBroken ? 0 : Math.max(0, this._personalBest - score)
+      scoreToRecord: this._recordBroken ? 0 : Math.max(0, this._personalBest - score),
+      speedK: this._speedK || 0,
+      boosting: this._boostActive,
+      drafting: this._drafting
     });
+  };
+
+  GameEngine.prototype._scrollWorld = function(scroll){
+    for(const st of this._stripes){ st.position.z += scroll; if(st.position.z > 10) st.position.z -= 240; }
+    if(this._roadTex) this._roadTex.offset.y += scroll * 60 / 260;
+    const wrap = this._decorWrap || 140;
+    // wrapDist : un decor peut demander un cycle de retour plus long que les
+    // autres (ex: station essence, repere rare) — sinon tout le decor partage
+    // la meme boucle courte et un objet cense etre rare repasse en fait toutes
+    // les quelques secondes a haute vitesse.
+    for(const d of this._decor){
+      d.position.z += scroll;
+      const w = (d.userData && d.userData.wrapDist) || wrap;
+      if(d.position.z > 30) d.position.z -= w;
+    }
+    this._updateRain(this._lastDt || 0.016, scroll);
+  };
+
+  GameEngine.prototype._fovKick = function(){
+    if(!this.playing) return 0;
+    return (this._speedK || 0) * 7 + (this._boostActive ? 9 : 0);
+  };
+
+  // Changements de voie du trafic : seulement les vehicules isoles (jamais un
+  // morceau de "mur"), loin devant, vers une voie libre sur une bonne distance,
+  // et toujours annonces au clignotant pendant ~1 s. Ne peut donc jamais
+  // refermer le seul passage d'une vague ni surprendre le joueur a bout portant.
+  GameEngine.prototype._trafficAI = function(o, dt, now){
+    if(o.kind !== 'car') return;
+    if(o.lc){
+      const lc = o.lc;
+      lc.t += dt;
+      const b = lc.dir < 0 ? o.blinkL : o.blinkR;
+      if(b) b.visible = Math.floor(now / 260) % 2 === 0;
+      if(lc.t > lc.signal){
+        const k = Math.min(1, (lc.t - lc.signal) / lc.move);
+        const e = k * k * (3 - 2 * k);
+        o.mesh.position.x = lc.fromX + (lc.toX - lc.fromX) * e;
+        o.mesh.rotation.y = Math.sin(k * Math.PI) * -0.09 * lc.dir;
+        if(k >= 1){ o.lc = null; o.mesh.rotation.y = 0; if(b) b.visible = false; }
+      }
+      return;
+    }
+    if(!o.solo || o.changed || o.mesh.position.z > -60 || o.mesh.position.z < -120) return;
+    if(Math.random() > dt * 0.35) return;
+    const dir = Math.random() < 0.5 ? -1 : 1;
+    const to = o.li + dir;
+    if(to < 0 || to > 3) return;
+    for(const q of this._obstacles){
+      if(q === o) continue;
+      const qTo = q.lc ? q.lc.toLi : q.li;
+      if((qTo === to || q.li === to) && Math.abs(q.mesh.position.z - o.mesh.position.z) < 22) return;
+    }
+    for(const p of this._pickups){ if(Math.abs(p.mesh.position.x - LANES[to]) < 0.5 && Math.abs(p.mesh.position.z - o.mesh.position.z) < 10) return; }
+    o.changed = true;
+    o.lc = { t:0, signal:0.9, move:1.1, dir, fromX:LANES[o.li], toX:LANES[to], toLi:to };
+    o.li = to; o.laneX = LANES[to];
+  };
+
+  GameEngine.prototype._startCrash = function(o){
+    this.playing = false;
+    this._boostActive = false;
+    const side = o.mesh.position.x < this._playerX ? 1 : -1;
+    this._crash = { t:0, obs:o, speed:this._speed * 0.7, vy:5.5, spin:(4 + Math.random()*3) * side, roll:0.35 * side, vx:1.8 * side };
+    if(this.fx) this.fx.crash(this._player ? this._player.position : o.mesh.position);
+    if(this.cb.onCrash) this.cb.onCrash();
   };
 
   GameEngine.prototype.currentScore = function(){

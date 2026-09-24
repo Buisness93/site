@@ -17,7 +17,46 @@
     musicPanel:$('musicPanel'), musicTrackName:$('musicTrackName'), btnMusicPrev:$('btnMusicPrev'), btnMusicToggle:$('btnMusicToggle'), btnMusicNext:$('btnMusicNext'), musicVolume:$('musicVolume'), musicList:$('musicList'),
     musicSeek:$('musicSeek'), musicTimeCur:$('musicTimeCur'), musicTimeDur:$('musicTimeDur'),
     hudRecordChase:$('hudRecordChase'), recordFlash:$('recordFlash'), pilotBest:$('pilotBest'),
+    speedFx:$('speedFx'), edgeFlashL:$('edgeFlashL'), edgeFlashR:$('edgeFlashR'), crashFlash:$('crashFlash'), countdown:$('countdown'), draftBadge:$('draftBadge'), boostBar:$('boostBar'), stage:$('stage'),
   };
+
+  // ---------- Petits effets d'interface ----------
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function replay(el, cls){ if(!el) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+  function countUp(el, to, fmt, dur){
+    fmt = fmt || (n=>String(Math.round(n)));
+    if(reducedMotion){ el.textContent = fmt(to); return; }
+    const t0 = performance.now(); dur = dur || 1300;
+    (function step(now){
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 4);
+      el.textContent = fmt(to * e);
+      if(k < 1) requestAnimationFrame(step);
+    })(t0);
+  }
+  function confetti(x, y){
+    if(reducedMotion) return;
+    const c = document.createElement('canvas'); c.className = 'game-confetti';
+    document.body.appendChild(c);
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    c.width = innerWidth * dpr; c.height = innerHeight * dpr;
+    const g = c.getContext('2d'); g.scale(dpr, dpr);
+    const colors = ['#ffcc00', '#ffffff', '#8fd0ff', '#ff5ad1', '#4ee39a'];
+    const parts = Array.from({ length:140 }, ()=>{ const a = Math.random()*Math.PI*2, s = 4 + Math.random()*10; return { x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s - 7, r:Math.random()*3, vr:(Math.random()-.5)*.4, w:5+Math.random()*6, h:3+Math.random()*4, c:colors[(Math.random()*colors.length)|0], life:1 }; });
+    let last = performance.now();
+    (function frame(now){
+      const dt = Math.min(2, (now - last) / 16.7); last = now;
+      g.clearRect(0, 0, innerWidth, innerHeight);
+      let alive = 0;
+      for(const p of parts){
+        p.vy += .32*dt; p.vx *= Math.pow(.985, dt); p.x += p.vx*dt; p.y += p.vy*dt; p.r += p.vr*dt; p.life -= .008*dt;
+        if(p.life <= 0 || p.y > innerHeight + 20) continue;
+        alive++;
+        g.save(); g.globalAlpha = p.life; g.translate(p.x, p.y); g.rotate(p.r); g.fillStyle = p.c; g.fillRect(-p.w/2, -p.h/2, p.w, p.h*Math.abs(Math.cos(p.r*2))); g.restore();
+      }
+      if(alive) requestAnimationFrame(frame); else c.remove();
+    })(last);
+  }
+  let _lastScore = 0, _lastSpd = -1, _cdTimer = 0;
 
   const state = { username:null, selectedCar: DG.defaultCarId, selectedRoute: DG.defaultRouteId, screen:'loading', personalBest:0 };
 
@@ -104,15 +143,15 @@
     })();
   }
 
-  function popup(text, cls){
+  function popup(text, cls, big){
     const el = document.createElement('div');
-    el.className = 'popup';
+    el.className = 'popup' + (big ? ' big' : '');
     el.textContent = text;
     if(cls) el.style.color = cls;
     el.style.left = (44 + Math.random()*12) + '%';
     el.style.top = '58%';
     els.popups.appendChild(el);
-    setTimeout(()=>el.remove(), 1000);
+    setTimeout(()=>el.remove(), 1150);
   }
 
   function loadUsername(){
@@ -153,8 +192,9 @@
         '</button>'
       );
     }).join('');
-    els.carGrid.querySelectorAll('[data-car]:not([disabled])').forEach(b=>b.addEventListener('click', ()=>{ state.selectedCar = b.getAttribute('data-car'); renderCarGrid(); els.btnStart.disabled = false; updateDailyCta(); }));
+    els.carGrid.querySelectorAll('[data-car]:not([disabled])').forEach(b=>b.addEventListener('click', ()=>{ state.selectedCar = b.getAttribute('data-car'); renderCarGrid(); els.btnStart.disabled = false; els.btnStart.classList.add('ready'); updateDailyCta(); }));
     els.btnStart.disabled = unlocked.indexOf(state.selectedCar) === -1;
+    els.btnStart.classList.toggle('ready', !els.btnStart.disabled);
   }
   function hexAlpha(hex, a){
     const n = parseInt(hex.replace('#',''),16);
@@ -284,6 +324,7 @@
       if(res.carId){
         els.drawCard.classList.add('jackpot');
         els.wheelResult.textContent = '🏆 Voiture rare gagnée : ' + (DG.carById(res.carId) || {}).name + ' !';
+        confetti(innerWidth/2, innerHeight*0.4);
         popup('🏆 Voiture rare gagnée !', '#b48cff');
       } else {
         els.wheelResult.textContent = '🎉 +' + res.credits + ' crédits !';
@@ -297,6 +338,9 @@
     show('ovChoosing');
     state.screen = 'choosing';
     renderRouteTabs();
+    els.carGrid.classList.add('intro');
+    clearTimeout(els.carGrid._introT);
+    els.carGrid._introT = setTimeout(()=>els.carGrid.classList.remove('intro'), 1500);
     renderCarGrid();
     refreshPilotBar();
     refreshPersonalBest();
@@ -313,7 +357,16 @@
     engine = new DG.GameEngine($('canvasHost'), {
       onHud(d){
         els.hudTime.textContent = d.time.toFixed(1) + 's';
+        if(d.score - _lastScore >= 30) replay(els.hudScore, 'bump');
+        _lastScore = d.score;
         els.hudScore.textContent = d.score;
+        const spd = Math.round((d.speedK || 0) * 20) / 20;
+        if(spd !== _lastSpd){ _lastSpd = spd; els.speedFx.style.setProperty('--spd', (spd * 0.85).toFixed(2)); }
+        els.speedFx.classList.toggle('boost', !!d.boosting);
+        els.btnBoost.classList.toggle('on', !!d.boosting);
+        els.boostBar.classList.toggle('on', !!d.boosting);
+        els.boostBar.classList.toggle('full', d.boostPct >= 99.5);
+        els.boostBar.classList.toggle('low', d.boostPct < 18);
         els.hudSpeed.innerHTML = d.speed + '<span style="font-size:10px;color:#8a8f98"> km/h</span>';
         els.boostFill.style.width = d.boostPct + '%';
         if(d.multiplierActive){ els.multBadge.classList.add('show'); els.multTime.textContent = Math.ceil(d.multiplierT); }
@@ -325,16 +378,32 @@
         }
       },
       onCamLabel(label){ els.camLabel.textContent = label; },
+      onCountdown(n){
+        els.countdown.innerHTML = n > 0 ? '<span>' + n + '</span>' : '<span class="go">GO!</span>';
+        clearTimeout(_cdTimer);
+        if(n <= 0) _cdTimer = setTimeout(()=>{ els.countdown.innerHTML = ''; }, 900);
+      },
+      onDraft(on){ els.draftBadge.classList.toggle('show', !!on); },
+      onCrash(){
+        els.draftBadge.classList.remove('show');
+        els.speedFx.classList.remove('boost');
+        replay(els.crashFlash, 'play');
+        replay(els.stage, 'shake');
+        if(navigator.vibrate) try { navigator.vibrate([60, 40, 120]); } catch(e){}
+      },
       onPauseChange(paused){ show(paused ? 'ovPaused' : null); if(!paused){ els.hudTop.style.display='flex'; els.hudBottom.style.display='flex'; } },
       onPickup(kind, payload){
         if(kind==='coin') popup('+10 🪙', '#ffcc00');
         else if(kind==='near-miss'){
           const streak = (payload && payload.streak) || 1;
-          if(streak >= 3) popup('FRÔLÉ x' + streak + ' 🔥', '#ff5a3d');
+          const edge = payload && payload.side < 0 ? els.edgeFlashL : els.edgeFlashR;
+          edge.classList.toggle('hot', streak >= 3);
+          replay(edge, 'play');
+          if(streak >= 3) popup('FRÔLÉ x' + streak + ' 🔥', '#ff5a3d', true);
           else popup('FRÔLÉ ! +30', '#ff9090');
         }
-        else if(kind==='nitro') popup('NITRO !', '#3df0ff');
-        else if(kind==='multiplier') popup('×2 GAINS !', '#ff5ad1');
+        else if(kind==='nitro') popup('⚡ NITRO PLEIN !', '#3df0ff', true);
+        else if(kind==='multiplier') popup('×2 GAINS !', '#ff5ad1', true);
       },
       onRecordBroken(){
         popup('★ NOUVEAU RECORD !', '#ffcc00');
@@ -363,6 +432,9 @@
     const car = DG.carById(state.selectedCar);
     els.hudTop.style.display = 'flex'; els.hudBottom.style.display = 'flex';
     show(null);
+    _lastScore = 0;
+    els.countdown.innerHTML = '';
+    els.draftBadge.classList.remove('show');
     engine.start(car, state.selectedRoute, state.personalBest);
   }
   els.btnStart.addEventListener('click', startRun);
@@ -388,14 +460,18 @@
       if(els.pilotBest) els.pilotBest.textContent = '🏆 ' + state.personalBest.toLocaleString('fr-FR');
     }
     els.ovRecordBadge.style.display = isRecord ? 'inline-block' : 'none';
-    els.overScore.textContent = result.score;
+    els.speedFx.classList.remove('boost'); els.speedFx.style.setProperty('--spd', 0); _lastSpd = -1;
+    els.draftBadge.classList.remove('show');
+    els.overScore.textContent = '0';
     els.overTime.textContent = result.time.toFixed(1) + 's';
     els.overCredits.textContent = '+…';
     show('ovOver');
+    countUp(els.overScore, result.score, n=>Math.round(n).toLocaleString('fr-FR'), 1500);
+    if(isRecord) setTimeout(()=>confetti(innerWidth/2, innerHeight*0.3), 350);
     flashOverScreen(result.carId);
     startOverCarSpin(result.carId);
     const credits = await DG.Economy.recordRun({ name: state.username, score: result.score, carId: result.carId, timeSeconds: result.time, routeId: result.routeId });
-    els.overCredits.textContent = '+' + credits;
+    countUp(els.overCredits, credits, n=>'+' + Math.round(n).toLocaleString('fr-FR'), 1000);
     const board = await DG.Leaderboard.fetchBoard(5);
     els.overBoard.innerHTML = board.length ? board.map((e,i)=>DG.Leaderboard.rowHTML(e,i)).join('') : '<div style="text-align:center;color:#8a8f98;padding:16px">Aucun score encore.</div>';
     await refreshDailyClaim(result);
@@ -440,7 +516,7 @@
     els.btnWatchAd.disabled = true;
     const res = await DG.Ads.watch();
     if(res.ok){ popup('+' + res.amount + ' 🪙', '#ffcc00'); }
-    else { alert(res.error); }
+    else { popup(res.error || 'Pub indisponible', '#ff9090'); }
     els.btnWatchAd.disabled = false;
   });
 

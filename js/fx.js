@@ -35,23 +35,25 @@
   // ---------- Curseur lumineux ----------
   if(finePointer && !reduced){
     const ring = el('div', 'fx-cursor gone'), dot = el('div', 'fx-cursor-dot gone');
-    let mx = -100, my = -100, rx = -100, ry = -100, seen = false;
+    let mx = -100, my = -100, rx = -100, ry = -100, seen = false, running = false;
+    function kick(){ if(!running){ running = true; requestAnimationFrame(follow); } }
     addEventListener('pointermove', (e)=>{
       if(e.pointerType !== 'mouse') return;
       mx = e.clientX; my = e.clientY;
       if(!seen){ seen = true; rx = mx; ry = my; ring.classList.remove('gone'); dot.classList.remove('gone'); }
       dot.style.transform = 'translate3d(' + mx + 'px,' + my + 'px,0)';
+      kick();
       const hot = e.target.closest && e.target.closest('a,button,[data-buy],[data-view3d],input,select,textarea,label,.playlist-row');
       ring.classList.toggle('hover', !!hot);
     }, { passive:true });
     addEventListener('pointerdown', ()=>ring.classList.add('down'));
     addEventListener('pointerup', ()=>ring.classList.remove('down'));
     doc.addEventListener('mouseleave', ()=>{ ring.classList.add('gone'); dot.classList.add('gone'); seen = false; });
-    (function follow(){
+    function follow(){
       rx += (mx - rx) * 0.18; ry += (my - ry) * 0.18;
       ring.style.transform = 'translate3d(' + rx.toFixed(1) + 'px,' + ry.toFixed(1) + 'px,0)';
-      requestAnimationFrame(follow);
-    })();
+      if(Math.abs(mx - rx) + Math.abs(my - ry) > 0.3) requestAnimationFrame(follow); else running = false;
+    }
   }
 
   // ---------- Apparitions au scroll + cascades ----------
@@ -104,15 +106,16 @@
   // ---------- Boutons magnetiques + ripple ----------
   const MAG_SEL = '.btn-primary:not(.btn-block),.btn-ghost:not(.btn-block),.nav-cta,[data-magnetic]';
   if(finePointer && !reduced){
+    let magEl = null;
     doc.addEventListener('pointermove', (e)=>{
       const b = e.target.closest && e.target.closest(MAG_SEL);
+      if(magEl && magEl !== b){ magEl.style.transform = ''; magEl = null; }
       if(b && !b.disabled){
         const r = b.getBoundingClientRect();
         const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
         b.style.transform = 'translate(' + (dx * 0.18).toFixed(1) + 'px,' + (dy * 0.28 - 2).toFixed(1) + 'px)';
-        b.__fxMag = true;
+        magEl = b;
       }
-      doc.querySelectorAll(MAG_SEL).forEach(o=>{ if(o !== b && o.__fxMag){ o.style.transform = ''; o.__fxMag = false; } });
     }, { passive:true });
   }
   doc.addEventListener('pointerdown', (e)=>{
@@ -252,20 +255,23 @@
     function size(){ w = host.clientWidth; h = host.clientHeight; c.width = w * dpr; c.height = h * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0); }
     size(); addEventListener('resize', size);
     const rgb = (getComputedStyle(root).getPropertyValue('--accent-rgb').trim() || '159,180,199');
+    const spr = doc.createElement('canvas'); spr.width = spr.height = 32;
+    const sg = spr.getContext('2d'), grad = sg.createRadialGradient(16,16,0,16,16,16);
+    grad.addColorStop(0, 'rgba(' + rgb + ',1)'); grad.addColorStop(.25, 'rgba(' + rgb + ',.55)'); grad.addColorStop(1, 'rgba(' + rgb + ',0)');
+    sg.fillStyle = grad; sg.fillRect(0, 0, 32, 32);
     const pts = Array.from({ length:count || 70 }, ()=>({ x:Math.random() * w, y:Math.random() * h, r:Math.random() * 1.6 + .3, vx:(Math.random() - .5) * .15, vy:-(Math.random() * .35 + .05), a:Math.random() * .6 + .15, tw:Math.random() * Math.PI * 2 }));
     if('IntersectionObserver' in window) new IntersectionObserver((es)=>{ visible = es[0].isIntersecting; if(visible) requestAnimationFrame(frame); }).observe(host);
     function frame(){
       if(!visible) return;
+      g.globalAlpha = 1;
       g.clearRect(0, 0, w, h);
       for(const p of pts){
         p.x += p.vx; p.y += p.vy; p.tw += 0.03;
         if(p.y < -5){ p.y = h + 5; p.x = Math.random() * w; }
         if(p.x < -5) p.x = w + 5; else if(p.x > w + 5) p.x = -5;
-        const a = p.a * (0.6 + 0.4 * Math.sin(p.tw));
-        g.beginPath(); g.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        g.fillStyle = 'rgba(' + rgb + ',' + a.toFixed(3) + ')';
-        g.shadowColor = 'rgba(' + rgb + ',.9)'; g.shadowBlur = 8;
-        g.fill();
+        g.globalAlpha = p.a * (0.6 + 0.4 * Math.sin(p.tw));
+        const d = p.r * 7;
+        g.drawImage(spr, p.x - d / 2, p.y - d / 2, d, d);
       }
       requestAnimationFrame(frame);
     }

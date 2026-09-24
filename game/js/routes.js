@@ -49,6 +49,8 @@
     head.position.set(x<0?0.85:-0.85, 4.1, 0); g.add(head);
     const glow = new T.PointLight(headColor, 0.9, 9);
     glow.position.copy(head.position); glow.position.y -= 0.05; g.add(glow);
+    const halo = new T.Sprite(new T.SpriteMaterial({ map:lampGlowTex(T), color:headColor, transparent:true, opacity:.75, blending:T.AdditiveBlending, depthWrite:false }));
+    halo.scale.set(2, 2, 1); halo.position.copy(head.position); g.add(halo);
     g.position.set(x, 0, z);
     return g;
   }
@@ -86,6 +88,52 @@
     const reflector = new T.Mesh(new T.SphereGeometry(0.045,6,6), new T.MeshBasicMaterial({ color: side<0 ? 0xff5a3d : 0xffe27a }));
     reflector.position.set(0.08, 0.62, 0); g.add(reflector);
     g.position.set(x, 0, z);
+    return g;
+  }
+
+  // Panneau de signalisation autoroutiere (fond vert/bleu, texte blanc) dessine
+  // en canvas : retro-reflechissant la nuit, donc MeshBasic (lisible sans lumiere).
+  function signTexture(T, bg, lines, arrow){
+    const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+    const g = c.getContext('2d');
+    g.fillStyle = bg; g.fillRect(0, 0, 512, 256);
+    g.strokeStyle = '#f4f6f8'; g.lineWidth = 10; g.strokeRect(12, 12, 488, 232);
+    g.fillStyle = '#f4f6f8'; g.textBaseline = 'middle';
+    g.font = '800 64px "Saira Condensed", Arial Narrow, Arial, sans-serif';
+    g.fillText(lines[0], 44, 92);
+    g.font = '700 46px "Saira Condensed", Arial Narrow, Arial, sans-serif';
+    g.fillText(lines[1], 44, 176);
+    if(arrow){ g.font = '900 110px Arial, sans-serif'; g.fillText(arrow, 380, 132); }
+    const tex = new T.CanvasTexture(c);
+    tex.anisotropy = 4;
+    return tex;
+  }
+  const SIGNS = [
+    { bg:'#0b6b3a', lines:['GENÈVE', 'Lausanne 64 km'], arrow:'↑' },
+    { bg:'#1d4fa8', lines:['SORTIE 12', 'Aéroport · Centre'], arrow:'↗' },
+    { bg:'#0b6b3a', lines:['MONTREUX', 'Sion 92 km'], arrow:'↑' },
+    { bg:'#1d4fa8', lines:['AIRE DE REPOS', 'Station 2 km'], arrow:'⛽' },
+  ];
+  let _signIdx = 0;
+  function gantry(T, z){
+    const g = new T.Group();
+    const steel = new T.MeshStandardMaterial({ color:0x6d7680, metalness:0.8, roughness:0.4 });
+    [-6.4, 6.4].forEach(x=>{
+      const post = new T.Mesh(new T.BoxGeometry(0.32, 7.2, 0.32), steel);
+      post.position.set(x, 3.6, 0); g.add(post);
+    });
+    [6.6, 7.3].forEach(y=>{
+      const beam = new T.Mesh(new T.BoxGeometry(13.2, 0.18, 0.18), steel);
+      beam.position.set(0, y, 0); g.add(beam);
+    });
+    const a = SIGNS[_signIdx++ % SIGNS.length], b = SIGNS[_signIdx++ % SIGNS.length];
+    [[-2.6, a], [2.6, b]].forEach(([x, def])=>{
+      const m = new T.Mesh(new T.PlaneGeometry(4.6, 2.3), new T.MeshBasicMaterial({ map:signTexture(T, def.bg, def.lines, def.arrow) }));
+      m.position.set(x, 5.6, 0.14); g.add(m);
+      const back = new T.Mesh(new T.BoxGeometry(4.7, 2.4, 0.08), steel);
+      back.position.set(x, 5.6, 0.06); g.add(back);
+    });
+    g.position.set(0, 0, z);
     return g;
   }
 
@@ -201,7 +249,17 @@
   // teindre en entier avec tintModel() ecrasait tout le detail du fer forge en
   // un aplat de couleur) et n'ajoute que le point lumineux neon pres de la
   // lanterne, comme le faisait l'ancien streetlight() procedural.
-  function lampModel(T, x, z, headColor, targetHeight){
+  let _lampGlowTex = null;
+  function lampGlowTex(T){
+    if(_lampGlowTex) return _lampGlowTex;
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(32,32,0,32,32,32);
+    grad.addColorStop(0,'rgba(255,255,255,1)'); grad.addColorStop(.3,'rgba(255,255,255,.35)'); grad.addColorStop(1,'rgba(255,255,255,0)');
+    g.fillStyle = grad; g.fillRect(0,0,64,64);
+    return (_lampGlowTex = new T.CanvasTexture(c));
+  }
+  function lampModel(T, x, z, headColor, targetHeight, withLight){
     const holder = new T.Group();
     holder.position.set(x, 0, z);
     loadLampModel().then(src=>{
@@ -212,9 +270,16 @@
       const glow = new T.Mesh(new T.SphereGeometry(h*0.03, 10, 8), new T.MeshBasicMaterial({ color: headColor }));
       glow.position.set(0, glowY, 0);
       holder.add(glow);
-      const light = new T.PointLight(headColor, 1.1, 9);
-      light.position.set(0, glowY - 0.05, 0);
-      holder.add(light);
+      const halo = new T.Sprite(new T.SpriteMaterial({ map:lampGlowTex(T), color:headColor, transparent:true, opacity:.8, blending:T.AdditiveBlending, depthWrite:false }));
+      halo.scale.set(2.4, 2.4, 1); halo.position.set(0, glowY, 0); holder.add(halo);
+      // Une lumiere dynamique par lampadaire coutait cher (chaque lumiere
+      // alourdit le shader de TOUS les materiaux) : 1 sur 2 suffit a eclairer
+      // la route, le halo donne l'impression que toutes sont allumees.
+      if(withLight !== false){
+        const light = new T.PointLight(headColor, 1.5, 11);
+        light.position.set(0, glowY - 0.05, 0);
+        holder.add(light);
+      }
     });
     return holder;
   }
@@ -317,6 +382,9 @@
       road:0x0b0d12, stripe:0xd8dee6, edge:0x1b2129, edgeEmissive:0x1a2a3a,
       sky:{ top:0x020207, bottom:0x121a2e },
       light:{ key:0xaebeda, keyI:0.9, hemiSky:0x2c3a5e, hemiGround:0x05050a, hemiI:0.45, ambient:0xffffff, ambientI:0.18 },
+      stars:true, headlights:2.6,
+      celestial:{ color:0xf2f4ff, halo:0x8fa8ff, size:16, x:-70, y:64, haloOp:.35 },
+      horizonGlow:{ color:0xff9a4a, op:.22, y:4, w:320, h:34 },
       buildDecor(T, scene, N){
         const items = [];
         for(let i=0;i<N;i++){
@@ -369,6 +437,12 @@
             scene.add(sl); items.push(sl);
           }
 
+          if(i === 4 || i === 12){
+            const gt = gantry(T, z - 1);
+            gt.userData.wrapDist = wrap * N * 2;
+            scene.add(gt); items.push(gt);
+          }
+
           // Station essence : collee au bord de la route (juste apres la
           // glissiere, dont l'ouverture ci-dessus sert d'entree/sortie) pour
           // bien la voir en passant. Le decor scroll/boucle sur une distance
@@ -391,6 +465,9 @@
       road:0x342a24, stripe:0xf2c78a, edge:0x5a3b2c, edgeEmissive:0xff9a4d,
       sky:{ top:0x3a2350, bottom:0xff9a5a },
       light:{ key:0xffb27a, keyI:1.15, hemiSky:0xff9d6b, hemiGround:0x2a1810, hemiI:0.55, ambient:0xffcfa0, ambientI:0.3 },
+      headlights:0.9,
+      celestial:{ color:0xfff0c8, halo:0xff8a3a, size:46, x:55, y:12, haloOp:.55 },
+      horizonGlow:{ color:0xff6a3a, op:.35, y:3, w:360, h:46 },
       // Cote fixe : l'ocean reste toujours du meme cote de la route (comme une
       // vraie route cotiere). Les parasols+chaise ne sont poses QUE cote plage/
       // mer (entre la route et l'eau) ; les palmiers, eux, poussent des deux
@@ -434,6 +511,8 @@
       road:0x0a0714, stripe:0xff5ad1, edge:0x2a1044, edgeEmissive:0xb43dff,
       sky:{ top:0x0a0518, bottom:0x321248 },
       light:{ key:0xb98cff, keyI:1.0, hemiSky:0xb43dff, hemiGround:0x0a0518, hemiI:0.55, ambient:0xff9dfa, ambientI:0.26 },
+      rain:true, wet:true, headlights:2.4,
+      horizonGlow:{ color:0xff3df0, op:.28, y:10, w:300, h:60 },
       buildDecor(T, scene, N){
         const items = [];
         const neon = [0xff3df0, 0x3df0ff, 0xffe23d, 0x7a3dff, 0x3dffb0];
@@ -442,7 +521,7 @@
           const c = neon[i % neon.length];
           const m = neonBuilding(T, side*(12 + Math.random()*8), -18 - i*8, c);
           scene.add(m); items.push(m);
-          const sl = lampModel(T, side*5.9, -12 - i*8, neon[(i+2) % neon.length]);
+          const sl = lampModel(T, side*5.9, -12 - i*8, neon[(i+2) % neon.length], 4.5, i % 2 === 0);
           scene.add(sl); items.push(sl);
 
           // Skyline lointaine occasionnelle, en retrait derriere le premier

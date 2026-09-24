@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Saira:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/game.css">
+<link rel="stylesheet" href="css/game-fx.css">
 </head>
 <body>
 <div id="stage">
@@ -52,16 +53,22 @@
   <div class="multiplier-badge" id="multBadge">×2 GAINS — <span id="multTime">8</span>s</div>
   <div class="record-flash" id="recordFlash">★ NOUVEAU RECORD !</div>
   <div class="popups" id="popups"></div>
+  <div class="speed-fx" id="speedFx"></div>
+  <div class="edge-flash l" id="edgeFlashL"></div>
+  <div class="edge-flash r" id="edgeFlashR"></div>
+  <div class="crash-flash" id="crashFlash"></div>
+  <div class="countdown" id="countdown"></div>
+  <div class="draft-badge" id="draftBadge">💨 ASPIRATION · NITRO EN RECHARGE</div>
 
   <div class="bottombar" id="hudBottom" style="display:none">
     <div class="controls-wrap">
-      <div class="boost-bar"><div class="boost-fill" id="boostFill"></div></div>
+      <div class="boost-bar" id="boostBar"><div class="boost-fill" id="boostFill"></div></div>
       <div class="controls-row">
         <button class="btn-lane" id="btnLeft">◀</button>
         <button class="btn-boost" id="btnBoost">⚡ Boost</button>
         <button class="btn-lane" id="btnRight">▶</button>
       </div>
-      <div class="kbd-hint">ESPACE boost · ← → déplacer · C caméra · P pause</div>
+      <div class="kbd-hint">ESPACE boost · ← → déplacer · C caméra · P pause · roule dans le sillage pour recharger le nitro</div>
     </div>
   </div>
 
@@ -71,6 +78,7 @@
       <div style="font-family:'Saira Condensed';font-weight:900;font-size:24px;letter-spacing:.16em">DEYLO GARAGE</div>
     </div>
     <div style="font-family:monospace;font-size:12px;letter-spacing:.14em;color:#8a8f98">CHARGEMENT DU CIRCUIT…</div>
+    <div class="load-bar"><i></i></div>
   </div>
 
   <div class="overlay hidden" id="ovNaming">
@@ -218,6 +226,7 @@
 <script src="../js/ads.js"></script>
 <script src="js/routes.js"></script>
 <script src="js/loader.js"></script>
+<script src="js/fx3d.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/main.js"></script>
 </body>
