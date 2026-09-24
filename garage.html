@@ -6,6 +6,7 @@
 <title>Garage — Deylo Garage</title>
 <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Saira:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="css/fx.css">
 <style>
  .car-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px;margin-top:30px}
  .car-card{position:relative;background:linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid rgba(255,255,255,.1);border-radius:18px}
@@ -35,6 +36,7 @@
 </style>
 </head>
 <body>
+<div class="fx-curtain" aria-hidden="true"><b>DEYLO<i>·</i>GARAGE</b></div>
 <div id="site-nav" data-active="garage.html"></div>
 <main>
   <div class="container" style="padding-top:40px">
@@ -44,7 +46,7 @@
     <div class="card" id="loginHint" style="margin-top:20px;display:none">
       Vous jouez en invité : votre argent et vos voitures restent sur cet appareil. <a href="compte.html">Créez un compte</a> pour les sauvegarder définitivement.
     </div>
-    <div class="car-grid" id="carGrid"></div>
+    <div class="car-grid" id="carGrid" data-stagger></div>
   </div>
 </main>
 
@@ -79,6 +81,7 @@
 <script src="js/auth.js"></script>
 <script src="js/economy.js"></script>
 <script src="js/nav.js"></script>
+<script src="js/fx.js"></script>
 <script src="js/showroom.js"></script>
 <script>
 (function(){
@@ -109,9 +112,17 @@
       );
     }).join('');
     document.querySelectorAll('[data-buy]').forEach(btn=>btn.addEventListener('click', async ()=>{
+      const r = btn.getBoundingClientRect();
+      const car = DG.carById(btn.getAttribute('data-buy'));
       btn.disabled = true; btn.textContent = 'Achat…';
       const res = await DG.Economy.buyCar(btn.getAttribute('data-buy'));
-      if(!res.ok){ alert(res.error || "Achat impossible"); render(); }
+      if(!res.ok){
+        if(DG.FX) DG.FX.toast('⚠ ' + (res.error || 'Achat impossible'), 'bad'); else alert(res.error || 'Achat impossible');
+        render();
+      } else if(DG.FX){
+        DG.FX.confetti(r.left + r.width / 2, r.top + r.height / 2);
+        DG.FX.toast('🔑 ' + (car ? car.brand + ' ' + car.name : 'Voiture') + ' débloquée !', 'good');
+      }
     }));
     document.querySelectorAll('[data-view3d]').forEach(btn=>btn.addEventListener('click', ()=>openViewer(btn.getAttribute('data-view3d'))));
   }

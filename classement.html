@@ -6,8 +6,10 @@
 <title>Classement — Deylo Garage</title>
 <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Saira:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="css/fx.css">
 </head>
 <body>
+<div class="fx-curtain" aria-hidden="true"><b>DEYLO<i>·</i>GARAGE</b></div>
 <div id="site-nav" data-active="classement.html"></div>
 <main>
   <div class="container" style="padding-top:40px;padding-bottom:60px">
@@ -15,7 +17,7 @@
     <h1 class="h1">Top 25 pilotes</h1>
     <p class="lead">Mis à jour automatiquement à chaque partie terminée.</p>
     <div class="card" style="margin-top:26px">
-      <div id="board" style="display:flex;flex-direction:column;gap:6px">
+      <div id="board" data-stagger style="display:flex;flex-direction:column;gap:6px">
         <div class="skeleton">Chargement du classement…</div>
       </div>
     </div>
@@ -31,6 +33,7 @@
 <script src="js/economy.js"></script>
 <script src="js/leaderboard.js"></script>
 <script src="js/nav.js"></script>
+<script src="js/fx.js"></script>
 <script>
 (async function(){
   await DG.ready;

@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800;900&family=Saira:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="css/fx.css">
 <style>
  @keyframes heroUp{from{opacity:0;transform:translateY(34px);filter:blur(7px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
  @keyframes shimmer{0%{background-position:0% center}100%{background-position:-220% center}}
@@ -17,12 +18,13 @@
  .hero-canvas{position:absolute;inset:0;cursor:pointer}
  .hero-fade{position:absolute;inset:0;background:radial-gradient(80% 62% at 50% 44%, transparent 28%, var(--bg) 88%);pointer-events:none}
  .hero-hint{position:absolute;left:50%;bottom:24%;transform:translateX(-50%);font-family:monospace;font-size:10.5px;letter-spacing:.24em;color:var(--accent-soft);text-transform:uppercase;animation:hintpulse 2.6s ease-in-out infinite;pointer-events:none}
- .hero-text{position:absolute;left:6vw;bottom:16%;max-width:600px;pointer-events:none}
- .hero-text h1{font-weight:900;font-size:clamp(40px,7.4vw,110px);line-height:.9;text-transform:uppercase;animation:heroUp .85s .1s cubic-bezier(.2,.7,.2,1) both}
+ .hero-text{position:absolute;left:6vw;bottom:16%;max-width:600px;pointer-events:none;will-change:transform,opacity}
+ .hero-text .eyebrow{animation:heroUp .8s .5s cubic-bezier(.2,.7,.2,1) both}
+ .hero-canvas{transition:filter .2s}
+ .hero-text h1{font-weight:900;font-size:clamp(40px,7.4vw,110px);line-height:.9;text-transform:uppercase}
  .hero-text .grad{background:linear-gradient(100deg,#fff 8%,var(--accent-light) 38%,#fff 58%,var(--accent) 100%);background-size:220% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 7s linear infinite}
- .hero-text p{max-width:520px;font-size:clamp(15px,1.4vw,18px);color:var(--text-2);line-height:1.55;font-weight:300;margin:22px 0 0;animation:heroUp .9s .2s cubic-bezier(.2,.7,.2,1) both}
- .hero-cta{display:flex;gap:14px;margin-top:30px;flex-wrap:wrap;pointer-events:auto;animation:heroUp .95s .3s cubic-bezier(.2,.7,.2,1) both}
- [data-reveal]{opacity:0;transform:translateY(40px);filter:blur(9px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1),filter .8s cubic-bezier(.2,.7,.2,1)}
+ .hero-text p{max-width:520px;font-size:clamp(15px,1.4vw,18px);color:var(--text-2);line-height:1.55;font-weight:300;margin:22px 0 0;animation:heroUp .9s .95s cubic-bezier(.2,.7,.2,1) both}
+ .hero-cta{display:flex;gap:14px;margin-top:30px;flex-wrap:wrap;pointer-events:auto;animation:heroUp .95s 1.08s cubic-bezier(.2,.7,.2,1) both}
  .teaser-card{position:relative;background:linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid rgba(255,255,255,.1);border-radius:16px;overflow:hidden}
  .teaser-card .bar{height:4px}
  .teaser-card .body{padding:18px 20px}
@@ -42,6 +44,7 @@
 </style>
 </head>
 <body>
+<div class="fx-curtain" aria-hidden="true"><b>DEYLO<i>·</i>GARAGE</b></div>
 <div id="site-nav"></div>
 
 <main style="padding-top:0">
@@ -49,9 +52,11 @@
     <div class="hero-canvas" id="heroCanvas"></div>
     <div class="hero-hint">↻ cliquez la voiture</div>
     <div class="hero-fade"></div>
+    <div id="heroParticles" class="fx-particles"></div>
+    <div class="fx-scroll-cue" aria-hidden="true"></div>
     <div class="hero-text">
       <div class="eyebrow" style="justify-content:flex-start;margin-bottom:16px"><span class="dash"></span>Showroom 3D · Supercars d'exception</div>
-      <h1>L'art de la<br><span class="grad">performance</span></h1>
+      <h1><span class="fx-line"><span>L'art de la</span></span><span class="fx-line"><span class="grad">performance</span></span></h1>
       <p>Un garage qui s'agrandit avec vous : commencez avec une citadine, gagnez des crédits en jouant et débloquez des sportives puis des hypercars. Le tout dans un mini-jeu de réflexes toujours plus intense.</p>
       <div class="hero-cta">
         <a href="garage.html" class="btn btn-primary">Découvrir le garage →</a>
@@ -60,13 +65,27 @@
     </div>
   </section>
 
-  <section class="section" id="garage-teaser" style="border-top:1px solid rgba(var(--line-rgb),.07)">
+  <div class="fx-marquee" aria-hidden="true"><div class="fx-marquee-track" id="brandMarquee"></div></div>
+
+  <section class="section" id="garage-teaser">
     <div class="container" data-reveal>
       <div class="eyebrow"><span class="dash"></span>Le garage</div>
-      <h2 class="h1" style="font-size:clamp(32px,5vw,54px)">16 voitures à débloquer</h2>
+      <h2 class="h1" style="font-size:clamp(32px,5vw,54px)"><span id="carCount">30</span> voitures à débloquer</h2>
       <p class="lead">De la citadine de départ aux hypercars les plus extrêmes, chaque voiture a ses propres statistiques de vitesse, d'accélération et de maniabilité.</p>
-      <div class="grid grid-auto" style="margin-top:30px" id="teaserGrid"></div>
-      <a href="garage.html" class="btn btn-primary" style="margin-top:28px">Voir les 16 voitures →</a>
+      <div class="grid" style="margin-top:30px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))" id="teaserGrid" data-stagger></div>
+      <a href="garage.html" class="btn btn-primary" style="margin-top:28px">Voir les <span id="carCount2">30</span> voitures →</a>
+    </div>
+  </section>
+
+  <section class="section" style="border-top:1px solid rgba(var(--line-rgb),.07)">
+    <div class="container" data-reveal>
+      <div class="eyebrow"><span class="dash"></span>Comment ça marche</div>
+      <h2 class="h1" style="font-size:clamp(32px,5vw,54px)">De la citadine à l'hypercar</h2>
+      <div class="fx-steps">
+        <div class="fx-step"><span class="num">01</span><div class="ico">🏁</div><h3>Jouez</h3><p>Slalomez dans le trafic à pleine vitesse. Plus vous frôlez les voitures, plus le score grimpe.</p></div>
+        <div class="fx-step"><span class="num">02</span><div class="ico">🪙</div><h3>Gagnez</h3><p>Chaque partie rapporte des crédits, le défi du jour et les succès en rapportent encore plus.</p></div>
+        <div class="fx-step"><span class="num">03</span><div class="ico">🔑</div><h3>Débloquez</h3><p>Achetez des voitures toujours plus puissantes et grimpez au classement mondial.</p></div>
+      </div>
     </div>
   </section>
 
@@ -77,7 +96,7 @@
       <div class="board-grid" id="homeBoardWrap">
         <div class="board-highlight">
           <div id="homeBoardTop1" class="skeleton">Chargement du classement…</div>
-          <div id="homeBoardRest" style="display:flex;flex-direction:column;gap:6px;margin-top:6px"></div>
+          <div id="homeBoardRest" data-stagger style="display:flex;flex-direction:column;gap:6px;margin-top:6px"></div>
           <a href="classement.html" class="btn btn-ghost btn-block" style="margin-top:18px">🏆 Classement complet — Top 25 →</a>
         </div>
         <div class="card" style="display:flex;flex-direction:column;justify-content:center;gap:16px">
@@ -109,6 +128,7 @@
 <script src="js/economy.js"></script>
 <script src="js/leaderboard.js"></script>
 <script src="js/nav.js"></script>
+<script src="js/fx.js"></script>
 <script src="js/showroom.js"></script>
 <script>
 (function(){
@@ -121,6 +141,25 @@
     const hero = DG.carById('laferrari');
     await room.initHero(document.getElementById('heroCanvas'), hero);
     room.startLoop();
+  }
+
+  function heroFX(){
+    document.getElementById('carCount').textContent = DG.CARS.length;
+    document.getElementById('carCount2').textContent = DG.CARS.length;
+    const brands = Array.from(new Set(DG.CARS.map(c=>c.brand.split(' / ')[0])));
+    const once = brands.map(b=>'<span>' + b + '</span><span class="dot">✦</span>').join('');
+    document.getElementById('brandMarquee').innerHTML = once + once;
+    if(!DG.FX) return;
+    DG.FX.particles(document.getElementById('heroParticles'), 80);
+    // Parallaxe : le texte du hero monte et s'efface, la voiture se floute legerement
+    const text = document.querySelector('.hero-text'), canvas = document.getElementById('heroCanvas');
+    if(DG.FX.reduced) return;
+    DG.FX.onScroll((y)=>{
+      const k = Math.min(1, y / (innerHeight * 0.8));
+      text.style.transform = 'translate3d(0,' + (-y * 0.35).toFixed(1) + 'px,0)';
+      text.style.opacity = (1 - k * 1.1).toFixed(3);
+      canvas.style.filter = k > 0.01 ? 'blur(' + (k * 6).toFixed(1) + 'px) brightness(' + (1 - k * 0.4).toFixed(2) + ')' : '';
+    });
   }
 
   function renderTeaser(){
@@ -162,21 +201,22 @@
         '<div><div style="font-size:10px;letter-spacing:.2em;color:var(--text-3);text-transform:uppercase">Meilleur pilote</div>' +
         '<div class="who">' + DG.Leaderboard.escapeHTML(top.name) + '</div>' +
         '<div style="font-size:12px;color:var(--text-3)">' + (car ? DG.Leaderboard.escapeHTML(car.name) : '') + '</div></div>' +
-        '<div class="sc">' + top.score + '</div>' +
+        '<div class="sc" id="homeTopScore">' + top.score + '</div>' +
       '</div>';
+    if(DG.FX) DG.FX.countWhenVisible(document.getElementById('homeTopScore'), top.score);
     restEl.innerHTML = entries.slice(1,6).map((e,i)=>DG.Leaderboard.rowHTML(e, i+1)).join('');
 
     if(DG.SUPABASE_READY && DG.supabase){
       const { data } = await DG.supabase.rpc('get_public_stats');
       if(data){
         const cells = document.querySelectorAll('#homeStats > div > div:last-child');
-        cells[0].textContent = data.players ?? 0;
-        cells[1].textContent = data.games_played ?? 0;
-        cells[2].textContent = data.top_score ?? 0;
+        const put = (i, v)=>{ if(DG.FX) DG.FX.countWhenVisible(cells[i], v || 0); else cells[i].textContent = v ?? 0; };
+        put(0, data.players); put(1, data.games_played); put(2, data.top_score);
       }
     }
   }
 
+  heroFX();
   waitThree(buildShowroom);
   renderTeaser();
   buildBoard();

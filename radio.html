@@ -6,6 +6,7 @@
 <title>Radio — Deylo Garage</title>
 <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Saira:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="css/fx.css">
 <style>
  .radio-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:18px;margin-top:30px}
  @media (max-width:780px){ .radio-grid{grid-template-columns:1fr} }
@@ -25,6 +26,7 @@
 </style>
 </head>
 <body>
+<div class="fx-curtain" aria-hidden="true"><b>DEYLO<i>·</i>GARAGE</b></div>
 <div id="site-nav" data-active="radio.html"></div>
 <main>
   <div class="container" style="padding-top:40px;padding-bottom:70px">
@@ -50,7 +52,7 @@
           </div>
         </div>
         <audio id="audioEl" preload="none"></audio>
-        <div id="playlist" style="margin-top:20px;display:flex;flex-direction:column;gap:2px">
+        <div id="playlist" data-stagger style="margin-top:20px;display:flex;flex-direction:column;gap:2px">
           <div class="skeleton">Chargement de la playlist…</div>
         </div>
       </div>
@@ -79,6 +81,7 @@
 <script src="js/auth.js"></script>
 <script src="js/economy.js"></script>
 <script src="js/nav.js"></script>
+<script src="js/fx.js"></script>
 <script>
 (function(){
   const audio = document.getElementById('audioEl');

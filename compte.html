@@ -6,8 +6,10 @@
 <title>Compte — Deylo Garage</title>
 <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Saira:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="css/fx.css">
 </head>
 <body>
+<div class="fx-curtain" aria-hidden="true"><b>DEYLO<i>·</i>GARAGE</b></div>
 <div id="site-nav" data-active="compte.html"></div>
 <main>
   <div class="container" style="padding-top:50px;padding-bottom:70px;max-width:520px">
@@ -78,6 +80,7 @@
 <script src="js/auth.js"></script>
 <script src="js/economy.js"></script>
 <script src="js/nav.js"></script>
+<script src="js/fx.js"></script>
 <script>
 (function(){
   const msgArea = document.getElementById('msgArea');
@@ -109,7 +112,7 @@
   document.getElementById('btnSaveUsername').addEventListener('click', async ()=>{
     const v = document.getElementById('newUsername').value.trim();
     if(!v) return;
-    try { await DG.Auth.updateUsername(v); render(); } catch(err){ alert(err.message); }
+    try { await DG.Auth.updateUsername(v); render(); } catch(err){ if(DG.FX) DG.FX.toast('⚠ ' + err.message, 'bad'); else alert(err.message); }
   });
 
   document.getElementById('btnRedeemCode').addEventListener('click', async ()=>{
