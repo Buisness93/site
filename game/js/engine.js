@@ -299,22 +299,38 @@
     groups.forEach(list=>{
       if(list.length < 2) return;
       const names = Object.keys(list[0].n.geometry.attributes);
-      const parts = list.map(({ n, mtx })=>{ const g = n.geometry.index ? n.geometry.toNonIndexed() : n.geometry.clone(); g.applyMatrix4(mtx); return g; });
+      // Chaque piece est d'abord recopiee en flottants 32 bits "a plat" (sans index),
+      // PUIS transformee. Les modeles .glb compresses stockent leurs sommets en
+      // entiers 16 bits, parfois entrelaces : leur appliquer la matrice en place
+      // (ou passer par toNonIndexed, qui ignore l'entrelacement) debordait et
+      // projetait des triangles noirs geants dans le decor.
+      const GET = ['getX', 'getY', 'getZ', 'getW'];
+      const DIV = { Uint8Array:255, Int8Array:127, Uint16Array:65535, Int16Array:32767 };
+      const parts = list.map(({ n, mtx })=>{
+        const src = n.geometry, idx = src.index, count = idx ? idx.count : src.attributes.position.count;
+        const g = new T.BufferGeometry();
+        for(const name of names){
+          const a = src.attributes[name];
+          const raw = a.isInterleavedBufferAttribute ? a.data.array : a.array;
+          const div = a.normalized ? (DIV[raw.constructor.name] || 1) : 1;
+          const arr = new Float32Array(count * a.itemSize);
+          for(let i = 0, o = 0; i < count; i++){
+            const v = idx ? idx.getX(i) : i;
+            for(let c = 0; c < a.itemSize; c++) arr[o++] = a[GET[c]](v) / div;
+          }
+          g.setAttribute(name, new T.BufferAttribute(arr, a.itemSize, false));
+        }
+        g.applyMatrix4(mtx);
+        return g;
+      });
       const out = new T.BufferGeometry();
       for(const name of names){
-        const a0 = parts[0].attributes[name];
-        let total = 0; parts.forEach(g=>{ total += g.attributes[name].count; });
-        const arr = new Float32Array(total * a0.itemSize);
-        const GET = ['getX', 'getY', 'getZ', 'getW'];
+        const size = parts[0].attributes[name].itemSize;
+        let total = 0; parts.forEach(g=>{ total += g.attributes[name].array.length; });
+        const arr = new Float32Array(total);
         let o = 0;
-        parts.forEach(g=>{
-          const a = g.attributes[name];
-          const src = a.isInterleavedBufferAttribute ? a.data.array : a.array;
-          // Entiers normalises (couleurs/uv quantifies) -> flottants 0..1
-          const div = a.normalized ? ({ Uint8Array:255, Int8Array:127, Uint16Array:65535, Int16Array:32767 }[src.constructor.name] || 1) : 1;
-          for(let i = 0; i < a.count; i++) for(let c = 0; c < a.itemSize; c++) arr[o++] = a[GET[c]](i) / div;
-        });
-        out.setAttribute(name, new T.BufferAttribute(arr, a0.itemSize, false));
+        parts.forEach(g=>{ arr.set(g.attributes[name].array, o); o += g.attributes[name].array.length; });
+        out.setAttribute(name, new T.BufferAttribute(arr, size, false));
       }
       parts.forEach(g=>g.dispose());
       out.computeBoundingSphere();
