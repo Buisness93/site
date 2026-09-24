@@ -237,7 +237,7 @@
     const dpr = Math.min(devicePixelRatio || 1, 2);
     c.width = innerWidth * dpr; c.height = innerHeight * dpr;
     const g = c.getContext('2d'); g.scale(dpr, dpr);
-    const accent = getComputedStyle(root).getPropertyValue('--accent').trim() || '#9fb4c7';
+    const accent = getComputedStyle(root).getPropertyValue('--accent').trim() || '#8b7cff';
     const colors = [accent, '#ffcc00', '#ffffff', '#4ee39a', '#ff5a5a'];
     const parts = Array.from({ length:110 }, ()=>{
       const a = Math.random() * Math.PI * 2, s = 4 + Math.random() * 9;
@@ -267,7 +267,7 @@
     const dpr = Math.min(devicePixelRatio || 1, 2);
     function size(){ w = host.clientWidth; h = host.clientHeight; c.width = w * dpr; c.height = h * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0); }
     size(); addEventListener('resize', size);
-    const rgb = (getComputedStyle(root).getPropertyValue('--accent-rgb').trim() || '159,180,199');
+    const rgb = (getComputedStyle(root).getPropertyValue('--accent-rgb').trim() || '139,124,255');
     const spr = doc.createElement('canvas'); spr.width = spr.height = 32;
     const sg = spr.getContext('2d'), grad = sg.createRadialGradient(16,16,0,16,16,16);
     grad.addColorStop(0, 'rgba(' + rgb + ',1)'); grad.addColorStop(.25, 'rgba(' + rgb + ',.55)'); grad.addColorStop(1, 'rgba(' + rgb + ',0)');

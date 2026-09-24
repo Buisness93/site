@@ -185,15 +185,26 @@
     const fill = new T.DirectionalLight(0xbcd0ff, 0.5); fill.position.set(-6,4,-5); scene.add(fill);
     const rim = new T.PointLight(opts.glow != null ? opts.glow : 0x88aaff, opts.glowI != null ? opts.glowI : 2.4, 42);
     rim.position.set(-4,3,-4); scene.add(rim);
-    const entry = { renderer, scene, camera:null, el, active:false, update:null, alwaysOn:false };
+    const entry = { renderer, scene, camera:null, el, active:false, update:null, alwaysOn:false, rim };
     entry.camera = new T.PerspectiveCamera(45, w/h, 0.1, 400);
     this.scenes.push(entry);
     return entry;
   };
 
-  // Scene de showroom sous la voiture du hero : ombre de contact, halo et anneau
-  // lumineux a la couleur du theme, sol quadrille qui s'estompe. Tout en textures
-  // canvas generees ici (aucun fichier a telecharger).
+  // Couleurs du theme actif (accent + accent-2), lues dans les variables CSS.
+  function themeRGB(){
+    const css = getComputedStyle(document.documentElement);
+    return {
+      a: (css.getPropertyValue('--accent-rgb').trim() || '139,124,255'),
+      b: (css.getPropertyValue('--accent-2-rgb').trim() || '94,231,255')
+    };
+  }
+  function rgbToHex(rgb){ const p = rgb.split(',').map(n=>parseInt(n, 10) || 0); return (p[0] << 16) | (p[1] << 8) | p[2]; }
+
+  // Scene de showroom sous la voiture : ombre de contact, halo, anneau lumineux
+  // bicolore (degrade accent -> accent-2 du theme) et sol quadrille qui s'estompe.
+  // Textures canvas generees ici (aucun fichier). Se recolore en direct quand le
+  // theme change (evenement 'dg:theme' emis par js/nav.js).
   Showroom.prototype.makeStage = function(car){
     const T = window.THREE;
     car.updateMatrixWorld(true);
@@ -201,15 +212,13 @@
     const floorY = isFinite(box.min.y) ? box.min.y + 0.01 : -0.6;
     // Centre sur le pivot de la voiture (elle tourne autour), pas sur sa boite du moment
     const cx = car.position.x, cz = car.position.z;
-    const css = getComputedStyle(document.documentElement);
-    const accent = (css.getPropertyValue('--accent-rgb').trim() || '159,180,199');
     function canvasTex(size, draw){
       const c = document.createElement('canvas'); c.width = c.height = size;
       draw(c.getContext('2d'), size);
-      const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return t;
+      const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = 4; return t;
     }
-    function flat(tex, size, blending, opacity){
-      const m = new T.MeshBasicMaterial({ map:tex, transparent:true, opacity:opacity, depthWrite:false, blending:blending || T.NormalBlending });
+    function flat(size, blending, opacity){
+      const m = new T.MeshBasicMaterial({ transparent:true, opacity:opacity, depthWrite:false, blending:blending || T.NormalBlending });
       const mesh = new T.Mesh(new T.PlaneGeometry(size, size), m);
       mesh.rotation.x = -Math.PI / 2;
       return mesh;
@@ -217,74 +226,124 @@
     const g = new T.Group();
     g.position.set(cx, floorY, cz);
 
-    const gridTex = canvasTex(512, (x, n)=>{
-      x.strokeStyle = 'rgba(' + accent + ',0.55)'; x.lineWidth = 1;
-      for(let i = 0; i <= n; i += 32){ x.beginPath(); x.moveTo(i, 0); x.lineTo(i, n); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(n, i); x.stroke(); }
-      x.globalCompositeOperation = 'destination-in';
-      const f = x.createRadialGradient(n/2, n/2, 0, n/2, n/2, n/2);
-      f.addColorStop(0, 'rgba(0,0,0,1)'); f.addColorStop(0.55, 'rgba(0,0,0,.5)'); f.addColorStop(1, 'rgba(0,0,0,0)');
-      x.fillStyle = f; x.fillRect(0, 0, n, n);
-    });
-    const grid = flat(gridTex, 22, T.AdditiveBlending, 0.22);
-    grid.position.y = -0.005;
-    g.add(grid);
+    const grid = flat(22, T.AdditiveBlending, 0.22); grid.position.y = -0.005; g.add(grid);
+    const halo = flat(9, T.AdditiveBlending, 0.6); g.add(halo);
+    const shadow = flat(6.2, T.NormalBlending, 1); shadow.scale.set(1, 0.62, 1); shadow.position.y = 0.004; g.add(shadow);
+    const ring = flat(6.4, T.AdditiveBlending, 0.9); ring.position.y = 0.008; g.add(ring);
+    const ring2 = flat(7.6, T.AdditiveBlending, 0.5); ring2.position.y = 0.006; g.add(ring2);
 
-    const haloTex = canvasTex(256, (x, n)=>{
-      const f = x.createRadialGradient(n/2, n/2, 0, n/2, n/2, n/2);
-      f.addColorStop(0, 'rgba(' + accent + ',.55)'); f.addColorStop(0.45, 'rgba(' + accent + ',.18)'); f.addColorStop(1, 'rgba(' + accent + ',0)');
-      x.fillStyle = f; x.fillRect(0, 0, n, n);
-    });
-    const halo = flat(haloTex, 9, T.AdditiveBlending, 0.6);
-    g.add(halo);
-
-    const shadowTex = canvasTex(256, (x, n)=>{
+    shadow.material.map = canvasTex(256, (x, n)=>{
       const f = x.createRadialGradient(n/2, n/2, 0, n/2, n/2, n/2);
       f.addColorStop(0, 'rgba(0,0,0,.92)'); f.addColorStop(0.5, 'rgba(0,0,0,.55)'); f.addColorStop(1, 'rgba(0,0,0,0)');
       x.fillStyle = f; x.fillRect(0, 0, n, n);
     });
-    const shadow = flat(shadowTex, 6.2, T.NormalBlending, 1);
-    shadow.scale.set(1, 0.62, 1);
-    shadow.position.y = 0.004;
-    g.add(shadow);
 
-    const ringTex = canvasTex(512, (x, n)=>{
-      const c = n / 2;
-      x.lineCap = 'round';
-      x.strokeStyle = 'rgba(' + accent + ',.95)'; x.lineWidth = 5;
-      x.shadowColor = 'rgba(' + accent + ',1)'; x.shadowBlur = 18;
-      x.beginPath(); x.arc(c, c, c * 0.86, 0.1, Math.PI * 1.35); x.stroke();
-      x.beginPath(); x.arc(c, c, c * 0.86, Math.PI * 1.5, Math.PI * 1.9); x.stroke();
-      x.lineWidth = 1.5; x.shadowBlur = 6; x.strokeStyle = 'rgba(' + accent + ',.5)';
-      x.beginPath(); x.arc(c, c, c * 0.93, 0, Math.PI * 2); x.stroke();
-      for(let i = 0; i < 48; i++){
-        const a = i / 48 * Math.PI * 2, r1 = c * 0.955, r2 = c * (i % 4 ? 0.975 : 0.99);
-        x.beginPath(); x.moveTo(c + Math.cos(a) * r1, c + Math.sin(a) * r1); x.lineTo(c + Math.cos(a) * r2, c + Math.sin(a) * r2); x.stroke();
-      }
-    });
-    const ring = flat(ringTex, 6.4, T.AdditiveBlending, 0.85);
-    ring.position.y = 0.008;
-    g.add(ring);
+    function paint(){
+      const { a, b } = themeRGB();
+      [grid, halo, ring, ring2].forEach(m=>{ if(m.material.map) m.material.map.dispose(); });
+      grid.material.map = canvasTex(512, (x, n)=>{
+        const lg = x.createLinearGradient(0, 0, n, n);
+        lg.addColorStop(0, 'rgba(' + a + ',0.6)'); lg.addColorStop(1, 'rgba(' + b + ',0.5)');
+        x.strokeStyle = lg; x.lineWidth = 1;
+        for(let i = 0; i <= n; i += 32){ x.beginPath(); x.moveTo(i, 0); x.lineTo(i, n); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(n, i); x.stroke(); }
+        x.globalCompositeOperation = 'destination-in';
+        const f = x.createRadialGradient(n/2, n/2, 0, n/2, n/2, n/2);
+        f.addColorStop(0, 'rgba(0,0,0,1)'); f.addColorStop(0.55, 'rgba(0,0,0,.5)'); f.addColorStop(1, 'rgba(0,0,0,0)');
+        x.fillStyle = f; x.fillRect(0, 0, n, n);
+      });
+      halo.material.map = canvasTex(256, (x, n)=>{
+        const f = x.createRadialGradient(n/2, n/2, 0, n/2, n/2, n/2);
+        f.addColorStop(0, 'rgba(' + a + ',.55)'); f.addColorStop(0.3, 'rgba(' + a + ',.26)'); f.addColorStop(0.62, 'rgba(' + b + ',.1)'); f.addColorStop(1, 'rgba(' + b + ',0)');
+        x.fillStyle = f; x.fillRect(0, 0, n, n);
+      });
+      ring.material.map = canvasTex(512, (x, n)=>{
+        const c = n / 2;
+        // Degrade conique accent -> accent-2 -> accent : l'anneau parait irise en tournant
+        const cg = x.createConicGradient ? x.createConicGradient(0, c, c) : null;
+        const col = (o)=>{ if(cg){ cg.addColorStop(0, 'rgba(' + a + ',' + o + ')'); cg.addColorStop(0.5, 'rgba(' + b + ',' + o + ')'); cg.addColorStop(1, 'rgba(' + a + ',' + o + ')'); return cg; } return 'rgba(' + a + ',' + o + ')'; };
+        x.lineCap = 'round';
+        x.strokeStyle = col(0.95); x.lineWidth = 5;
+        x.shadowColor = 'rgba(' + a + ',1)'; x.shadowBlur = 18;
+        x.beginPath(); x.arc(c, c, c * 0.86, 0.1, Math.PI * 1.35); x.stroke();
+        x.shadowColor = 'rgba(' + b + ',1)';
+        x.beginPath(); x.arc(c, c, c * 0.86, Math.PI * 1.5, Math.PI * 1.9); x.stroke();
+        x.lineWidth = 1.5; x.shadowBlur = 6;
+        x.beginPath(); x.arc(c, c, c * 0.93, 0, Math.PI * 2); x.stroke();
+        for(let i = 0; i < 48; i++){
+          const an = i / 48 * Math.PI * 2, r1 = c * 0.955, r2 = c * (i % 4 ? 0.975 : 0.99);
+          x.beginPath(); x.moveTo(c + Math.cos(an) * r1, c + Math.sin(an) * r1); x.lineTo(c + Math.cos(an) * r2, c + Math.sin(an) * r2); x.stroke();
+        }
+      });
+      ring2.material.map = canvasTex(512, (x, n)=>{
+        const c = n / 2;
+        x.setLineDash([2, 10]); x.lineWidth = 2;
+        x.strokeStyle = 'rgba(' + b + ',.8)'; x.shadowColor = 'rgba(' + b + ',1)'; x.shadowBlur = 8;
+        x.beginPath(); x.arc(c, c, c * 0.95, 0, Math.PI * 2); x.stroke();
+        x.setLineDash([]); x.lineWidth = 3; x.strokeStyle = 'rgba(' + a + ',.9)';
+        x.beginPath(); x.arc(c, c, c * 0.95, Math.PI * 0.2, Math.PI * 0.55); x.stroke();
+        x.beginPath(); x.arc(c, c, c * 0.95, Math.PI * 1.2, Math.PI * 1.4); x.stroke();
+      });
+      [grid, halo, ring, ring2].forEach(m=>{ m.material.needsUpdate = true; });
+    }
+    paint();
 
-    g.userData = { ring, halo };
+    const onTheme = ()=>paint();
+    window.addEventListener('dg:theme', onTheme);
+    g.userData = { ring, ring2, halo, dispose:()=>window.removeEventListener('dg:theme', onTheme) };
     return g;
+  };
+
+  // Lumiere de contour teintee a l'accent du theme (et mise a jour au changement)
+  Showroom.prototype.themeRim = function(s){
+    if(!s || !s.rim) return;
+    const apply = ()=>s.rim.color.setHex(rgbToHex(themeRGB().a));
+    apply();
+    window.addEventListener('dg:theme', apply);
   };
 
   Showroom.prototype.initHero = async function(el, carDef){
     const T = window.THREE;
     const s = this.makeScene(el, { glow:0x7aa2ff, glowI:2.2 });
+    this.themeRim(s);
     s.camera.position.set(0.5,1.7,8.6);
-    const model = await this.loadModel(carDef.model);
-    const car = model ? this.normalizeModel(model, 4.6, carDef.rotY || 0) : new T.Group();
+    // `car` est un support fixe : le modele 3D a l'interieur peut etre remplace
+    // (selecteur de voitures du hero) sans recreer la scene ni le contexte WebGL.
+    const car = new T.Group();
     car.position.x = 2.6;
     s.scene.add(car);
+    const model = await this.loadModel(carDef.model);
+    let body = model ? this.normalizeModel(model, 4.6, carDef.rotY || 0) : new T.Group();
+    car.add(body);
     const stage = this.makeStage(car);
     s.scene.add(stage);
+    const self0 = this;
+    let swapToken = 0, scaleTarget = 1, scaleNow = 1;
+    // Change la voiture du hero : elle rapetisse en tournant, le nouveau modele
+    // se charge (cache), puis grandit a sa place. Le sol se recale a sa hauteur.
+    this.setHeroCar = async function(def){
+      const token = ++swapToken;
+      scaleTarget = 0.001;
+      const [m] = await Promise.all([self0.loadModel(def.model), new Promise(r=>setTimeout(r, 380))]);
+      if(token !== swapToken) return;
+      car.remove(body);
+      body = m ? self0.normalizeModel(m, 4.6, def.rotY || 0) : new T.Group();
+      car.add(body);
+      const sc = car.scale.x; car.scale.setScalar(1); car.updateMatrixWorld(true);
+      const bb = new T.Box3().setFromObject(body);
+      if(isFinite(bb.min.y)) stage.position.y = bb.min.y + 0.01;
+      car.scale.setScalar(sc);
+      scaleTarget = 1;
+      self0._heroSpin = 0.55;
+    };
+    this.preloadHero = function(defs){ defs.forEach(d=>self0.loadModel(d.model)); };
     const N = 850;
     const pos = new Float32Array(N*3);
     for(let i=0;i<N;i++){ pos[i*3]=(Math.random()-0.5)*48; pos[i*3+1]=(Math.random()-0.5)*26; pos[i*3+2]=(Math.random()-0.5)*48; }
     const pg = new T.BufferGeometry(); pg.setAttribute('position', new T.BufferAttribute(pos,3));
     const pts = new T.Points(pg, new T.PointsMaterial({ color:0x9fc0ff, size:0.07, transparent:true, opacity:0.72, blending:T.AdditiveBlending, depthWrite:false }));
     s.scene.add(pts);
+    const tintPts = ()=>pts.material.color.setHex(rgbToHex(themeRGB().b));
+    tintPts(); window.addEventListener('dg:theme', tintPts);
     const self = this;
     // Cadrage selon l'ecran : a droite du texte sur grand ecran, centree au-dessus
     // du texte (et plus loin) sur mobile, sinon la voiture sort du cadre.
@@ -306,9 +365,11 @@
       const boost = sp > 0 ? (11*sp*sp) : 0;
       if(sp > 0) self._heroSpin = Math.max(0, sp - dt*0.75);
       car.rotation.y += dt*(0.32 + boost);
-      car.scale.setScalar(1 + 0.07*Math.sin((1-sp)*Math.PI)*(sp>0?1:0));
+      scaleNow += (scaleTarget - scaleNow) * Math.min(1, dt * 9);
+      car.scale.setScalar(scaleNow * (1 + 0.07*Math.sin((1-sp)*Math.PI)*(sp>0?1:0)));
       pts.rotation.y += dt*(0.02 + boost*0.22);
       stage.userData.ring.rotation.z -= dt*(0.12 + boost*0.4);
+      stage.userData.ring2.rotation.z += dt*(0.05 + boost*0.2);
       stage.userData.halo.material.opacity = 0.55 + 0.15*Math.sin(performance.now()*0.0016) + boost*0.04;
       s.camera.position.x += (view.camX + self._heroTarget.x*1.8 - s.camera.position.x)*0.05;
       s.camera.position.y += (view.camY + self._heroTarget.y*0.9 - s.camera.position.y)*0.05;

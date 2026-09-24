@@ -10,6 +10,11 @@ main, .footer{position:relative;z-index:1}
 @keyframes fxCurtainOut{0%{opacity:1}100%{opacity:0;visibility:hidden}}
 @keyframes fxLogoPulse{0%{opacity:0;transform:scale(.7);filter:blur(6px);letter-spacing:.9em}45%{opacity:1;transform:scale(1);filter:blur(0);letter-spacing:.5em}100%{opacity:0;transform:scale(1.08)}}
 .fx-curtain{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;pointer-events:none;animation:fxCurtainOut .7s .45s var(--ease-out) both}
+.fx-curtain-in{display:flex;flex-direction:column;align-items:center;gap:18px}
+.fx-curtain-logo{animation:fxLogoMark 1s var(--ease-out) both}
+.fx-curtain-logo .dg-logo{filter:drop-shadow(0 0 30px rgba(var(--accent-rgb),.7)) drop-shadow(0 0 60px rgba(var(--accent-2-rgb),.3))}
+@keyframes fxLogoMark{0%{opacity:0;transform:scale(.6) rotate(-30deg);filter:blur(8px)}45%{opacity:1;transform:none;filter:blur(0)}100%{opacity:0;transform:scale(1.1)}}
+.fx-curtain.leave .fx-curtain-logo{animation:none;opacity:0}
 .fx-curtain b{font-family:'Saira Condensed',sans-serif;font-weight:900;font-size:22px;letter-spacing:.5em;color:var(--text-1);animation:fxLogoPulse 1s var(--ease-out) both}
 .fx-curtain b i{font-style:normal;color:var(--accent)}
 .fx-curtain.leave{animation:none;opacity:0;visibility:visible;transition:opacity .38s var(--ease-io)}
@@ -19,13 +24,13 @@ main, .footer{position:relative;z-index:1}
 /* ---------- Fond d'ambiance : aurore mouvante + grain ---------- */
 @keyframes fxAurora{0%{transform:translate3d(-8%,-6%,0) rotate(0deg) scale(1)}50%{transform:translate3d(6%,4%,0) rotate(160deg) scale(1.15)}100%{transform:translate3d(-8%,-6%,0) rotate(360deg) scale(1)}}
 .fx-aurora{position:fixed;inset:-20%;z-index:0;pointer-events:none;opacity:.6;will-change:transform;contain:strict;
-  background:radial-gradient(34% 38% at 22% 30%, rgba(var(--accent-rgb),.16), transparent 100%),radial-gradient(32% 36% at 78% 70%, rgba(var(--accent-rgb),.11), transparent 100%),radial-gradient(26% 30% at 60% 20%, rgba(120,140,255,.07), transparent 100%);
+  background:radial-gradient(34% 38% at 22% 30%, rgba(var(--accent-rgb),.16), transparent 100%),radial-gradient(32% 36% at 78% 70%, rgba(var(--accent-rgb),.11), transparent 100%),radial-gradient(26% 30% at 60% 20%, rgba(var(--accent-2-rgb),.07), transparent 100%);
   animation:fxAurora 38s linear infinite}
 .fx-grain{position:fixed;inset:0;z-index:150;pointer-events:none;opacity:.035;contain:strict;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
 
 /* ---------- Barre de progression du scroll ---------- */
-.fx-progress{position:fixed;top:0;left:0;height:2px;width:100%;z-index:260;transform-origin:0 50%;transform:scaleX(0);pointer-events:none;background:linear-gradient(90deg,var(--accent-deep),var(--accent),var(--accent-light));box-shadow:0 0 12px rgba(var(--accent-rgb),.8)}
+.fx-progress{position:fixed;top:0;left:0;height:2px;width:100%;z-index:260;transform-origin:0 50%;transform:scaleX(0);pointer-events:none;background:linear-gradient(90deg,var(--accent-deep),var(--accent),var(--accent-2));box-shadow:0 0 12px rgba(var(--accent-rgb),.8)}
 
 /* ---------- Curseur lumineux (souris uniquement) ---------- */
 .fx-cursor,.fx-cursor-dot{position:fixed;top:0;left:0;z-index:9000;pointer-events:none;border-radius:50%;will-change:transform}

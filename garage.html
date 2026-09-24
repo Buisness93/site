@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Garage — Deylo Garage</title>
+<link rel="icon" type="image/svg+xml" href="img/logo.svg">
+<meta name="theme-color" content="#040408">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -35,7 +37,7 @@
  .sort select:focus{border-color:var(--accent);box-shadow:var(--ring)}
  .sort select option{background:#0b0d12}
  .car-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px;margin-top:20px;min-height:200px}
- .car-card{--tc:#9fb4c7;position:relative;display:flex;flex-direction:column;background:radial-gradient(120% 60% at 100% 0%,color-mix(in srgb,var(--tc) 14%,transparent),transparent 60%),linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid var(--line);border-radius:20px}
+ .car-card{--tc:#8b7cff;cursor:pointer;position:relative;display:flex;flex-direction:column;background:radial-gradient(120% 60% at 100% 0%,color-mix(in srgb,var(--tc) 14%,transparent),transparent 60%),linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid var(--line);border-radius:20px}
  .car-card .bar{height:3px;border-radius:20px 20px 0 0;background:linear-gradient(90deg,var(--tc),transparent 80%)}
  .car-card .body{position:relative;display:flex;flex-direction:column;flex:1;padding:18px 20px 20px}
  .car-card .cc-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -84,10 +86,72 @@
  .viewer-hint{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.08em;color:var(--text-3)}
  .viewer-hint kbd{font-family:inherit;font-size:10px;padding:3px 7px;border-radius:6px;border:1px solid var(--line-2);background:var(--glass)}
  @media (max-width:560px){ .viewer-hint{display:none} .viewer-panel{height:86vh} }
+
+ .car-card:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+ .car-card .cc-hint{position:absolute;right:18px;bottom:18px}
+ .car-card .lock svg{width:13px;height:13px}
+ .btn-3d .ico{width:18px;height:18px}
+ /* Panneau fiche */
+ .detail-wrap{position:fixed;inset:0;z-index:280;background:rgba(var(--bg-rgb),.55);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .35s}
+ .detail-wrap.open{opacity:1;pointer-events:auto}
+ .detail-panel{position:absolute;top:0;right:0;bottom:0;width:min(520px,100vw);overflow-y:auto;overscroll-behavior:contain;background:linear-gradient(180deg,var(--card-1),var(--bg));border-left:1px solid var(--line-2);box-shadow:-40px 0 120px -40px rgba(0,0,0,.9);transform:translateX(104%);transition:transform .55s cubic-bezier(.16,1,.3,1)}
+ .detail-wrap.open .detail-panel{transform:none}
+ .d-hero{position:relative;padding:22px 26px 26px;background:radial-gradient(120% 90% at 100% 0%,color-mix(in srgb,var(--tc) 30%,transparent),transparent 60%);border-bottom:1px solid var(--line);overflow:hidden}
+ .d-hero::after{content:'';position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,var(--tc),transparent)}
+ .d-top{display:flex;justify-content:space-between;align-items:center}
+ .d-top .tier-dot{display:flex;align-items:center;gap:7px;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:600}
+ .d-top .tier-dot i{width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 10px currentColor}
+ .d-close{width:42px;height:42px;border-radius:12px;border:1px solid var(--line-2);background:var(--glass);color:var(--text-1);display:flex;align-items:center;justify-content:center;padding:0}
+ .d-close:hover{border-color:rgba(255,90,90,.55);background:rgba(255,90,90,.12)}
+ .d-close svg{width:18px;height:18px}
+ .d-num{position:absolute;right:22px;top:52px;font-family:'Saira Condensed';font-weight:900;font-size:120px;line-height:1;color:transparent;-webkit-text-stroke:1px rgba(var(--line-rgb),.09);pointer-events:none}
+ .d-hero .cc-brand{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-3);margin-top:34px}
+ .d-name{font-weight:900;font-size:clamp(34px,6vw,48px);line-height:.95;margin-top:6px;position:relative}
+ .d-meta{display:flex;flex-wrap:wrap;gap:14px;margin-top:16px;font-size:12px;color:var(--text-3)}
+ .d-meta span{display:flex;align-items:center;gap:6px}
+ .d-meta svg{width:14px;height:14px;color:var(--accent-soft)}
+ .d-body{padding:8px 26px 34px}
+ .d-body section{padding:22px 0;border-bottom:1px solid var(--line)}
+ .d-body section:last-child{border-bottom:0}
+ .d-sec{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-3);margin-bottom:16px}
+ .d-sec svg{width:15px;height:15px;color:var(--accent-soft)}
+ .d-total{margin-left:auto;font-family:'Saira Condensed';font-weight:800;font-size:14px;letter-spacing:.06em;color:var(--text-1)}
+ .d-stats{display:flex;flex-direction:column;gap:16px}
+ .ds-h{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:var(--text-2)}
+ .ds-h b{font-family:'Saira Condensed';font-weight:900;font-size:22px;color:var(--text-1)}
+ .ds-h small{font-size:12px;color:var(--text-4);font-weight:600}
+ .ds-bar{position:relative;height:8px;border-radius:9px;background:rgba(var(--line-rgb),.08);margin-top:8px}
+ .ds-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:inherit;background:linear-gradient(90deg,color-mix(in srgb,var(--tc) 35%,transparent),var(--tc));box-shadow:0 0 14px color-mix(in srgb,var(--tc) 50%,transparent)}
+ .ds-bar u{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;border-radius:2px;background:var(--text-1);box-shadow:0 0 8px rgba(255,255,255,.6)}
+ .ds-bar u.avg{background:var(--text-3);box-shadow:none}
+ .ds-f{font-size:11.5px;color:var(--text-3);margin-top:6px}
+ .ds-f .up{color:var(--good);font-weight:600}
+ .ds-f .down{color:#ff9a9a;font-weight:600}
+ .d-cmp{display:flex;align-items:center;gap:10px;margin-top:18px;font-size:12px;color:var(--text-3);flex-wrap:wrap}
+ .d-cmp svg{width:15px;height:15px}
+ .d-cmp select{flex:1;min-width:180px;height:40px;padding:0 12px;border-radius:11px;border:1px solid var(--line-2);background:rgba(0,0,0,.35);color:var(--text-1);font-size:13px;outline:none}
+ .d-cmp select:focus{border-color:var(--accent);box-shadow:var(--ring)}
+ .d-cmp select option{background:#0b0b12}
+ .d-mult{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+ .d-mult-v{font-family:'Saira Condensed';font-weight:900;font-size:64px;line-height:1}
+ .d-mult-f{flex:1;min-width:200px;display:flex;flex-direction:column;gap:8px}
+ .d-mult-f div{display:flex;justify-content:space-between;font-size:13px;color:var(--text-3);padding-bottom:8px;border-bottom:1px dashed var(--line-2)}
+ .d-mult-f div:last-child{border-bottom:0;padding-bottom:0}
+ .d-mult-f b{font-family:'Saira Condensed';font-weight:800;font-size:16px;color:var(--text-1)}
+ .d-note{font-size:12.5px;color:var(--text-3);line-height:1.6;margin:14px 0 0}
+ .d-buy{display:flex;flex-direction:column;gap:12px}
+ .d-price{display:flex;justify-content:space-between;align-items:flex-end}
+ .d-price .pl{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3)}
+ .d-price .pv{font-family:'Saira Condensed';font-weight:900;font-size:30px}
+ .d-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+ @media (max-width:420px){ .d-actions{grid-template-columns:1fr} }
+ .d-link{display:flex;align-items:center;gap:8px;justify-content:center;font-size:12.5px;color:var(--accent-light)}
+ .d-link svg{width:13px;height:13px}
+ @media (prefers-reduced-motion:reduce){ .detail-panel{transition:none} }
 </style>
 </head>
 <body>
-<div class="fx-curtain" aria-hidden="true"><b>DEYLO<i>·</i>GARAGE</b></div>
+<div class="fx-curtain" aria-hidden="true"><div class="fx-curtain-in"><span class="fx-curtain-logo" data-logo="64"></span><b>DEYLO<i>·</i>GARAGE</b></div></div>
 <div id="site-nav" data-active="garage.html"></div>
 <main>
   <div class="container" style="padding-top:40px">
@@ -100,7 +164,7 @@
 
     <div class="garage-top">
       <div class="card coll">
-        <div class="card-title" style="margin:0"><span class="ic">🔑</span>Progression de la collection</div>
+        <div class="card-title" style="margin:0"><span class="ic" data-icon="layers"></span>Progression de la collection</div>
         <div class="coll-row"><div class="coll-big" id="collCount">1<small> / 30</small></div><div style="font-size:12px;color:var(--text-3)" id="collPct">3 %</div></div>
         <div class="progress"><i id="collBar"></i></div>
         <div class="coll-tiers" id="collTiers"></div>
@@ -122,6 +186,10 @@
     <div class="car-grid" id="carGrid" data-stagger></div>
   </div>
 </main>
+
+<div id="detailWrap" class="detail-wrap" aria-hidden="false">
+  <aside class="detail-panel" id="detailPanel" role="dialog" aria-modal="true" aria-label="Fiche voiture"></aside>
+</div>
 
 <div id="viewerModal" class="hidden">
   <div class="viewer-panel">
@@ -150,6 +218,7 @@
 <script src="js/cars.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/economy.js"></script>
+<script src="js/icons.js"></script>
 <script src="js/nav.js"></script>
 <script src="js/fx.js"></script>
 <script src="js/showroom.js"></script>
@@ -157,6 +226,7 @@
 (function(){
   const STAT_LABELS = [['speed','Vitesse'],['accel','Accél.'],['handling','Maniab.'],['boost','Nitro']];
   const TIER_ORDER = Object.keys(DG.TIERS);
+  const COIN = '<span class="coin-i" aria-hidden="true"></span>';
   const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>';
   const fmt = (n)=>Math.round(n).toLocaleString('fr-FR');
   let filter = 'all', sortMode = 'tier';
@@ -183,16 +253,16 @@
     const next = DG.CARS.filter(c=>unlocked.indexOf(c.id) === -1).sort((a, b)=>a.price - b.price)[0];
     const nc = document.getElementById('nextCard');
     if(!next){
-      nc.innerHTML = '<div class="card-title" style="margin:0"><span class="ic">🏁</span>Garage complet</div><div class="nn">Toutes les voitures sont à vous</div><div class="nm">Il ne reste plus qu\'à grimper au classement.</div>';
+      nc.innerHTML = '<div class="card-title" style="margin:0"><span class="ic">' + DG.Icon('flag') + '</span>Garage complet</div><div class="nn">Toutes les voitures sont à vous</div><div class="nm">Il ne reste plus qu\'à grimper au classement.</div>';
       return;
     }
     const money = DG.Economy.money, k = Math.min(1, money / next.price);
     nc.innerHTML =
-      '<div class="card-title" style="margin:0"><span class="ic">🎯</span>Prochain objectif</div>' +
+      '<div class="card-title" style="margin:0"><span class="ic">' + DG.Icon('target') + '</span>Prochain objectif</div>' +
       '<div><div class="nb">' + next.brand + '</div><div class="nn">' + next.name + '</div></div>' +
       '<div class="progress"><i style="width:' + Math.max(2, k * 100) + '%;background:linear-gradient(90deg,rgba(255,204,0,.5),#ffcc00);box-shadow:0 0 14px rgba(255,204,0,.5)"></i></div>' +
-      '<div class="nm"><span>🪙 ' + fmt(money) + ' / ' + fmt(next.price) + '</span><span>' + (k >= 1 ? '<b style="color:var(--gold)">Disponible !</b>' : 'encore ' + fmt(next.price - money)) + '</span></div>' +
-      (k >= 1 ? '<button class="btn btn-primary btn-block" data-buy="' + next.id + '">🔑 Débloquer maintenant</button>' : '<a href="game/index.html" class="btn btn-ghost btn-block">▶ Gagner des crédits</a>');
+      '<div class="nm"><span>' + COIN + fmt(money) + ' / ' + fmt(next.price) + '</span><span>' + (k >= 1 ? '<b style="color:var(--gold)">Disponible !</b>' : 'encore ' + fmt(next.price - money)) + '</span></div>' +
+      (k >= 1 ? '<button class="btn btn-primary btn-block" data-buy="' + next.id + '">' + DG.Icon('key') + ' Débloquer maintenant</button>' : '<a href="game/index.html" class="btn btn-ghost btn-block">' + DG.Icon('play') + ' Gagner des crédits</a>');
   }
 
   function renderFilters(unlocked){
@@ -231,35 +301,35 @@
 
     const grid = document.getElementById('carGrid');
     if(!list.length){
-      grid.innerHTML = '<div class="card empty" style="grid-column:1 / -1"><div class="ei">🔒</div><div>Aucune voiture ici pour l\'instant.</div><a href="game/index.html" class="btn btn-primary btn-sm">▶ Jouer pour en débloquer</a></div>';
+      grid.innerHTML = '<div class="card empty" style="grid-column:1 / -1"><div class="ei">' + DG.Icon('lock') + '</div><div>Aucune voiture ici pour l\'instant.</div><a href="game/index.html" class="btn btn-primary btn-sm">' + DG.Icon('play') + ' Jouer pour en débloquer</a></div>';
       bindButtons();
       return;
     }
     grid.innerHTML = list.map(({ c, i })=>{
       const tier = DG.TIERS[c.tier] || {};
-      const color = tier.color || '#9fb4c7';
+      const color = tier.color || '#8b7cff';
       const isUnlocked = unlocked.indexOf(c.id) !== -1;
       const canAfford = money >= c.price;
       const k = c.price ? Math.min(1, money / c.price) : 1;
       let foot;
       if(isUnlocked){
         foot =
-          '<div class="cc-price"><span class="pill pill-owned">✓ Dans votre garage</span><span class="pl">×' + DG.carScoreFactor(c).toFixed(2) + ' score</span></div>' +
-          '<div class="cc-actions"><a href="game/index.html" class="btn btn-ghost btn-block">▶ Piloter</a>' +
+          '<div class="cc-price"><span class="pill pill-owned">' + DG.Icon('check') + ' Dans votre garage</span><span class="pl">×' + DG.carScoreFactor(c).toFixed(2) + ' score</span></div>' +
+          '<div class="cc-actions"><a href="game/index.html" class="btn btn-ghost btn-block">' + DG.Icon('play') + ' Piloter</a>' +
           '<button class="btn btn-ghost btn-3d" data-view3d="' + c.id + '" title="Voir en 3D" aria-label="Voir ' + c.name + ' en 3D">' + EYE + '</button></div>';
       } else {
         foot =
-          '<div class="cc-price"><div><div class="pl">Prix</div><div class="pv">🪙 ' + fmt(c.price) + '</div></div><span class="pill pill-gold">×' + DG.carScoreFactor(c).toFixed(2) + ' score</span></div>' +
-          (canAfford ? '' : '<div class="cc-afford" title="Votre progression"><i style="width:' + (k * 100) + '%"></i></div><div class="cc-missing"><span>Il manque <b>🪙 ' + fmt(c.price - money) + '</b></span><span>' + Math.floor(k * 100) + ' %</span></div>') +
-          '<div class="cc-actions"><button class="btn ' + (canAfford ? 'btn-primary' : 'btn-ghost') + ' btn-block" data-buy="' + c.id + '" ' + (canAfford ? '' : 'disabled') + '>' + (canAfford ? '🔑 Débloquer' : '🔒 Verrouillée') + '</button>' +
+          '<div class="cc-price"><div><div class="pl">Prix</div><div class="pv">' + COIN + fmt(c.price) + '</div></div><span class="pill pill-gold">×' + DG.carScoreFactor(c).toFixed(2) + ' score</span></div>' +
+          (canAfford ? '' : '<div class="cc-afford" title="Votre progression"><i style="width:' + (k * 100) + '%"></i></div><div class="cc-missing"><span>Il manque <b>' + COIN + fmt(c.price - money) + '</b></span><span>' + Math.floor(k * 100) + ' %</span></div>') +
+          '<div class="cc-actions"><button class="btn ' + (canAfford ? 'btn-primary' : 'btn-ghost') + ' btn-block" data-buy="' + c.id + '" ' + (canAfford ? '' : 'disabled') + '>' + (canAfford ? DG.Icon('key') + ' Débloquer' : DG.Icon('lock') + ' Verrouillée') + '</button>' +
           '<button class="btn btn-ghost btn-3d" data-view3d="' + c.id + '" title="Voir en 3D" aria-label="Voir ' + c.name + ' en 3D">' + EYE + '</button></div>';
       }
       return (
-        '<div class="car-card' + (isUnlocked ? ' owned' : ' locked') + (!isUnlocked && canAfford ? ' affordable' : '') + '" style="--tc:' + color + '">' +
+        '<div class="car-card iris-border' + (isUnlocked ? ' owned' : ' locked') + (!isUnlocked && canAfford ? ' affordable' : '') + '" style="--tc:' + color + '" data-detail="' + c.id + '" tabindex="0" role="button" aria-label="Fiche détaillée : ' + c.brand + ' ' + c.name + '">' +
           '<div class="bar"></div>' +
           '<div class="body">' +
             '<div class="cc-head"><span class="tier-dot"><i></i>' + (tier.label || c.tier) + '</span>' +
-            (isUnlocked ? '' : '<span class="lock" aria-hidden="true">' + (canAfford ? '✨' : '🔒') + '</span>') + '</div>' +
+            (isUnlocked ? '' : '<span class="lock" aria-hidden="true">' + (canAfford ? DG.Icon('spark') : DG.Icon('lock')) + '</span>') + '</div>' +
             '<span class="cc-num">' + String(i + 1).padStart(2, '0') + '</span>' +
             '<div class="cc-brand">' + c.brand + '</div>' +
             '<h3>' + c.name + '</h3>' +
@@ -273,6 +343,10 @@
   }
 
   function bindButtons(){
+    document.querySelectorAll('[data-detail]').forEach(card=>{
+      card.addEventListener('click', (e)=>{ if(e.target.closest('button,a')) return; openDetail(card.getAttribute('data-detail'), card); });
+      card.addEventListener('keydown', (e)=>{ if((e.key === 'Enter' || e.key === ' ') && e.target === card){ e.preventDefault(); openDetail(card.getAttribute('data-detail'), card); } });
+    });
     document.querySelectorAll('[data-buy]').forEach(btn=>btn.addEventListener('click', async ()=>{
       const r = btn.getBoundingClientRect();
       const car = DG.carById(btn.getAttribute('data-buy'));
@@ -283,7 +357,7 @@
         render();
       } else if(DG.FX){
         DG.FX.confetti(r.left + r.width / 2, r.top + r.height / 2);
-        DG.FX.toast('🔑 ' + (car ? car.brand + ' ' + car.name : 'Voiture') + ' débloquée !', 'good');
+        DG.FX.toast('✓ ' + (car ? car.brand + ' ' + car.name : 'Voiture') + ' débloquée !', 'good');
       }
     }));
     document.querySelectorAll('[data-view3d]').forEach(btn=>btn.addEventListener('click', ()=>openViewer(btn.getAttribute('data-view3d'))));
@@ -297,6 +371,109 @@
 
   DG.Economy.onChange(render);
   render();
+
+  // ============================================================
+  // Fiche detaillee (panneau lateral) : stats completes vs moyenne du catalogue,
+  // multiplicateur explique, rang, prix / progression, comparaison avec une
+  // autre voiture et actions. Accessible au clavier (Echap ferme, focus rendu).
+  // ============================================================
+  const TIER_BASE = { debutant:0, avance:0.4, sportive:0.9, hypercar:1.5 };
+  let detailId = null, detailReturn = null, compareId = null;
+  const avg = {};
+  STAT_LABELS.forEach(([k])=>{ avg[k] = DG.CARS.reduce((a, c)=>a + c.stats[k], 0) / DG.CARS.length; });
+  const LONG = { speed:'Vitesse de pointe', accel:'Accélération', handling:'Maniabilité', boost:'Efficacité du nitro' };
+
+  function detailHTML(c){
+    const tier = DG.TIERS[c.tier] || {}, color = tier.color || '#8b7cff';
+    const unlocked = DG.Economy.unlocked.indexOf(c.id) !== -1, money = DG.Economy.money, canAfford = money >= c.price;
+    const idx = DG.CARS.indexOf(c) + 1;
+    const inTier = DG.CARS.filter(x=>x.tier === c.tier);
+    const tierPos = inTier.indexOf(c) + 1;
+    const byScore = DG.CARS.slice().sort((a, b)=>DG.carScoreFactor(b) - DG.carScoreFactor(a));
+    const scoreRank = byScore.indexOf(c) + 1;
+    const f = DG.carScoreFactor(c), base = TIER_BASE[c.tier] || 0, rating = f - 1 - base;
+    const total = c.stats.speed + c.stats.accel + c.stats.handling + c.stats.boost;
+    const cmp = compareId && compareId !== c.id ? DG.carById(compareId) : null;
+    const stat = ([k])=>{
+      const v = c.stats[k], d = v - avg[k], o = cmp ? cmp.stats[k] : null;
+      return '<div class="ds"><div class="ds-h"><span>' + LONG[k] + '</span><b>' + (+v).toFixed(1).replace('.0', '') + '<small>/10</small></b></div>' +
+        '<div class="ds-bar"><i style="width:' + v * 10 + '%"></i>' + (o != null ? '<u style="left:' + o * 10 + '%" title="' + cmp.name + ' : ' + o + '"></u>' : '<u class="avg" style="left:' + avg[k] * 10 + '%" title="Moyenne du catalogue"></u>') + '</div>' +
+        '<div class="ds-f">' + (o != null
+          ? (v === o ? '= ' + cmp.name : (v > o ? '<span class="up">+' + (v - o).toFixed(1) + '</span> vs ' : '<span class="down">' + (v - o).toFixed(1) + '</span> vs ') + cmp.name)
+          : (d >= 0 ? '<span class="up">+' + d.toFixed(1) + '</span>' : '<span class="down">' + d.toFixed(1) + '</span>') + ' vs moyenne (' + avg[k].toFixed(1) + ')') + '</div></div>';
+    };
+    const k = c.price ? Math.min(1, money / c.price) : 1;
+    let action;
+    if(unlocked) action = '<div class="pill pill-owned" style="align-self:flex-start">' + DG.Icon('check') + ' Dans votre garage</div><div class="d-actions"><a href="game/index.html" class="btn btn-primary btn-lg">' + DG.Icon('play') + ' Piloter</a><button class="btn btn-ghost btn-lg" data-d3d="' + c.id + '">' + DG.Icon('cube') + ' Voir en 3D</button></div>';
+    else action =
+      '<div class="d-price"><div><div class="pl">Prix</div><div class="pv">' + COIN + fmt(c.price) + '</div></div><div style="text-align:right"><div class="pl">Vos crédits</div><div class="pv" style="font-size:18px">' + COIN + fmt(money) + '</div></div></div>' +
+      '<div class="cc-afford" style="height:6px"><i style="width:' + k * 100 + '%"></i></div>' +
+      '<div class="cc-missing"><span>' + (canAfford ? '<b style="color:var(--gold)">Vous pouvez la débloquer</b>' : 'Il manque <b>' + COIN + fmt(c.price - money) + '</b>') + '</span><span>' + Math.floor(k * 100) + ' %</span></div>' +
+      '<div class="d-actions"><button class="btn ' + (canAfford ? 'btn-primary' : 'btn-ghost') + ' btn-lg" data-buy="' + c.id + '"' + (canAfford ? '' : ' disabled') + '>' + (canAfford ? DG.Icon('key') + ' Débloquer' : DG.Icon('lock') + ' Verrouillée') + '</button><button class="btn btn-ghost btn-lg" data-d3d="' + c.id + '">' + DG.Icon('cube') + ' Voir en 3D</button></div>' +
+      (canAfford ? '' : '<a href="game/index.html" class="d-link">' + DG.Icon('play') + ' Jouer pour gagner des crédits</a>');
+    return (
+      '<div class="d-hero" style="--tc:' + color + '">' +
+        '<div class="d-top"><span class="tier-dot" style="color:' + color + '"><i></i>' + (tier.label || c.tier) + ' · ' + tierPos + '/' + inTier.length + '</span>' +
+        '<button class="d-close" id="detailClose" aria-label="Fermer la fiche">' + DG.Icon('x') + '</button></div>' +
+        '<div class="d-num">' + String(idx).padStart(2, '0') + '</div>' +
+        '<div class="cc-brand">' + c.brand + '</div><h2 class="d-name">' + c.name + '</h2>' +
+        '<div class="d-meta"><span>' + DG.Icon('layers') + ' N°' + idx + ' / ' + DG.CARS.length + ' du catalogue</span><span>' + DG.Icon('trophy') + ' ' + scoreRank + (scoreRank === 1 ? 're' : 'e') + ' multiplicateur</span></div>' +
+      '</div>' +
+      '<div class="d-body">' +
+        '<section><div class="d-sec">' + DG.Icon('gauge') + ' Performances <span class="d-total">' + total.toFixed(1).replace('.0', '') + ' / 40</span></div>' +
+          '<div class="d-stats" style="--tc:' + color + '">' + STAT_LABELS.map(stat).join('') + '</div>' +
+          '<label class="d-cmp">' + DG.Icon('compare') + ' Comparer avec <select id="cmpSel"><option value="">— moyenne du catalogue —</option>' +
+            DG.CARS.filter(x=>x.id !== c.id).map(x=>'<option value="' + x.id + '"' + (cmp && cmp.id === x.id ? ' selected' : '') + '>' + x.brand + ' ' + x.name + '</option>').join('') + '</select></label>' +
+        '</section>' +
+        '<section><div class="d-sec">' + DG.Icon('bolt') + ' Multiplicateur de score</div>' +
+          '<div class="d-mult"><div class="d-mult-v grad-text">×' + f.toFixed(2) + '</div><div class="d-mult-f">' +
+            '<div><span>Base</span><b>×1.00</b></div>' +
+            '<div><span>Bonus catégorie ' + (tier.label || '') + '</span><b>+' + base.toFixed(2) + '</b></div>' +
+            '<div><span>Bonus stats (' + total.toFixed(1).replace('.0', '') + ' / 40)</span><b>+' + rating.toFixed(2) + '</b></div>' +
+          '</div></div>' +
+          '<p class="d-note">Votre score de fin de partie est multiplié par ce chiffre : une voiture mieux classée rapporte plus de points pour la même course.</p>' +
+        '</section>' +
+        '<section class="d-buy">' + action + '</section>' +
+      '</div>'
+    );
+  }
+
+  function openDetail(id, from){
+    const c = DG.carById(id);
+    if(!c) return;
+    if(detailId !== id) compareId = null;
+    detailId = id;
+    if(from) detailReturn = from;
+    const panel = document.getElementById('detailPanel');
+    panel.innerHTML = detailHTML(c);
+    document.getElementById('detailWrap').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    document.getElementById('detailClose').addEventListener('click', closeDetail);
+    const sel = document.getElementById('cmpSel');
+    sel.addEventListener('change', ()=>{ compareId = sel.value || null; openDetail(id); document.getElementById('cmpSel').focus(); });
+    panel.querySelectorAll('[data-d3d]').forEach(b=>b.addEventListener('click', ()=>{ closeDetail(true); openViewer(b.getAttribute('data-d3d')); }));
+    panel.querySelectorAll('[data-buy]').forEach(btn=>btn.addEventListener('click', async ()=>{
+      const r = btn.getBoundingClientRect();
+      btn.disabled = true; btn.classList.add('loading');
+      const res = await DG.Economy.buyCar(id);
+      if(!res.ok){ if(DG.FX) DG.FX.toast('⚠ ' + (res.error || 'Achat impossible'), 'bad'); openDetail(id); }
+      else { if(DG.FX){ DG.FX.confetti(r.left + r.width / 2, r.top + r.height / 2); DG.FX.toast('✓ ' + c.brand + ' ' + c.name + ' débloquée !', 'good'); } openDetail(id); }
+    }));
+    if(from) requestAnimationFrame(()=>document.getElementById('detailClose').focus());
+  }
+  function closeDetail(keepScroll){
+    const w = document.getElementById('detailWrap');
+    if(!w.classList.contains('open')) return;
+    w.classList.remove('open');
+    document.body.style.overflow = '';
+    detailId = null;
+    if(detailReturn && keepScroll !== true){ try { detailReturn.focus({ preventScroll:true }); } catch(e){} }
+  }
+  document.getElementById('detailWrap').addEventListener('click', (e)=>{ if(e.target.id === 'detailWrap') closeDetail(); });
+  window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && document.getElementById('detailWrap').classList.contains('open')){ e.stopImmediatePropagation(); closeDetail(); } }, true);
+  // La fiche ouverte se met a jour si les credits changent (achat, gain)
+  DG.Economy.onChange(()=>{ if(detailId) openDetail(detailId); });
+
 
   // ============================================================
   // Fiche 3D detaillee : rotation libre, camera interieure (si une cabine
@@ -319,6 +496,7 @@
       // mais partage les geometries/materiaux avec le modele source mis en cache
       // (loadModelFull), reutilise a chaque ouverture. Seul le contexte WebGL (renderer)
       // doit etre libere pour ne pas en accumuler un par voiture consultee.
+      if(viewerState.stage && viewerState.stage.userData.dispose) viewerState.stage.userData.dispose();
       if(viewerState.stage) viewerState.stage.traverse(n=>{ if(n.isMesh){ n.geometry.dispose(); if(n.material.map) n.material.map.dispose(); n.material.dispose(); } });
       s.renderer.dispose();
     }

@@ -57,6 +57,7 @@
     })(last);
   }
   let _lastScore = 0, _lastSpd = -1, _cdTimer = 0;
+  const _hud = {};
 
   // Clic "satisfaisant" : petit son synthetise (aucun fichier a charger), onde
   // lumineuse depuis le point de contact et micro-vibration sur mobile.
@@ -409,10 +410,11 @@
 
     engine = new DG.GameEngine($('canvasHost'), {
       onHud(d){
-        els.hudTime.textContent = d.time.toFixed(1) + 's';
+        const tTxt = d.time.toFixed(1) + 's';
+        if(tTxt !== _hud.t){ _hud.t = tTxt; els.hudTime.textContent = tTxt; }
         if(d.score - _lastScore >= 30) replay(els.hudScore, 'bump');
         _lastScore = d.score;
-        els.hudScore.textContent = d.score;
+        if(d.score !== _hud.s){ _hud.s = d.score; els.hudScore.textContent = d.score; }
         const spd = Math.round((d.speedK || 0) * 20) / 20;
         if(spd !== _lastSpd){ _lastSpd = spd; els.speedFx.style.setProperty('--spd', (spd * 0.85).toFixed(2)); }
         els.speedFx.classList.toggle('boost', !!d.boosting);
@@ -420,8 +422,9 @@
         els.boostBar.classList.toggle('on', !!d.boosting);
         els.boostBar.classList.toggle('full', d.boostPct >= 99.5);
         els.boostBar.classList.toggle('low', d.boostPct < 18);
-        els.hudSpeed.innerHTML = d.speed + '<span style="font-size:10px;color:#8a8f98"> km/h</span>';
-        els.boostFill.style.width = d.boostPct + '%';
+        if(d.speed !== _hud.v){ _hud.v = d.speed; els.hudSpeed.innerHTML = d.speed + '<span style="font-size:10px;color:#8a8f98"> km/h</span>'; }
+        const bp = Math.round(d.boostPct * 2) / 2;
+        if(bp !== _hud.b){ _hud.b = bp; els.boostFill.style.width = bp + '%'; }
         if(d.multiplierActive){ els.multBadge.classList.add('show'); els.multTime.textContent = Math.ceil(d.multiplierT); }
         else els.multBadge.classList.remove('show');
         if(els.hudRecordChase){
@@ -488,6 +491,7 @@
     els.hudTop.style.display = 'flex'; els.hudBottom.style.display = 'flex';
     show(null);
     _lastScore = 0;
+    for(const k in _hud) delete _hud[k];
     els.countdown.innerHTML = '';
     els.draftBadge.classList.remove('show');
     engine.start(car, state.selectedRoute, state.personalBest);

@@ -214,6 +214,16 @@ h1,h2,h3{font-family:'Saira Condensed',sans-serif;text-transform:uppercase;margi
 .leaderboard-row .name{flex:1;font-family:'Saira Condensed';font-weight:700;font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .leaderboard-row .meta{font-size:10.5px;color:#8a8f98;min-width:70px;text-align:right}
 .leaderboard-row .score{font-family:'Saira Condensed';font-weight:800;font-size:15px;color:#cfe6ff;min-width:52px;text-align:right}
+/* Ligne partagee avec le site (js/leaderboard.js) : avatar a initiale + sous-ligne voiture/temps */
+.leaderboard-row .who{flex:1;min-width:0;display:flex;align-items:center;gap:10px}
+.leaderboard-row .who > span:last-child{min-width:0;display:flex;flex-direction:column}
+.leaderboard-row .av{width:26px;height:26px;border-radius:8px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-family:'Saira Condensed';font-weight:900;font-size:13px;color:#fff;background:linear-gradient(150deg,hsl(var(--h) 70% 55%),hsl(var(--h) 60% 28%));box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
+.leaderboard-row .who .name{display:block;flex:none;min-width:0}
+.leaderboard-row .sub{display:none;font-size:10.5px;color:#8a8f98;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.over-panel .leaderboard-row .sub{display:block}
+.leaderboard-row .you{font-size:8.5px;letter-spacing:.12em;padding:2px 6px;border-radius:5px;background:#9fb4c7;color:#070a0e;font-weight:700;margin-left:6px;vertical-align:middle;text-shadow:none}
+.leaderboard-row.me{outline:1px solid rgba(159,180,199,.6);outline-offset:-1px}
+.leaderboard-row .score{flex:0 0 auto}
 
 @keyframes neonPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.25)}}
 .leaderboard-row.top3{padding:13px 16px;border-radius:12px;gap:14px;position:relative;background:linear-gradient(90deg,rgba(var(--neon-rgb),.18),rgba(var(--neon-rgb),.02));border:1px solid rgba(var(--neon-rgb),.5);box-shadow:0 0 22px -6px rgba(var(--neon-rgb),.65),inset 0 0 18px -12px rgba(var(--neon-rgb),.7);animation:neonPulse 2.6s ease-in-out infinite}
@@ -223,3 +233,12 @@ h1,h2,h3{font-family:'Saira Condensed',sans-serif;text-transform:uppercase;margi
 .leaderboard-row.rank-1{--neon-rgb:255,204,0}
 .leaderboard-row.rank-2{--neon-rgb:207,214,223}
 .leaderboard-row.rank-3{--neon-rgb:217,138,82}
+
+/* Perf : un flou d'arriere-plan (backdrop-filter) au-dessus du canvas 3D est
+   recalcule a CHAQUE image pour chaque element — tres couteux, surtout sur mobile.
+   En course, le HUD passe sur des fonds opaques a la place. */
+.hud-stats,.icon-btn,.btn-lane,.btn-boost,.draft-badge{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.hud-stats{background:rgba(8,9,14,.9)}
+.icon-btn,.btn-lane{background:rgba(11,13,19,.86)}
+.btn-boost{background:linear-gradient(180deg,rgba(60,72,86,.92),rgba(24,30,38,.92))}
+.draft-badge{background:rgba(8,20,32,.9)!important}

@@ -882,3 +882,63 @@ end;
 $$;
 
 grant execute on function public.my_stats() to authenticated;
+
+-- ============================================================
+-- AVATARS (photo de profil personnalisee)
+-- A executer une fois dans le SQL Editor de Supabase. Idempotent.
+-- Bucket public 'avatars' : chaque joueur n'ecrit que dans son dossier
+-- <auth.uid()>/..., images uniquement, 512 Ko max.
+-- ============================================================
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('avatars', 'avatars', true, 524288, array['image/webp','image/jpeg','image/png'])
+on conflict (id) do update
+  set public = true, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "avatars_public_read" on storage.objects;
+create policy "avatars_public_read" on storage.objects
+  for select using (bucket_id = 'avatars');
+
+drop policy if exists "avatars_owner_insert" on storage.objects;
+create policy "avatars_owner_insert" on storage.objects
+  for insert to authenticated with check (
+    bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "avatars_owner_update" on storage.objects;
+create policy "avatars_owner_update" on storage.objects
+  for update to authenticated using (
+    bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "avatars_owner_delete" on storage.objects;
+create policy "avatars_owner_delete" on storage.objects
+  for delete to authenticated using (
+    bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- Enregistre l'avatar du joueur connecte. N'accepte qu'une URL publique de SON
+-- dossier du bucket 'avatars' ; p_url = null remet l'avatar du compte Discord
+-- (ou aucun avatar pour un compte email).
+create or replace function public.update_avatar(p_url text)
+returns text
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_url text;
+begin
+  if v_uid is null then raise exception 'Connexion requise'; end if;
+  if p_url is null then
+    select raw_user_meta_data->>'avatar_url' into v_url from auth.users where id = v_uid;
+  else
+    if p_url !~ ('^https://[a-z0-9]+\.supabase\.co/storage/v1/object/public/avatars/' || v_uid::text || '/[A-Za-z0-9._-]+$') then
+      raise exception 'URL d''avatar invalide';
+    end if;
+    v_url := p_url;
+  end if;
+  update public.profiles set avatar_url = v_url where id = v_uid;
+  return v_url;
+end;
+$$;
+
+grant execute on function public.update_avatar(text) to authenticated;

@@ -3,9 +3,11 @@
 // et, en bas, <footer class="footer" id="site-footer"></footer> (rempli ici).
 (function(){
   const THEMES = [
-    { id:'obsidian', label:'Obsidian', ring:'linear-gradient(135deg,#e6edf2,#4d6478)' },
-    { id:'emeraude', label:'Émeraude', ring:'linear-gradient(135deg,#7dffb8,#0e5c34)' },
-    { id:'carmin', label:'Carmin', ring:'linear-gradient(135deg,#ff9f80,#8f1912)' },
+    { id:'obsidian', label:'Obsidian', sub:'Violet irisé', ring:'conic-gradient(from 200deg,#5ee7ff,#8b7cff,#3b2f8f,#d6d0ff,#5ee7ff)' },
+    { id:'saphir', label:'Saphir', sub:'Bleu nuit & or', ring:'conic-gradient(from 200deg,#e9c46a,#4a86ff,#173a8c,#c4d8ff,#e9c46a)' },
+    { id:'emeraude', label:'Émeraude', sub:'Jade & champagne', ring:'conic-gradient(from 200deg,#e6c887,#1fbf7a,#0b5236,#9ff5cf,#e6c887)' },
+    { id:'carmin', label:'Bordeaux', sub:'Lie-de-vin & cuivre', ring:'conic-gradient(from 200deg,#d08a4f,#b3122e,#5c0716,#ffb3bf,#d08a4f)' },
+    { id:'bronze', label:'Bronze', sub:'Espresso & champagne', ring:'conic-gradient(from 200deg,#f0d49a,#c98a4b,#6b4320,#f3d2ac,#f0d49a)' },
   ];
 
   function getTheme(){
@@ -13,17 +15,20 @@
     return 'obsidian';
   }
   function setTheme(t){
+    const prev = document.documentElement.getAttribute('data-theme');
     document.documentElement.setAttribute('data-theme', t);
     try { localStorage.setItem('dg_theme', t); } catch(e){}
+    // Previent les scenes 3D (anneau lumineux, halo...) pour qu'elles se recolorent
+    if(prev && prev !== t) window.dispatchEvent(new CustomEvent('dg:theme', { detail:{ theme:t } }));
   }
   setTheme(getTheme());
 
   const LINKS = [
-    { href:'index.html', label:'Accueil', icon:'🏠' },
-    { href:'garage.html', label:'Garage', icon:'🔑' },
-    { href:'classement.html', label:'Classement', icon:'🏆' },
-    { href:'radio.html', label:'Radio', icon:'📻' },
-    { href:'compte.html', label:'Compte', icon:'👤' },
+    { href:'index.html', label:'Accueil', icon:'home' },
+    { href:'garage.html', label:'Garage', icon:'key' },
+    { href:'classement.html', label:'Classement', icon:'trophy' },
+    { href:'radio.html', label:'Radio', icon:'radio' },
+    { href:'compte.html', label:'Compte', icon:'user' },
   ];
 
   const ICON_PALETTE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7" r="1.2"/><circle cx="15.5" cy="7.5" r="1.2"/></svg>';
@@ -38,19 +43,19 @@
     const cur = getTheme();
     const themeBtns = THEMES.map(t=>(
       '<button type="button" data-theme-pick="' + t.id + '" class="' + (cur===t.id?'on':'') + '">' +
-        '<span class="sw" style="background:' + t.ring + '"></span>' + t.label + '<span class="ck">✓</span>' +
+        '<span class="sw" style="background:' + t.ring + '"></span><span style="display:flex;flex-direction:column;line-height:1.2">' + t.label + '<small style="font-size:10.5px;color:var(--text-4)">' + t.sub + '</small></span><span class="ck">✓</span>' +
       '</button>'
     )).join('');
 
     mount.innerHTML =
       '<nav class="navbar" aria-label="Navigation principale">' +
         '<a href="index.html" class="brand" aria-label="Deylo Garage — accueil">' +
-          '<div class="brand-mark"><span>D</span></div>' +
-          '<div><div class="brand-name">DEYLO GARAGE</div><div class="brand-sub">Supercars · 3D</div></div>' +
+          (DG.Logo ? DG.Logo.mark(40, 'brand-logo') : '<div class="brand-mark"><span>D</span></div>') +
+          '<div><div class="brand-name">DEYLO <span class="grad-text">GARAGE</span></div><div class="brand-sub">Supercars · 3D</div></div>' +
         '</a>' +
         '<div class="nav-links" id="dgNavLinks">' +
           '<span class="nav-pill" aria-hidden="true"></span>' +
-          LINKS.map(l=>'<a href="' + l.href + '" class="' + (l.href===active?'active':'') + '"' + (l.href===active?' aria-current="page"':'') + '><span class="ni">' + l.icon + '</span>' + l.label + '</a>').join('') +
+          LINKS.map(l=>'<a href="' + l.href + '" class="' + (l.href===active?'active':'') + '"' + (l.href===active?' aria-current="page"':'') + '><span class="ni">' + (DG.Icon ? DG.Icon(l.icon) : '') + '</span>' + l.label + '</a>').join('') +
         '</div>' +
         '<div class="nav-right">' +
           '<a href="compte.html" class="nav-avatar" id="dgAvatar" title="Mon compte"><img src="" alt=""></a>' +
@@ -144,9 +149,9 @@
     const year = new Date().getFullYear();
     f.innerHTML =
       '<div class="footer-in">' +
-        '<div class="footer-brand"><div class="fb">DEYLO<span>·</span>GARAGE</div>' +
+        '<div class="footer-brand"><div class="fb" style="display:flex;align-items:center;gap:12px">' + (DG.Logo ? DG.Logo.mark(44) : '') + '<span>DEYLO<span>·</span>GARAGE</span></div>' +
           '<p>Un showroom 3D de supercars et un mini-jeu de réflexes : jouez, gagnez des crédits, débloquez les voitures de vos rêves.</p>' +
-          '<a href="game/index.html" class="btn btn-soft btn-sm" style="margin-top:16px">▶ Lancer une partie</a></div>' +
+          '<a href="game/index.html" class="btn btn-soft btn-sm" style="margin-top:16px">' + (DG.Icon ? DG.Icon('play') : '') + ' Lancer une partie</a></div>' +
         '<div class="footer-col"><h4>Explorer</h4>' + LINKS.slice(0,4).map(l=>'<a href="' + l.href + '">' + l.label + '</a>').join('') + '</div>' +
         '<div class="footer-col"><h4>Joueur</h4><a href="compte.html">Mon compte</a><a href="game/index.html">Le jeu</a><a href="classement.html">Top 25</a></div>' +
       '</div>' +

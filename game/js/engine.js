@@ -91,7 +91,7 @@
     const T = window.THREE;
     const w = this.container.clientWidth, h = this.container.clientHeight;
     const renderer = new T.WebGLRenderer({ antialias:true, alpha:true, powerPreference:'high-performance' });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 1.75));
+    renderer.setPixelRatio(Math.min((window.devicePixelRatio||1) < 1.5 ? (window.devicePixelRatio||1) * 1.25 : (window.devicePixelRatio||1), 2));
     renderer.setSize(w, h);
     renderer.outputEncoding = T.sRGBEncoding;
     renderer.toneMapping = T.ACESFilmicToneMapping;
@@ -191,9 +191,16 @@
 
     this.fx = DG.GameFX ? new DG.GameFX(this) : null;
     this._routeExtras = [];
-    this._maxPR = Math.min(window.devicePixelRatio||1, 1.75);
+    // Nettete : sur un ecran "1x" on rend un peu plus fin que l'ecran (supersampling
+    // 1.25x, les aretes et le bitume restent nets) ; sur un ecran haute densite on
+    // monte jusqu'a 2x. La resolution adaptative ne descend sous la definition
+    // native de l'ecran qu'en dernier recours (machine vraiment a la peine).
+    const dpr = window.devicePixelRatio || 1;
+    this._maxPR = Math.min(dpr < 1.5 ? dpr * 1.25 : dpr, 2);
+    this._minPR = Math.min(this._maxPR, Math.max(0.75, Math.min(dpr, 1)));
     this._pr = this._maxPR;
-    this._frameAvg = 16.7; this._prCheckT = 0;
+    this._frameAvg = 16.7; this._prCheckT = 0; this._prHoldT = 0; this._frameBase = 0;
+    this._aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1);
 
     // Phares du joueur : un seul spot (couteux sinon), accroche a la voiture au depart.
     this._headlight = new T.SpotLight(0xfff1dc, 0, 48, 0.42, 0.65, 1.4);
@@ -256,6 +263,71 @@
     });
   }
 
+  // Fusionne les pieces fixes d'un bloc de decor (immeuble + enseignes + lampadaire...)
+  // en UN maillage par materiau. Le bloc defile d'un seul tenant, donc ses pieces
+  // ne bougent jamais entre elles : on passe de ~9 appels de dessin par bloc a 2-4.
+  // C'etait le premier poste de cout du rendu (plus de la moitie du temps par image
+  // sur un GPU integre). Les pieces animees par userData.tick sont detectees en
+  // rejouant l'animation a plusieurs instants, et laissees telles quelles.
+  function countMeshes(root){ let c = 0; root.traverse(n=>{ if(n.isMesh) c++; }); return c; }
+  function mergeStatic(T, root){
+    root.userData._mc = -1;
+    root.updateMatrixWorld(true);
+    const snap = new Map();
+    const take = ()=>{ const m = new Map(); root.traverse(n=>m.set(n, n.matrix.elements.join(',') + (n.visible ? 1 : 0) + (n.material && n.material.uuid || ''))); return m; };
+    const dynamic = new Set();
+    if(root.userData.tick){
+      const before = take();
+      [0.37, 1.91, 4.3, 7.7, 11.2].forEach(t=>{ root.userData.tick(t, 0.016); root.traverse(n=>n.updateMatrix()); });
+      const after = take();
+      root.traverse(n=>{ if(n !== root && before.get(n) !== after.get(n)) dynamic.add(n); });
+    }
+    const isDynamic = (n)=>{ for(let p = n; p && p !== root; p = p.parent) if(dynamic.has(p) || !p.visible) return true; return false; };
+    const inv = new T.Matrix4().copy(root.matrixWorld).invert();
+    const groups = new Map();
+    root.traverse(n=>{
+      if(!n.isMesh || n.isInstancedMesh || n.isSkinnedMesh || Array.isArray(n.material) || !n.geometry || !n.geometry.attributes.position) return;
+      if(n.morphTargetInfluences || n.onBeforeRender !== T.Object3D.prototype.onBeforeRender || isDynamic(n)) return;
+      const g = n.geometry;
+      const mtx = new T.Matrix4().multiplyMatrices(inv, n.matrixWorld);
+      if(mtx.determinant() < 0) return; // miroir : l'ordre des faces s'inverserait
+      // (les "groups" des BoxGeometry etc. n'importent pas : un seul materiau couvre tout)
+      const key = n.material.uuid + '|' + Object.keys(g.attributes).sort().join(',') + '|' + n.renderOrder;
+      let list = groups.get(key); if(!list){ list = []; groups.set(key, list); }
+      list.push({ n, mtx });
+    });
+    groups.forEach(list=>{
+      if(list.length < 2) return;
+      const names = Object.keys(list[0].n.geometry.attributes);
+      const parts = list.map(({ n, mtx })=>{ const g = n.geometry.index ? n.geometry.toNonIndexed() : n.geometry.clone(); g.applyMatrix4(mtx); return g; });
+      const out = new T.BufferGeometry();
+      for(const name of names){
+        const a0 = parts[0].attributes[name];
+        let total = 0; parts.forEach(g=>{ total += g.attributes[name].count; });
+        const arr = new Float32Array(total * a0.itemSize);
+        const GET = ['getX', 'getY', 'getZ', 'getW'];
+        let o = 0;
+        parts.forEach(g=>{
+          const a = g.attributes[name];
+          const src = a.isInterleavedBufferAttribute ? a.data.array : a.array;
+          // Entiers normalises (couleurs/uv quantifies) -> flottants 0..1
+          const div = a.normalized ? ({ Uint8Array:255, Int8Array:127, Uint16Array:65535, Int16Array:32767 }[src.constructor.name] || 1) : 1;
+          for(let i = 0; i < a.count; i++) for(let c = 0; c < a.itemSize; c++) arr[o++] = a[GET[c]](i) / div;
+        });
+        out.setAttribute(name, new T.BufferAttribute(arr, a0.itemSize, false));
+      }
+      parts.forEach(g=>g.dispose());
+      out.computeBoundingSphere();
+      const m = new T.Mesh(out, list[0].n.material);
+      m.renderOrder = list[0].n.renderOrder;
+      m.name = 'dgMerged';
+      root.add(m);
+      // Les geometries d'origine peuvent etre partagees (cache) : on les retire sans les liberer.
+      list.forEach(({ n })=>n.parent.remove(n));
+    });
+    root.userData._mc = countMeshes(root);
+  }
+
   GameEngine.prototype.setRoute = function(routeId){
     const T = window.THREE;
     const route = DG.routeById(routeId);
@@ -306,6 +378,69 @@
     const DECOR_N = 16;
     this._decor = route.buildDecor(T, this.scene, DECOR_N) || [];
     this._decorWrap = (route.spacing || 8.5) * DECOR_N;
+    this._decor.forEach(d=>mergeStatic(T, d));
+    this._sharpenTextures(this.scene);
+    this._prewarm();
+  };
+
+  // Filtrage anisotrope sur toutes les textures : sans lui, le bitume, les
+  // marquages et le sol deviennent flous des quelques metres (angle rasant).
+  GameEngine.prototype._sharpenTextures = function(root){
+    const a = this._aniso || 1;
+    if(a <= 1) return;
+    const KEYS = ['map', 'roughnessMap', 'emissiveMap', 'normalMap', 'metalnessMap', 'alphaMap', 'bumpMap'];
+    root.traverse(n=>{
+      const mats = n.material ? (Array.isArray(n.material) ? n.material : [n.material]) : null;
+      if(!mats) return;
+      for(const m of mats) for(const k of KEYS){
+        const t = m[k];
+        if(t && t.anisotropy < a && !t.isRenderTargetTexture){ t.anisotropy = a; t.needsUpdate = true; }
+      }
+    });
+  };
+
+  // Compile les shaders de tout ce qui peut apparaitre en course (trafic, cones,
+  // bonus) AVANT le depart : sinon chaque premiere apparition d'un modele fige
+  // l'image le temps que le GPU compile son materiau (la "saccade" en course).
+  GameEngine.prototype._prewarm = function(){
+    const T = window.THREE;
+    if(!this.renderer || !this.scene) return;
+    const tmp = [];
+    // Poses devant la camera : un rendu reel (hors ecran, dans une petite cible)
+    // envoie aussi leurs textures au GPU — compile() seul ne le fait pas.
+    const put = (o)=>{ if(!o) return; o.position.set((tmp.length % 9 - 4) * 1.6, 0.5, -14 - Math.floor(tmp.length / 9) * 4); this.scene.add(o); tmp.push(o); };
+    if(this._coneModel) put(this._instance(this._coneModel, 1.0, 0, false));
+    (this._trafficModels || []).forEach(t=>put(this._instance(t.model, t.len, Math.PI, true)));
+    ['coin', 'nitro', 'multiplier'].forEach(kind=>{
+      if(!this._pickupProto) this._pickupProto = {};
+      if(!this._pickupProto[kind]){
+        const proto = pickupMesh(T, kind);
+        if(this.fx) this.fx.decoratePickup(proto, kind);
+        this._pickupProto[kind] = proto;
+      }
+      put(this._pickupProto[kind].clone(true));
+    });
+    tmp.forEach(o=>this._sharpenTextures(o));
+    try {
+      this.renderer.compile(this.scene, this.camera);
+      if(!this._warmRT){ this._warmRT = new T.WebGLRenderTarget(64, 64); this._warmRT.texture.encoding = T.sRGBEncoding; } // meme variante de shader que l'ecran
+      const prev = this.renderer.getRenderTarget();
+      this.renderer.setRenderTarget(this._warmRT);
+      this.renderer.render(this.scene, this.camera);
+      this.renderer.setRenderTarget(prev);
+    } catch(e){}
+    tmp.forEach(o=>{ this.scene.remove(o); this._release(o); });
+  };
+
+  // Reserve de vehicules deja construits : on recycle au lieu de cloner a chaque
+  // apparition (moins d'allocations = moins de pauses du ramasse-miettes).
+  GameEngine.prototype._release = function(mesh){
+    const key = mesh && mesh.userData.tplKey;
+    if(!key) return;
+    this._pool = this._pool || new Map();
+    let list = this._pool.get(key);
+    if(!list){ list = []; this._pool.set(key, list); }
+    if(list.length < 8) list.push(mesh);
   };
 
   GameEngine.prototype.setCamLabel = function(){
@@ -338,13 +473,14 @@
     this.mult = this._statMultipliers(car);
 
     if(this._player) this.scene.remove(this._player);
-    this._obstacles.forEach(o=>this.scene.remove(o.mesh)); this._obstacles = [];
+    this._obstacles.forEach(o=>{ this.scene.remove(o.mesh); this._release(o.mesh); }); this._obstacles = [];
     this._pickups.forEach(p=>this.scene.remove(p.mesh)); this._pickups = [];
 
     const model = await DG.Loader.loadModel('../' + car.model);
     this._player = model ? DG.Loader.normalizeModel(T, model, 3.4, Math.PI - (car.rotY||0)) : DG.Loader.makeFallbackCar(T, { body:car.body, emissive:0x0a0e16 });
     this._player.position.set(0,0,0);
     this.scene.add(this._player);
+    this._sharpenTextures(this._player);
     this._buildInteriorHolder();
     if(this.fx) this.fx.attachPlayer(this._player, car);
     this._player.add(this._headlightTarget);
@@ -368,6 +504,10 @@
     // lieu de bloquer 2 voies au hasard (voir la vague double dans _update).
     this._laneUse = [0, 0, 0, 0];
 
+    this._decor.forEach(d=>{ if(countMeshes(d) !== d.userData._mc) mergeStatic(T, d); });
+    this._prewarm();
+    this._last = performance.now();
+    this._frameBase = 0; this._frameAvg = 16.7; this._prCheckT = 0; this._prHoldT = 0;
     this.playing = true; this.paused = false;
     this.setCamLabel();
   };
@@ -585,7 +725,17 @@
       this._tpl.set(key, tpl);
     }
     if(tpl.skinned){ const o = DG.Loader.normalizeModel(T, model, len, rotY); if(lights) this._addVehicleLights(o); return o; }
-    return tpl.obj.clone(true);
+    const pooled = this._pool && this._pool.get(key);
+    if(pooled && pooled.length){
+      const o = pooled.pop();
+      o.rotation.set(0, 0, 0); o.scale.set(1, 1, 1);
+      const bl = o.getObjectByName('dgBlinkL'), br = o.getObjectByName('dgBlinkR');
+      if(bl) bl.visible = false; if(br) br.visible = false;
+      return o;
+    }
+    const o = tpl.obj.clone(true);
+    o.userData.tplKey = key;
+    return o;
   };
 
   // Feux arriere (toujours allumes) + clignotants (allumes pendant un
@@ -683,15 +833,30 @@
   // Resolution dynamique : si les images mettent trop de temps a sortir, on
   // baisse un peu la definition interne (quasi invisible en mouvement) plutot
   // que de laisser le jeu saccader ; on remonte des que la machine suit.
+  // Juge par rapport a la cadence de l'ecran (60, 120, 144 Hz...), avec
+  // hysteresis : on ne baisse qu'apres ~2 s nettement trop lentes, on ne remonte
+  // qu'apres ~8 s confortables, et jamais juste apres une baisse. Chaque
+  // changement redimensionne le canvas (petite saccade) : il faut qu'ils soient rares.
   GameEngine.prototype._adaptResolution = function(frameMs){
     if(frameMs > 100) return; // onglet en arriere-plan, pas representatif
-    this._frameAvg += (frameMs - this._frameAvg) * 0.05;
+    this._frameAvg += (frameMs - this._frameAvg) * 0.04;
+    // Cadence de reference = meilleure moyenne observee (intervalle de l'ecran)
+    this._frameBase = this._frameBase ? Math.min(this._frameBase + 0.002, Math.max(6, this._frameAvg)) : Math.max(6, frameMs);
+    if(this._frameAvg < this._frameBase) this._frameBase = Math.max(6, this._frameAvg);
     this._prCheckT += frameMs;
-    if(this._prCheckT < 1500) return;
-    this._prCheckT = 0;
+    this._prHoldT = Math.max(0, this._prHoldT - frameMs);
+    const base = Math.min(16.7, Math.max(this._frameBase, 6.9)), ratio = this._frameAvg / base;
     let pr = this._pr;
-    if(this._frameAvg > 21 && pr > 0.75) pr = Math.max(0.75, pr - 0.2);
-    else if(this._frameAvg < 14.5 && pr < this._maxPR) pr = Math.min(this._maxPR, pr + 0.1);
+    if(this._prCheckT >= 2000 && ratio > 1.35 && pr > this._minPR){
+      pr = Math.max(this._minPR, pr - 0.15);
+      this._prHoldT = 12000;
+    } else if(this._prCheckT >= 2000 && ratio > 1.8 && this._frameAvg > 30 && pr > 0.75){
+      pr = Math.max(0.75, pr - 0.15); // dernier recours : machine vraiment a la peine
+      this._prHoldT = 12000;
+    } else if(this._prCheckT >= 8000 && this._prHoldT <= 0 && ratio < 1.08 && pr < this._maxPR){
+      pr = Math.min(this._maxPR, pr + 0.1);
+    }
+    if(this._prCheckT >= 8000 || pr !== this._pr) this._prCheckT = 0;
     if(pr !== this._pr){ this._pr = pr; this._onResize(); }
   };
 
@@ -714,12 +879,13 @@
     } else {
       const bz = (this.playing && this._boostActive) ? -1.0 : 0;
       const shake = (this.playing && this._boostActive) ? Math.sin(now*0.05)*0.07 : 0;
-      this.camera.position.x += (cp.pos[0]+shake - this.camera.position.x)*0.07;
-      this.camera.position.y += (cp.pos[1] - this.camera.position.y)*0.07;
-      this.camera.position.z += (cp.pos[2]+bz - this.camera.position.z)*0.07;
-      this._look.x += (cp.look[0]-this._look.x)*0.07;
-      this._look.y += (cp.look[1]-this._look.y)*0.07;
-      this._look.z += (cp.look[2]-this._look.z)*0.07;
+      const ck = 1 - Math.pow(0.93, dt * 60);
+      this.camera.position.x += (cp.pos[0]+shake - this.camera.position.x)*ck;
+      this.camera.position.y += (cp.pos[1] - this.camera.position.y)*ck;
+      this.camera.position.z += (cp.pos[2]+bz - this.camera.position.z)*ck;
+      this._look.x += (cp.look[0]-this._look.x)*ck;
+      this._look.y += (cp.look[1]-this._look.y)*ck;
+      this._look.z += (cp.look[2]-this._look.z)*ck;
       this.camera.lookAt(this._look);
       const sh = this.fx ? this.fx.shake : 0;
       if(sh){ this.camera.position.x += (Math.random()-.5)*sh; this.camera.position.y += (Math.random()-.5)*sh*0.7; }
@@ -861,7 +1027,7 @@
           this._nearMissStreak = 0;
         }
       }
-      if(o.mesh.position.z > 11){ this.scene.remove(o.mesh); this._obstacles.splice(i,1); }
+      if(o.mesh.position.z > 11){ this.scene.remove(o.mesh); this._release(o.mesh); this._obstacles.splice(i,1); }
     }
     if(drafting && !this._boostActive) this._boostFuel = Math.min(1, this._boostFuel + dt * 0.3);
     if(drafting !== this._drafting){ this._drafting = drafting; if(this.cb.onDraft) this.cb.onDraft(drafting); }
@@ -918,7 +1084,10 @@
     for(const d of this._decor){
       d.position.z += scroll;
       const w = d.userData.wrapDist || wrap;
-      if(d.position.z > 30) d.position.z -= w;
+      if(d.position.z > 30){
+        d.position.z -= w;
+        if(countMeshes(d) !== d.userData._mc) mergeStatic(window.THREE, d);
+      }
       if(d.userData.tick) d.userData.tick(tNow, dt);
     }
     this._updateRain(this._lastDt || 0.016, scroll);

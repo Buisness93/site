@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Classement — Deylo Garage</title>
+<link rel="icon" type="image/svg+xml" href="img/logo.svg">
+<meta name="theme-color" content="#040408">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -12,9 +14,23 @@
 <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Saira:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/site.css">
 <link rel="stylesheet" href="css/fx.css">
+<style>
+ .lb-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+ .lb-search{position:relative;display:flex;align-items:center}
+ .lb-search .ico{position:absolute;left:12px;width:15px;height:15px;color:var(--text-3);pointer-events:none}
+ .lb-search input{height:36px;width:min(280px,60vw);padding:0 12px 0 36px;border-radius:10px;border:1px solid var(--line-2);background:rgba(0,0,0,.35);color:var(--text-1);font-size:13px;outline:none}
+ .lb-search input:focus{border-color:var(--accent);box-shadow:var(--ring)}
+ .pod-crown{margin-bottom:-2px;color:#ffcc00;filter:drop-shadow(0 0 12px rgba(255,204,0,.8))}
+ .pod-crown svg{width:30px;height:30px}
+ .lb-me{display:flex;align-items:center;gap:12px;margin:0 0 14px;padding:14px 18px;border-radius:14px;background:linear-gradient(120deg,rgba(var(--accent-rgb),.18),rgba(var(--accent-2-rgb),.06));border:1px solid rgba(var(--accent-rgb),.35);font-size:14px;color:var(--text-2)}
+ .lb-me svg{width:20px;height:20px;color:var(--accent-light);flex:0 0 auto}
+ .lb-me b{color:var(--text-1);font-family:'Saira Condensed';font-size:16px}
+ .podium + .lb-me{margin-top:14px}
+ .lb-me[hidden]{display:none}
+</style>
 </head>
 <body>
-<div class="fx-curtain" aria-hidden="true"><b>DEYLO<i>·</i>GARAGE</b></div>
+<div class="fx-curtain" aria-hidden="true"><div class="fx-curtain-in"><span class="fx-curtain-logo" data-logo="64"></span><b>DEYLO<i>·</i>GARAGE</b></div></div>
 <div id="site-nav" data-active="classement.html"></div>
 <main>
   <div class="container" style="padding-top:40px;padding-bottom:60px;max-width:1000px">
@@ -22,10 +38,12 @@
     <h1 class="h1">Top 25 pilotes</h1>
     <p class="lead">Mis à jour automatiquement à chaque partie terminée. Un seul score par pilote : son meilleur.</p>
     <div class="podium" id="podium" data-reveal></div>
-    <div class="card" style="margin-top:0;border-top-left-radius:0;border-top-right-radius:0">
+    <div class="lb-me" id="lbMe" hidden></div>
+    <div class="card iris-border" style="margin-top:0;border-top-left-radius:0;border-top-right-radius:0">
       <div class="page-head" style="margin-bottom:14px;align-items:center">
-        <div class="card-title" style="margin:0"><span class="ic">🏁</span>Classement complet</div>
-        <a href="game/index.html" class="btn btn-primary btn-sm">▶ Tenter ma chance</a>
+        <div class="card-title" style="margin:0"><span class="ic" data-icon="flag"></span>Classement complet</div>
+        <div class="lb-tools"><label class="lb-search"><span data-icon="search"></span><input type="search" id="lbSearch" placeholder="Chercher un pilote ou une voiture…" aria-label="Chercher un pilote ou une voiture" autocomplete="off"></label>
+        <a href="game/index.html" class="btn btn-primary btn-sm"><span data-icon="play"></span>Tenter ma chance</a></div>
       </div>
       <div class="leaderboard-row" style="border:0;padding-top:0;padding-bottom:6px;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-4)" aria-hidden="true">
         <span class="rank" style="font-family:inherit;font-size:inherit;font-weight:500">#</span><span class="who">Pilote</span><span class="meta">Voiture</span><span class="meta" style="min-width:56px">Temps</span><span class="score" style="font-family:inherit;font-size:inherit;color:inherit;font-weight:500">Score</span>
@@ -42,6 +60,7 @@
 <script src="js/auth.js"></script>
 <script src="js/economy.js"></script>
 <script src="js/leaderboard.js"></script>
+<script src="js/icons.js"></script>
 <script src="js/nav.js"></script>
 <script src="js/fx.js"></script>
 <script>
@@ -52,14 +71,14 @@
   const pod = document.getElementById('podium');
   if(!board.length){
     pod.style.display = 'none';
-    document.getElementById('board').innerHTML = '<div class="empty"><div class="ei">🏁</div><div>Aucun score encore — soyez le premier !</div><a href="game/index.html" class="btn btn-primary btn-sm">▶ Jouer</a></div>';
+    document.getElementById('board').innerHTML = '<div class="empty"><div class="ei">' + DG.Icon('flag') + '</div><div>Aucun score encore — soyez le premier !</div><a href="game/index.html" class="btn btn-primary btn-sm">▶ Jouer</a></div>';
     return;
   }
   // Podium : 2e a gauche, 1er au centre, 3e a droite
   const slot = (e, n)=>{
     if(!e) return '<div></div>';
     const car = DG.carById(e.car);
-    return '<div class="pod p' + n + '">' + (n === 1 ? '<div style="font-size:26px;margin-bottom:-4px">👑</div>' : '') +
+    return '<div class="pod p' + n + '">' + (n === 1 ? '<div class="pod-crown">' + DG.Icon('crown') + '</div>' : '') +
       '<div class="medal">' + n + '</div><div class="pn">' + esc(e.name || 'Pilote') + '</div>' +
       '<div class="pc">' + (car ? esc(car.name) : '—') + '</div><div class="ps" data-score="' + e.score + '">' + Number(e.score).toLocaleString('fr-FR') + '</div>' +
       '<div class="base">' + n + '</div></div>';
@@ -67,9 +86,36 @@
   pod.innerHTML = slot(board[1], 2) + slot(board[0], 1) + slot(board[2], 3);
   if(DG.FX) pod.querySelectorAll('[data-score]').forEach(el=>DG.FX.countWhenVisible(el, +el.getAttribute('data-score')));
   const rest = board.slice(3);
-  document.getElementById('board').innerHTML = rest.length
+  const boardEl = document.getElementById('board');
+  boardEl.innerHTML = rest.length
     ? rest.map((e,i)=>DG.Leaderboard.rowHTML(e,i+3)).join('')
     : '<div class="empty" style="padding:24px">Le reste du classement vous attend.</div>';
+
+  // Recherche : filtre les lignes par pilote ou voiture (le podium reste visible)
+  const search = document.getElementById('lbSearch');
+  const allRows = board.map((e, i)=>({ e, i, key:((e.name || '') + ' ' + ((DG.carById(e.car) || {}).name || '')).toLowerCase() }));
+  search.addEventListener('input', ()=>{
+    const q = search.value.trim().toLowerCase();
+    if(!q){ boardEl.innerHTML = rest.length ? rest.map((e,i)=>DG.Leaderboard.rowHTML(e,i+3)).join('') : ''; return; }
+    const hits = allRows.filter(r=>r.key.indexOf(q) !== -1);
+    boardEl.setAttribute('data-stagger-done', '');
+    boardEl.innerHTML = hits.length ? hits.map(r=>DG.Leaderboard.rowHTML(r.e, r.i)).join('') : '<div class="empty" style="padding:24px">Aucun pilote ne correspond à « ' + DG.Leaderboard.escapeHTML(search.value) + ' ».</div>';
+  });
+
+  // Ma position : bandeau si le joueur connecte figure dans le Top 25
+  DG.Auth.onChange(()=>{
+    const me = DG.Auth.isLoggedIn() ? DG.Auth.displayName() : null;
+    const box = document.getElementById('lbMe');
+    const i = me ? board.findIndex(e=>e.name === me) : -1;
+    if(i === -1){
+      box.hidden = !DG.Auth.isLoggedIn();
+      if(!box.hidden) box.innerHTML = DG.Icon('target') + '<span>Vous n\'êtes pas encore dans le Top 25 — il faut <b>' + Number(board[board.length - 1].score + 1).toLocaleString('fr-FR') + '</b> points pour y entrer.</span>';
+      return;
+    }
+    box.hidden = false;
+    const ahead = i > 0 ? board[i - 1].score - board[i].score : 0;
+    box.innerHTML = DG.Icon('trophy') + '<span>Vous êtes <b>' + (i + 1) + (i === 0 ? 'er' : 'e') + '</b> du classement avec <b>' + Number(board[i].score).toLocaleString('fr-FR') + '</b> points' + (i > 0 ? ' — encore <b>' + Number(ahead + 1).toLocaleString('fr-FR') + '</b> pour passer ' + (i) + (i === 1 ? 'er' : 'e') : ' — personne ne fait mieux !') + '</span>';
+  });
 })();
 </script>
 </body>
