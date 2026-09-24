@@ -148,6 +148,19 @@
   });
   addEventListener('pageshow', (e)=>{ if(e.persisted) leave.classList.remove('on'); });
 
+  // Precharge la page visee des le survol / le toucher : la navigation parait instantanee.
+  const prefetched = new Set();
+  function prefetch(e){
+    const a = e.target.closest && e.target.closest('a[href]');
+    if(!a || a.target === '_blank') return;
+    let url; try { url = new URL(a.href, location.href); } catch(err){ return; }
+    if(url.origin !== location.origin || url.pathname === location.pathname || prefetched.has(url.pathname)) return;
+    prefetched.add(url.pathname);
+    const l = doc.createElement('link'); l.rel = 'prefetch'; l.href = url.pathname; doc.head.appendChild(l);
+  }
+  doc.addEventListener('pointerover', prefetch, { passive:true });
+  doc.addEventListener('touchstart', prefetch, { passive:true });
+
   // ---------- Scan initial + contenu rendu plus tard (garage, classement...) ----------
   let lastMoney = null;
   function scan(scope){

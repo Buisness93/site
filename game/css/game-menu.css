@@ -1,0 +1,92 @@
+/* Deylo Garage — boutons premium du menu : gros, tactiles, relief qui s'enfonce */
+.section-label{font-size:10px;letter-spacing:.24em;color:#8a8f98;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.section-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(255,255,255,.14),transparent)}
+
+/* ---------- Selecteur de route : grandes cartes ---------- */
+.route-picker{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.route-card{position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;min-height:72px;padding:12px 16px;border-radius:18px;text-align:left;color:#fff;
+  border:1px solid rgba(255,255,255,.12);background:linear-gradient(180deg,rgba(20,23,31,.92),rgba(9,10,15,.95));
+  box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 10px 24px -18px #000;transition:transform .3s var(--ease-out),border-color .3s,box-shadow .35s}
+.route-card::before{content:'';position:absolute;inset:0;background:var(--rg);opacity:.18;transition:opacity .35s}
+.route-card:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.28)}
+.route-card:hover::before{opacity:.32}
+.route-card:active{transform:translateY(1px) scale(.98)}
+.route-card.active{border-color:var(--rc);box-shadow:0 0 0 1px var(--rc),0 16px 36px -18px var(--rc),0 1px 0 rgba(255,255,255,.1) inset}
+.route-card.active::before{opacity:.5}
+.route-card > *{position:relative}
+.route-ico{width:46px;height:46px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:24px;border-radius:14px;background:var(--rg);box-shadow:0 8px 20px -10px var(--rc),0 0 0 1px rgba(255,255,255,.12) inset}
+.route-body{display:flex;flex-direction:column;gap:5px;min-width:0}
+.route-name{font-family:'Saira Condensed',sans-serif;font-weight:900;font-size:17px;letter-spacing:.03em;text-transform:uppercase;line-height:1.05}
+.route-diff{display:flex;align-items:center;gap:8px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#aab2bd}
+.route-diff .dots{display:flex;gap:3px}
+.route-diff .dots i{width:14px;height:4px;border-radius:2px;background:rgba(255,255,255,.16)}
+.route-diff .dots i.on{background:var(--rc);box-shadow:0 0 8px var(--rc)}
+.route-check{margin-left:auto;width:24px;height:24px;flex:0 0 auto;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#0a0c10;background:var(--rc);transform:scale(0);transition:transform .4s var(--ease-out)}
+.route-card.active .route-check{transform:scale(1)}
+
+/* ---------- Dock d'actions colle en bas de l'ecran de choix ---------- */
+.action-dock{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:4px;padding:14px 14px 14px 20px;border-radius:22px;
+  background:linear-gradient(180deg,rgba(18,21,29,.86),rgba(8,9,13,.94));border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:0 -10px 40px -20px #000,0 1px 0 rgba(255,255,255,.07) inset}
+.dock-info{min-width:0}
+.dock-label{font-size:9.5px;letter-spacing:.26em;color:#8a8f98;text-transform:uppercase}
+.dock-sel{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:3px}
+.dock-sel b{font-family:'Saira Condensed',sans-serif;font-weight:900;font-size:20px;text-transform:uppercase;letter-spacing:.02em}
+.dock-sel span{font-size:12px;color:#9aa1ab}
+.dock-btns{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto}
+
+/* ---------- Bouton secondaire : verre depoli, relief discret ---------- */
+.btn-side{position:relative;overflow:hidden;isolation:isolate;display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:56px;padding:0 20px;border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.025));color:#eef2f6;text-decoration:none;
+  font-family:'Saira Condensed',sans-serif;font-weight:800;font-size:15px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;
+  box-shadow:0 1px 0 rgba(255,255,255,.1) inset,0 4px 0 rgba(0,0,0,.35),0 12px 24px -16px #000;transition:transform .18s var(--ease-out),box-shadow .18s,border-color .25s,background .25s}
+.btn-side .ico{font-size:18px;line-height:1}
+.btn-side:hover{border-color:rgba(255,255,255,.3);background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.04));transform:translateY(-2px)}
+.btn-side:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 1px 0 rgba(0,0,0,.35),0 6px 14px -12px #000}
+.btn-side:disabled{opacity:.45;cursor:not-allowed;transform:none}
+
+/* ---------- Bouton principal : gros, lumineux, qui s'enfonce au clic ---------- */
+.btn-go{position:relative;overflow:hidden;isolation:isolate;display:inline-flex;align-items:center;justify-content:center;gap:14px;min-height:64px;min-width:230px;padding:0 30px;border:0;border-radius:18px;cursor:pointer;
+  font-family:'Saira Condensed',sans-serif;font-weight:900;font-size:22px;letter-spacing:.14em;text-transform:uppercase;color:#07121c;
+  background:linear-gradient(180deg,#f2f8ff 0%,#bfe0ff 45%,#8fc4f2 100%);
+  box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 -3px 0 rgba(0,40,80,.25) inset,0 6px 0 #3f6d96,0 18px 40px -12px rgba(143,208,255,.85);
+  transition:transform .16s var(--ease-out),box-shadow .16s,filter .25s}
+.btn-go .go-arrow{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:12px;background:rgba(7,18,28,.9);color:#cfe9ff;font-size:14px;transition:transform .35s var(--ease-out)}
+.btn-go .go-glow{position:absolute;inset:0;z-index:-1;background:radial-gradient(120px 60px at 50% 0%,rgba(255,255,255,.9),transparent 70%);opacity:.6}
+.btn-go::after{content:'';position:absolute;top:0;bottom:0;left:-60%;width:36%;z-index:-1;background:linear-gradient(100deg,transparent,rgba(255,255,255,.85),transparent);transform:skewX(-20deg);animation:btnSweep 2.8s ease-in-out infinite}
+.btn-go:hover{filter:brightness(1.06);transform:translateY(-2px)}
+.btn-go:hover .go-arrow{transform:translateX(4px)}
+.btn-go:active{transform:translateY(5px);box-shadow:0 1px 0 rgba(255,255,255,.8) inset,0 -2px 0 rgba(0,40,80,.25) inset,0 1px 0 #3f6d96,0 8px 20px -12px rgba(143,208,255,.8)}
+.btn-go:disabled{cursor:not-allowed;filter:grayscale(.9) brightness(.55);transform:none;box-shadow:0 4px 0 #22303d;animation:none}
+.btn-go:disabled::after{display:none}
+#btnStart.btn-go.ready{animation:goBreath 2.4s ease-in-out infinite;border:0;color:#07121c;background:linear-gradient(180deg,#f2f8ff 0%,#bfe0ff 45%,#8fc4f2 100%)}
+#btnStart.btn-go.ready:active{animation:none}
+@keyframes goBreath{0%,100%{box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 -3px 0 rgba(0,40,80,.25) inset,0 6px 0 #3f6d96,0 18px 40px -12px rgba(143,208,255,.85)}50%{box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 -3px 0 rgba(0,40,80,.25) inset,0 6px 0 #3f6d96,0 22px 56px -8px rgba(170,220,255,1)}}
+.btn-go-block{width:100%}
+
+/* ---------- Onde du clic ---------- */
+.ui-ripple{position:absolute;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(255,255,255,.55),rgba(255,255,255,0) 70%);transform:scale(0);animation:uiRipple .65s var(--ease-out) forwards;z-index:-1}
+@keyframes uiRipple{to{transform:scale(1);opacity:0}}
+.route-card .ui-ripple,.car-card .ui-ripple,.daily-card .ui-ripple{z-index:0}
+.car-card,.daily-card{overflow:clip}
+
+/* ---------- Pause / fin de partie ---------- */
+.pause-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.pause-row .btn-side{width:100%;padding:0 12px}
+.over-actions{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+
+@media (max-width:640px){
+  .action-dock{padding:12px;border-radius:18px}
+  .dock-btns{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .dock-btns .btn-go{grid-column:1 / -1;order:-1;width:100%;min-width:0}
+  .btn-side{min-height:52px;padding:0 14px;font-size:14px}
+  .over-actions{display:grid;grid-template-columns:1fr 1fr;width:min(460px,100%)}
+  .over-actions .btn-go{grid-column:1 / -1;order:-1;width:100%;min-width:0}
+  .route-card{min-height:64px}
+}
+
+/* Barre de defilement discrete (grille de voitures, listes) */
+.car-grid,.overlay,#fullBoard,.music-list{scrollbar-width:thin;scrollbar-color:rgba(159,180,199,.35) transparent}
+.car-grid::-webkit-scrollbar,.overlay::-webkit-scrollbar,#fullBoard::-webkit-scrollbar{width:8px}
+.car-grid::-webkit-scrollbar-thumb,.overlay::-webkit-scrollbar-thumb,#fullBoard::-webkit-scrollbar-thumb{background:rgba(159,180,199,.3);border-radius:8px}
+.car-grid::-webkit-scrollbar-track,.overlay::-webkit-scrollbar-track,#fullBoard::-webkit-scrollbar-track{background:transparent}

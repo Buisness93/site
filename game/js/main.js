@@ -58,6 +58,35 @@
   }
   let _lastScore = 0, _lastSpd = -1, _cdTimer = 0;
 
+  // Clic "satisfaisant" : petit son synthetise (aucun fichier a charger), onde
+  // lumineuse depuis le point de contact et micro-vibration sur mobile.
+  let _actx = null;
+  function clickSound(deep){
+    try {
+      _actx = _actx || new (window.AudioContext || window.webkitAudioContext)();
+      const t = _actx.currentTime, o = _actx.createOscillator(), g = _actx.createGain();
+      o.type = deep ? 'triangle' : 'sine';
+      o.frequency.setValueAtTime(deep ? 420 : 1500, t);
+      o.frequency.exponentialRampToValueAtTime(deep ? 90 : 520, t + (deep ? 0.18 : 0.06));
+      g.gain.setValueAtTime(deep ? 0.12 : 0.05, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + (deep ? 0.22 : 0.08));
+      o.connect(g).connect(_actx.destination); o.start(t); o.stop(t + 0.25);
+    } catch(e){}
+  }
+  document.addEventListener('pointerdown', (e)=>{
+    const b = e.target.closest && e.target.closest('.btn-go,.btn-side,.route-card,.car-card:not([disabled]),.daily-card,.btn');
+    if(!b || b.disabled || b.closest('.bottombar')) return;
+    clickSound(b.classList.contains('btn-go'));
+    if(navigator.vibrate) try { navigator.vibrate(b.classList.contains('btn-go') ? 18 : 8); } catch(err){}
+    if(reducedMotion) return;
+    const r = b.getBoundingClientRect(), size = Math.max(r.width, r.height) * 2.4;
+    const rip = document.createElement('span');
+    rip.className = 'ui-ripple';
+    rip.style.cssText = 'width:' + size + 'px;height:' + size + 'px;left:' + (e.clientX - r.left - size/2) + 'px;top:' + (e.clientY - r.top - size/2) + 'px';
+    b.appendChild(rip);
+    setTimeout(()=>rip.remove(), 700);
+  });
+
   const state = { username:null, selectedCar: DG.defaultCarId, selectedRoute: DG.defaultRouteId, screen:'loading', personalBest:0 };
 
   async function refreshPersonalBest(){
@@ -160,11 +189,34 @@
 
   function tierColor(tier){ return (DG.TIERS[tier] && DG.TIERS[tier].color) || '#9fb4c7'; }
 
+  const ROUTE_UI = {
+    'autoroute-nuit': { ico:'🌙', grad:'linear-gradient(135deg,#1b2a4a,#070a14)', glow:'#8fb0ff' },
+    'cote-sunset':    { ico:'🌅', grad:'linear-gradient(135deg,#ff9a5a,#3a2350)', glow:'#ffb27a' },
+    'centre-neon':    { ico:'🌆', grad:'linear-gradient(135deg,#b43dff,#140828)', glow:'#ff5ad1' },
+  };
+  const DIFF_LVL = { 'Détente':1, 'Standard':2, 'Intense':3 };
   function renderRouteTabs(){
-    els.routeTabs.innerHTML = DG.ROUTES.map(r=>
-      '<button class="tab' + (r.id===state.selectedRoute?' active':'') + '" data-route="' + r.id + '">' + r.name + ' <span style="opacity:.6">· ' + r.difficulty + '</span></button>'
-    ).join('');
-    els.routeTabs.querySelectorAll('[data-route]').forEach(b=>b.addEventListener('click', ()=>{ state.selectedRoute = b.getAttribute('data-route'); renderRouteTabs(); }));
+    els.routeTabs.innerHTML = DG.ROUTES.map(r=>{
+      const ui = ROUTE_UI[r.id] || { ico:'🛣', grad:'linear-gradient(135deg,#2a3140,#0a0c10)', glow:'#9fb4c7' };
+      const lvl = DIFF_LVL[r.difficulty] || 2;
+      const dots = [1,2,3].map(i=>'<i class="' + (i<=lvl?'on':'') + '"></i>').join('');
+      return '<button class="route-card' + (r.id===state.selectedRoute?' active':'') + '" data-route="' + r.id + '" style="--rg:' + ui.grad + ';--rc:' + ui.glow + '">' +
+        '<span class="route-ico">' + ui.ico + '</span>' +
+        '<span class="route-body"><span class="route-name">' + r.name + '</span><span class="route-diff"><span class="dots">' + dots + '</span>' + r.difficulty + '</span></span>' +
+        '<span class="route-check">✓</span>' +
+      '</button>';
+    }).join('');
+    els.routeTabs.querySelectorAll('[data-route]').forEach(b=>b.addEventListener('click', ()=>{
+      state.selectedRoute = b.getAttribute('data-route');
+      renderRouteTabs(); updateDock();
+      if(engine && !engine.playing) engine.setRoute(state.selectedRoute);
+    }));
+  }
+  function updateDock(){
+    const el = document.getElementById('dockSel');
+    if(!el) return;
+    const car = DG.carById(state.selectedCar), route = DG.routeById(state.selectedRoute);
+    el.innerHTML = '<b>' + (car ? car.brand + ' ' + car.name : '—') + '</b><span>' + (route ? route.name : '') + '</span>';
   }
 
   function statBar(val, color){ return '<div class="stat-bar"><i style="width:' + (val*10) + '%;color:' + color + '"></i></div>'; }
@@ -195,6 +247,7 @@
     els.carGrid.querySelectorAll('[data-car]:not([disabled])').forEach(b=>b.addEventListener('click', ()=>{ state.selectedCar = b.getAttribute('data-car'); renderCarGrid(); els.btnStart.disabled = false; els.btnStart.classList.add('ready'); updateDailyCta(); }));
     els.btnStart.disabled = unlocked.indexOf(state.selectedCar) === -1;
     els.btnStart.classList.toggle('ready', !els.btnStart.disabled);
+    updateDock();
   }
   function hexAlpha(hex, a){
     const n = parseInt(hex.replace('#',''),16);
@@ -416,6 +469,8 @@
     });
     engine.init();
     engine.setRoute(state.selectedRoute);
+    const idle = window.requestIdleCallback || ((f)=>setTimeout(f, 1200));
+    idle(()=>DG.preloadRouteAssets && DG.preloadRouteAssets());
 
     // Compte obligatoire pour jouer (pas de mode invite) : les scores/parties
     // doivent tous etre rattaches a un vrai compte, notamment pour que la

@@ -6,9 +6,13 @@
 <title>Deylo Garage — Course de réflexes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://uzzlhtaeoybonwljjgge.supabase.co" crossorigin>
+<link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js">
 <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Saira:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/game.css">
 <link rel="stylesheet" href="css/game-fx.css">
+<link rel="stylesheet" href="css/game-menu.css">
 </head>
 <body>
 <div id="stage">
@@ -129,15 +133,22 @@
       </div>
 
       <div>
-        <div style="font-size:10px;letter-spacing:.2em;color:#8a8f98;text-transform:uppercase;margin-bottom:8px">Route</div>
-        <div class="tabs" id="routeTabs"></div>
+        <div class="section-label">Choisissez la route</div>
+        <div class="route-picker" id="routeTabs"></div>
       </div>
 
       <div class="car-grid" id="carGrid"></div>
 
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">
-        <button class="btn btn-ghost" id="btnStart" disabled>▶ Démarrer</button>
-        <button class="btn btn-ghost" id="btnBoardOpen">🏆 Classement — Top 25 →</button>
+      <div class="action-dock">
+        <div class="dock-info">
+          <div class="dock-label">Prêt à partir</div>
+          <div class="dock-sel" id="dockSel">—</div>
+        </div>
+        <div class="dock-btns">
+          <button class="btn-side" id="btnBoardOpen"><span class="ico">🏆</span><span class="lbl">Classement</span></button>
+          <a class="btn-side" href="../garage.html"><span class="ico">🔧</span><span class="lbl">Garage</span></a>
+          <button class="btn-go" id="btnStart" disabled><span class="go-glow"></span><span class="go-txt">Démarrer</span><span class="go-arrow">▶</span></button>
+        </div>
       </div>
     </div>
   </div>
@@ -145,9 +156,11 @@
   <div class="overlay hidden" id="ovPaused">
     <div class="panel" style="text-align:center">
       <div style="font-family:'Saira Condensed';font-weight:900;font-size:34px;text-transform:uppercase;margin-bottom:18px">⏸ Pause</div>
-      <button class="btn btn-primary btn-block" id="btnResume">▶ Reprendre</button>
-      <button class="btn btn-ghost btn-block" id="btnRestartFromPause" style="margin-top:10px">↻ Recommencer</button>
-      <button class="btn btn-ghost btn-block" id="btnQuitFromPause" style="margin-top:10px">✕ Quitter la partie</button>
+      <button class="btn-go btn-go-block" id="btnResume"><span class="go-glow"></span><span class="go-txt">Reprendre</span><span class="go-arrow">▶</span></button>
+      <div class="pause-row">
+        <button class="btn-side" id="btnRestartFromPause"><span class="ico">↻</span><span class="lbl">Recommencer</span></button>
+        <button class="btn-side" id="btnQuitFromPause"><span class="ico">✕</span><span class="lbl">Quitter</span></button>
+      </div>
     </div>
   </div>
 
@@ -177,10 +190,10 @@
       </div>
     </div>
 
-    <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
-      <button class="btn btn-primary" id="btnRetry">↻ Rejouer</button>
-      <button class="btn btn-ghost" id="btnChangeCar">Changer de voiture</button>
-      <button class="btn btn-ghost" id="btnWatchAd">📺 Pub +crédits</button>
+    <div class="over-actions">
+      <button class="btn-side" id="btnChangeCar"><span class="ico">🚗</span><span class="lbl">Changer de voiture</span></button>
+      <button class="btn-go" id="btnRetry"><span class="go-glow"></span><span class="go-txt">Rejouer</span><span class="go-arrow">↻</span></button>
+      <button class="btn-side" id="btnWatchAd"><span class="ico">📺</span><span class="lbl">Pub +crédits</span></button>
     </div>
   </div>
 

@@ -536,6 +536,12 @@
     }
   ];
 
+  // Precharge en arriere-plan tous les modeles du decor (mis en cache par
+  // DG.Loader) : quand le joueur choisit une route, tout est deja la.
+  DG.preloadRouteAssets = function(){
+    [loadPalmModel, loadUmbrellaModel, loadGasStationModel, loadLampModel, loadCyberBuilding, loadSingaporeBuilding, loadAsianSkyline].forEach(fn=>fn());
+  };
+
   const byId = {}; ROUTES.forEach(r=>byId[r.id]=r);
   DG.ROUTES = ROUTES;
   DG.routeById = (id)=>byId[id] || ROUTES[0];
