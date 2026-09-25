@@ -101,26 +101,140 @@ h1,h2,h3{font-family:'Saira Condensed',sans-serif;text-transform:uppercase;margi
 .tab{padding:9px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.04);color:#cfd6df;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:700}
 .tab.active{background:rgba(159,180,199,.22);border-color:#9fb4c7;color:#fff}
 
-.daily-card{display:flex;align-items:center;gap:14px;background:linear-gradient(90deg,rgba(255,204,0,.14),rgba(255,149,0,.06));border:1px solid rgba(255,204,0,.35);border-radius:16px;padding:14px 18px;cursor:pointer;transition:border-color .15s,background .15s}
-.daily-card:hover{border-color:rgba(255,204,0,.6);background:linear-gradient(90deg,rgba(255,204,0,.2),rgba(255,149,0,.09))}
-.daily-card:focus-visible{outline:2px solid #ffcc00;outline-offset:2px}
-.daily-icon{font-size:26px;line-height:1}
+/* Cartes "Defi du jour" (or, objectif de skill) et "Tirage du jour" (violet, chance).
+   Meme gabarit : bandeau (etiquette + compte a rebours), bloc principal, pied avec CTA. */
+.daily-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.daily-card{--dc:#ffcc00;--dc-2:#ff9500;--dc-rgb:255,204,0;position:relative;display:flex;flex-direction:column;gap:12px;padding:14px 16px 14px;border-radius:18px;cursor:pointer;isolation:isolate;
+  background:radial-gradient(120% 140% at 0% 0%,rgba(var(--dc-rgb),.2),transparent 55%),linear-gradient(180deg,#15161f,#0b0c12);
+  border:1px solid rgba(var(--dc-rgb),.32);box-shadow:0 24px 44px -30px rgba(var(--dc-rgb),.55);transition:transform .25s cubic-bezier(.2,.8,.2,1),border-color .2s,box-shadow .25s}
+.daily-card::before{content:'';position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.07) 50%,transparent 65%);background-size:250% 100%;animation:dcSheen 5s ease-in-out infinite}
+.daily-card:hover{transform:translateY(-2px);border-color:rgba(var(--dc-rgb),.6);box-shadow:0 28px 50px -28px rgba(var(--dc-rgb),.75)}
+.daily-card:focus-visible{outline:2px solid var(--dc);outline-offset:2px}
+.daily-card.done{cursor:default}
+.daily-card.done:hover{transform:none;border-color:rgba(var(--dc-rgb),.32)}
+.daily-card.done::before{animation:none;opacity:0}
+@keyframes dcSheen{0%,60%{background-position:120% 0}100%{background-position:-120% 0}}
+
+.dc-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dc-tag{font-family:'Saira Condensed';font-weight:900;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--dc)}
+.dc-chips{display:flex;gap:6px;align-items:center}
+.dc-chip{font-size:10.5px;font-weight:700;letter-spacing:.06em;padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#cfd6df;white-space:nowrap;font-variant-numeric:tabular-nums}
+.dc-chip.streak{color:#ffb35c;border-color:rgba(255,140,40,.4);background:rgba(255,120,20,.12)}
+.dc-chip.streak.hidden{display:none}
+
+.dc-main{display:flex;align-items:center;gap:14px}
 .daily-body{flex:1;min-width:0}
-.daily-title{font-family:'Saira Condensed';font-weight:900;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#ffcc00}
-.daily-desc{font-size:13px;color:#cfd6df;margin-top:2px}
-.daily-cta{flex:0 0 auto;font-family:'Saira Condensed';font-weight:900;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#1a1400;background:#ffcc00;padding:9px 16px;border-radius:999px;white-space:nowrap;box-shadow:0 8px 18px -8px rgba(255,204,0,.7)}
-.daily-card.done .daily-cta{background:rgba(255,255,255,.12);color:#cfd6df;box-shadow:none}
+.dc-name{font-family:'Saira Condensed';font-weight:900;font-size:22px;line-height:1.05;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dc-brand{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#8a8f98}
+.daily-desc{font-size:12.5px;color:#cfd6df;margin-top:3px}
+.dc-meta{display:flex;align-items:center;gap:10px;margin-top:6px;font-size:11px;color:#8a8f98}
+.dc-stars{letter-spacing:2px;color:var(--dc)}
+.dc-stars i{font-style:normal;color:rgba(255,255,255,.18)}
+
+/* Anneau de progression (score du jour avec la voiture imposee / objectif) */
+.dc-ring{--p:0;flex:0 0 auto;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;position:relative;
+  background:conic-gradient(var(--dc) calc(var(--p)*1%),rgba(255,255,255,.08) 0);transition:--p .8s}
+.dc-ring::after{content:'';position:absolute;inset:5px;border-radius:50%;background:#0f1017}
+.dc-ring span{position:relative;z-index:1;font-family:'Saira Condensed';font-weight:900;font-size:16px;color:#fff;font-variant-numeric:tabular-nums}
+.daily-card.done .dc-ring{background:conic-gradient(#2fea6a 100%,transparent 0)}
+
+.dc-bar{height:5px;border-radius:9px;background:rgba(255,255,255,.07);overflow:hidden}
+.dc-bar i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,var(--dc-2),var(--dc));box-shadow:0 0 12px rgba(var(--dc-rgb),.7);transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.dc-foot{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.dc-note{font-size:11.5px;color:#8a8f98;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dc-note b{color:#e8ecf1;font-weight:700}
+.daily-cta{flex:0 0 auto;font-family:'Saira Condensed';font-weight:900;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:#1a1400;background:linear-gradient(180deg,#fff2a8 -60%,var(--dc));padding:9px 16px;border-radius:999px;white-space:nowrap;box-shadow:0 8px 18px -8px rgba(var(--dc-rgb),.8)}
+.daily-card.done .daily-cta{background:rgba(47,234,106,.14);color:#7dffab;box-shadow:none}
 .daily-card.selected .daily-cta{background:#2fea6a;color:#0a1408}
+.daily-card.selected{border-color:rgba(47,234,106,.6)}
 .daily-card.locked .daily-cta{background:rgba(255,90,90,.16);color:#ff9090;box-shadow:none}
 
-/* Tirage du jour : meme forme que le defi du jour mais accent violet, pour le
-   distinguer au premier coup d'oeil (defi = objectif skill ; tirage = chance). */
-.daily-card.draw-card{background:linear-gradient(90deg,rgba(155,92,255,.16),rgba(90,42,180,.06));border-color:rgba(155,92,255,.35)}
-.daily-card.draw-card:hover{border-color:rgba(155,92,255,.6);background:linear-gradient(90deg,rgba(155,92,255,.22),rgba(90,42,180,.1))}
-.daily-card.draw-card .daily-title{color:#b48cff}
-.daily-card.draw-card .daily-cta{background:#9b5cff;color:#160a2e;box-shadow:0 8px 18px -8px rgba(155,92,255,.7)}
-.daily-card.draw-card.done .daily-cta{background:rgba(255,255,255,.12);color:#cfd6df;box-shadow:none}
-.daily-card.draw-card.jackpot{animation:neonPulse 1.4s ease-in-out infinite}
+/* Tirage : caisse flottante + apercu des lots par rarete */
+.daily-card.draw-card{--dc:#b48cff;--dc-2:#7a3dff;--dc-rgb:155,92,255}
+.draw-card .daily-cta{color:#12072a;background:linear-gradient(180deg,#e6d8ff -60%,#9b5cff)}
+.draw-crate{flex:0 0 auto;width:64px;height:64px;border-radius:16px;display:grid;place-items:center;font-size:32px;position:relative;
+  background:radial-gradient(circle at 50% 40%,rgba(180,140,255,.45),rgba(90,42,180,.15) 70%);border:1px solid rgba(180,140,255,.4);animation:crateFloat 3s ease-in-out infinite}
+.draw-crate::after{content:'';position:absolute;inset:-6px;border-radius:20px;border:1px dashed rgba(180,140,255,.35);animation:dgSpin 14s linear infinite}
+.draw-card.done .draw-crate{animation:none;filter:grayscale(.6) brightness(.8)}
+.draw-card.jackpot{animation:neonPulse 1.4s ease-in-out infinite}
+@keyframes crateFloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-4px) rotate(3deg)}}
+@keyframes dgSpin{to{transform:rotate(360deg)}}
+.draw-odds{display:flex;gap:4px;margin-top:7px;flex-wrap:wrap}
+.draw-odds span{font-size:10px;font-weight:800;letter-spacing:.04em;padding:3px 7px;border-radius:6px;color:var(--r);background:color-mix(in srgb,var(--r) 14%,transparent);border:1px solid color-mix(in srgb,var(--r) 40%,transparent)}
+
+/* Overlay du tirage : ouverture de caisse facon "case opening" — une bande de lots
+   defile et ralentit sous le curseur central. Le lot est deja tire cote serveur
+   (claim_daily_draw) : la bande ne fait que mettre en scene ce resultat. */
+#ovWheel{background:radial-gradient(circle at 50% 40%,rgba(40,22,80,.92),rgba(4,4,9,.97) 70%);backdrop-filter:blur(8px)}
+.crate-panel{width:min(760px,96vw);display:flex;flex-direction:column;align-items:center;gap:18px}
+.crate-kicker{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:#b48cff}
+.crate-title{font-family:'Saira Condensed';font-weight:900;font-size:clamp(28px,5vw,44px);text-transform:uppercase;line-height:.95;margin-top:4px}
+.reel{--item:118px;--gap:10px;position:relative;width:100%;height:150px;overflow:hidden;border-radius:18px;border:1px solid rgba(180,140,255,.3);
+  background:linear-gradient(180deg,#12101f,#0a0912);box-shadow:inset 0 0 40px rgba(0,0,0,.7);
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)}
+.reel-track{position:absolute;top:16px;left:0;display:flex;gap:var(--gap);will-change:transform}
+.reel-item{--r:#8fa3b8;flex:0 0 var(--item);height:118px;box-sizing:border-box;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;
+  background:radial-gradient(90% 70% at 50% 100%,color-mix(in srgb,var(--r) 38%,transparent),transparent 70%),linear-gradient(180deg,#1a1826,#0f0e18);
+  border:1px solid color-mix(in srgb,var(--r) 45%,transparent);border-bottom:3px solid var(--r);transition:transform .4s,box-shadow .4s,filter .4s}
+.reel-item .ri-ico{font-size:28px;line-height:1}
+.reel-item .ri-val{font-family:'Saira Condensed';font-weight:900;font-size:19px;line-height:1;color:#fff}
+.reel-item .ri-lbl{font-size:9.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--r)}
+.reel.settled .reel-item:not(.win){filter:brightness(.45) saturate(.6)}
+.reel-item.win{transform:scale(1.08);box-shadow:0 0 0 2px var(--r),0 0 40px color-mix(in srgb,var(--r) 70%,transparent)}
+.reel-marker{position:absolute;top:0;bottom:0;left:50%;width:3px;margin-left:-1.5px;z-index:2;background:linear-gradient(180deg,#ffcc00,#fff,#ffcc00);box-shadow:0 0 14px #ffcc00}
+.reel-marker::before,.reel-marker::after{content:'';position:absolute;left:50%;transform:translateX(-50%);border:9px solid transparent}
+.reel-marker::before{top:0;border-top-color:#ffcc00}
+.reel-marker::after{bottom:0;border-bottom-color:#ffcc00}
+.reel-odds{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.reel-odds span{--r:#8fa3b8;display:inline-flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.06em;color:#cfd6df;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}
+.reel-odds span::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--r);box-shadow:0 0 8px var(--r)}
+.reel-odds b{color:#fff;font-variant-numeric:tabular-nums}
+.reel-result{min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.reel-result .rr-lbl{font-size:11px;font-weight:800;letter-spacing:.24em;text-transform:uppercase;color:var(--r,#b48cff)}
+.reel-result .rr-val{font-family:'Saira Condensed';font-weight:900;font-size:clamp(26px,4.6vw,36px);line-height:1;color:#fff;text-shadow:0 0 24px var(--r,#b48cff)}
+.reel-result.pop{animation:rrPop .6s cubic-bezier(.2,1.6,.4,1)}
+@keyframes rrPop{0%{transform:scale(.6);opacity:0}100%{transform:none;opacity:1}}
+#ovWheel.burst::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;background:radial-gradient(circle at 50% 42%,var(--burst,#b48cff),transparent 60%);animation:overFlashBurst 1.2s cubic-bezier(.15,.7,.3,1) forwards}
+@media (max-width:560px){ .reel{--item:96px;height:128px} .reel-item{height:96px} .reel-item .ri-ico{font-size:22px} .reel-item .ri-val{font-size:16px} .dc-name{font-size:19px} }
+/* --- Effets neon : bordure lumineuse qui tourne autour des cartes, textes
+   "enseigne" qui gresillent, halos sur l'anneau, la caisse et la bande de lots. --- */
+@property --dc-ang{syntax:'<angle>';inherits:false;initial-value:0deg}
+.daily-card::after{content:'';position:absolute;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;z-index:1;
+  background:conic-gradient(from var(--dc-ang),transparent 0 55%,rgba(var(--dc-rgb),.9) 72%,#fff 78%,rgba(var(--dc-rgb),.9) 84%,transparent 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
+  filter:drop-shadow(0 0 5px rgba(var(--dc-rgb),.9));animation:dcSpin 4.5s linear infinite}
+.daily-card{box-shadow:0 0 0 1px rgba(var(--dc-rgb),.08),0 0 26px -8px rgba(var(--dc-rgb),.55),inset 0 0 30px -18px rgba(var(--dc-rgb),.6),0 24px 44px -30px rgba(var(--dc-rgb),.55)}
+.daily-card:hover{box-shadow:0 0 0 1px rgba(var(--dc-rgb),.2),0 0 38px -6px rgba(var(--dc-rgb),.8),inset 0 0 36px -16px rgba(var(--dc-rgb),.75),0 28px 50px -28px rgba(var(--dc-rgb),.75)}
+.draw-card::after{animation-delay:-2.2s}
+.daily-card.done::after{animation:none;opacity:.25}
+@keyframes dcSpin{to{--dc-ang:360deg}}
+.dc-tag{text-shadow:0 0 6px rgba(var(--dc-rgb),.9),0 0 16px rgba(var(--dc-rgb),.6);animation:neonFlicker 7s infinite}
+.draw-card .dc-tag{animation-delay:-3.1s}
+.dc-name{text-shadow:0 0 14px rgba(var(--dc-rgb),.45)}
+.dc-ring{filter:drop-shadow(0 0 7px rgba(var(--dc-rgb),.75))}
+.dc-ring span{text-shadow:0 0 10px rgba(var(--dc-rgb),.9)}
+.dc-bar i{box-shadow:0 0 8px rgba(var(--dc-rgb),.9),0 0 18px rgba(var(--dc-rgb),.55)}
+.dc-chip.streak{text-shadow:0 0 8px rgba(255,140,40,.9);box-shadow:0 0 12px -2px rgba(255,120,20,.6)}
+.daily-card:not(.done):not(.locked) .daily-cta{animation:ctaGlow 2.2s ease-in-out infinite}
+@keyframes ctaGlow{0%,100%{box-shadow:0 0 10px -2px rgba(var(--dc-rgb),.7),0 8px 18px -8px rgba(var(--dc-rgb),.8)}50%{box-shadow:0 0 22px 2px rgba(var(--dc-rgb),.9),0 8px 24px -6px rgba(var(--dc-rgb),.9)}}
+.draw-crate{box-shadow:0 0 18px -2px rgba(180,140,255,.8),inset 0 0 14px rgba(180,140,255,.45)}
+.draw-crate::after{border-color:rgba(200,170,255,.7);box-shadow:0 0 10px rgba(180,140,255,.6)}
+.draw-odds span{box-shadow:0 0 8px -2px var(--r);text-shadow:0 0 6px var(--r)}
+/* Enseigne qui gresille : quelques micro-coupures irregulieres */
+@keyframes neonFlicker{0%,18%,22%,25%,53%,57%,100%{opacity:1}20%,24%,55%{opacity:.35}}
+
+/* Overlay de la caisse en neon */
+.crate-kicker{text-shadow:0 0 8px rgba(180,140,255,.9)}
+.crate-title{color:#fff;text-shadow:0 0 6px #fff,0 0 14px #b48cff,0 0 32px #9b5cff,0 0 60px #7a3dff;animation:neonFlicker 6s infinite}
+.reel{border-color:rgba(180,140,255,.7);box-shadow:0 0 0 1px rgba(180,140,255,.25),0 0 30px -4px rgba(155,92,255,.7),inset 0 0 40px rgba(0,0,0,.7),inset 0 0 22px -6px rgba(155,92,255,.8)}
+.reel-item{box-shadow:0 6px 16px -8px var(--r),inset 0 -10px 18px -12px var(--r)}
+.reel-item .ri-lbl{text-shadow:0 0 8px var(--r)}
+.reel-marker{box-shadow:0 0 8px #ffcc00,0 0 20px #ffcc00,0 0 40px rgba(255,204,0,.6);animation:markerHum 1.6s ease-in-out infinite}
+@keyframes markerHum{0%,100%{opacity:1}50%{opacity:.75}}
+.reel-item.win{animation:winNeon 1.2s ease-in-out infinite}
+@keyframes winNeon{0%,100%{box-shadow:0 0 0 2px var(--r),0 0 30px color-mix(in srgb,var(--r) 60%,transparent)}50%{box-shadow:0 0 0 2px var(--r),0 0 60px 6px color-mix(in srgb,var(--r) 85%,transparent)}}
+.reel-odds span{box-shadow:0 0 12px -6px var(--r)}
+@media (prefers-reduced-motion:reduce){ .daily-card::before,.daily-card::after,.dc-tag,.daily-cta,.draw-crate,.draw-crate::after,.crate-title,.reel-marker,.reel-item.win{animation:none !important} }
 
 /* Flash colore a l'ecran de fin de partie : sans ca l'ecran est tout noir/plat,
    peu excitant apres une course. Une explosion de couleur (teinte de la voiture
@@ -135,40 +249,6 @@ h1,h2,h3{font-family:'Saira Condensed',sans-serif;text-transform:uppercase;margi
   35%{opacity:.55; transform:scale(1.15)}
   100%{opacity:0; transform:scale(1.7)}
 }
-
-/* Roue du tirage du jour : demandee a la place d'un simple bouton "resultat
-   instantane" — 5 secteurs de taille EGALE a l'ecran (la vraie probabilite est
-   deja imposee cote serveur/SQL ; la roue n'est que la mise en scene visuelle
-   du resultat deja tire, pas une representation proportionnelle des chances). */
-.wheel-wrap{position:relative;width:260px;height:260px;margin:6px auto}
-.wheel{
-  width:100%;height:100%;border-radius:50%;position:relative;
-  background:conic-gradient(from 0deg,
-    #5b6b7a 0deg 72deg,
-    #3d6fd9 72deg 144deg,
-    #2fa6a0 144deg 216deg,
-    #e0a72f 216deg 288deg,
-    #b43dff 288deg 360deg);
-  border:4px solid rgba(var(--line-rgb,255,255,255),.7);
-  box-shadow:0 0 0 2px rgba(0,0,0,.4), 0 20px 50px -18px rgba(0,0,0,.8);
-  transition:transform 3.6s cubic-bezier(.13,.79,.15,1);
-}
-.wheel-seg{
-  position:absolute;top:50%;left:50%;width:0;height:0;
-  transform:rotate(var(--a)) translate(0,-92px) rotate(calc(-1 * var(--a)));
-  transform-origin:0 0;
-  display:flex;align-items:center;justify-content:center;text-align:center;
-  font-family:'Saira Condensed';font-weight:800;font-size:12.5px;line-height:1.15;
-  color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);
-  width:64px;margin-left:-32px;margin-top:-14px;
-}
-.wheel-seg-jackpot{font-size:13px;animation:neonPulse 1.6s ease-in-out infinite}
-.wheel-pointer{
-  position:absolute;top:-6px;left:50%;transform:translateX(-50%);
-  width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;
-  border-top:22px solid #ffcc00;z-index:2;filter:drop-shadow(0 3px 4px rgba(0,0,0,.5));
-}
-.wheel.spinning{filter:brightness(1.08)}
 
 /* Ecran de fin de partie : voiture au centre, score en haut, classement/defi en cotes */
 .over-stats{display:flex;gap:clamp(24px,6vw,52px);flex-wrap:wrap;justify-content:center}
@@ -186,8 +266,6 @@ h1,h2,h3{font-family:'Saira Condensed',sans-serif;text-transform:uppercase;margi
 .over-panel .leaderboard-row{padding:7px 10px;gap:8px}
 .over-panel .leaderboard-row.top3{padding:9px 12px;gap:8px}
 @media (max-width:760px){ .over-panel{width:100%;flex:1 1 100%} #overCarSpin{order:-1} }
-.daily-card.done{cursor:default}
-.daily-card.done:hover{border-color:rgba(255,204,0,.35);background:linear-gradient(90deg,rgba(255,204,0,.14),rgba(255,149,0,.06))}
 
 .car-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;max-height:46vh;overflow:auto;padding-right:4px}
 .car-card{position:relative;text-align:left;background:linear-gradient(180deg,#14171e,#0a0c10);border:1px solid rgba(255,255,255,.14);border-radius:18px;color:#fff;padding:0}

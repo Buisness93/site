@@ -180,12 +180,12 @@
     el.appendChild(renderer.domElement);
     const scene = new T.Scene();
     scene.environment = this.makeEnvTex(renderer);
-    scene.add(new T.AmbientLight(0xffffff, 0.22));
+    const amb = new T.AmbientLight(0xffffff, 0.22); scene.add(amb);
     const key = new T.DirectionalLight(0xffffff, 1.35); key.position.set(6,10,7); scene.add(key);
     const fill = new T.DirectionalLight(0xbcd0ff, 0.5); fill.position.set(-6,4,-5); scene.add(fill);
     const rim = new T.PointLight(opts.glow != null ? opts.glow : 0x88aaff, opts.glowI != null ? opts.glowI : 2.4, 42);
     rim.position.set(-4,3,-4); scene.add(rim);
-    const entry = { renderer, scene, camera:null, el, active:false, update:null, alwaysOn:false, rim };
+    const entry = { renderer, scene, camera:null, el, active:false, update:null, alwaysOn:false, rim, key, fill, amb };
     entry.camera = new T.PerspectiveCamera(45, w/h, 0.1, 400);
     this.scenes.push(entry);
     return entry;

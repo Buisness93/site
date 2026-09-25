@@ -10,8 +10,10 @@
     btnRetry:$('btnRetry'), btnChangeCar:$('btnChangeCar'), btnWatchAd:$('btnWatchAd'),
     fullBoard:$('fullBoard'), btnBoardClose:$('btnBoardClose'),
     dailyCard:$('dailyCard'), dailyDesc:$('dailyDesc'), dailyCta:$('dailyCta'),
-    drawCard:$('drawCard'), drawDesc:$('drawDesc'), drawCta:$('drawCta'),
-    ovWheel:$('ovWheel'), wheelEl:$('wheelEl'), wheelResult:$('wheelResult'), btnSpinWheel:$('btnSpinWheel'), btnCloseWheel:$('btnCloseWheel'),
+    dailyBrand:$('dailyBrand'), dailyCarName:$('dailyCarName'), dailyStars:$('dailyStars'), dailyReward:$('dailyReward'), dailyRing:$('dailyRing'), dailyPct:$('dailyPct'),
+    dailyBar:$('dailyBar'), dailyNote:$('dailyNote'), dailyStreak:$('dailyStreak'), dailyTimer:$('dailyTimer'),
+    drawCard:$('drawCard'), drawDesc:$('drawDesc'), drawCta:$('drawCta'), drawNote:$('drawNote'), drawTimer:$('drawTimer'),
+    ovWheel:$('ovWheel'), wheelEl:$('wheelEl'), reelTrack:$('reelTrack'), wheelResult:$('wheelResult'), btnSpinWheel:$('btnSpinWheel'), btnCloseWheel:$('btnCloseWheel'),
     overDailyCard:$('overDailyCard'), overDailyDesc:$('overDailyDesc'), btnClaimDaily:$('btnClaimDaily'),
     btnLeft:$('btnLeft'), btnRight:$('btnRight'), btnBoost:$('btnBoost'), btnCam:$('btnCam'), btnPause:$('btnPause'), btnFullscreen:$('btnFullscreen'), btnMusic:$('btnMusic'), bgAudio:$('bgAudio'),
     musicPanel:$('musicPanel'), musicTrackName:$('musicTrackName'), btnMusicPrev:$('btnMusicPrev'), btnMusicToggle:$('btnMusicToggle'), btnMusicNext:$('btnMusicNext'), musicVolume:$('musicVolume'), musicList:$('musicList'),
@@ -59,20 +61,61 @@
   let _lastScore = 0, _lastSpd = -1, _cdTimer = 0;
   const _hud = {};
 
-  // Clic "satisfaisant" : petit son synthetise (aucun fichier a charger), onde
-  // lumineuse depuis le point de contact et micro-vibration sur mobile.
-  let _actx = null;
-  function clickSound(deep){
+  // Sons d'interface synthetises (aucun fichier a charger). Tout passe par une
+  // chaine commune : filtre passe-bas (retire le cote "numerique" aigu), petite
+  // reverb generee (donne de la rondeur). Chaque note a une attaque de quelques
+  // ms : sans ca, le demarrage brutal fait "clac".
+  let _actx = null, _sfxIn = null;
+  function sfxBus(){
+    if(_sfxIn) return _sfxIn;
+    const ac = _actx = _actx || new (window.AudioContext || window.webkitAudioContext)();
+    const master = ac.createGain(); master.gain.value = 0.7;
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200; lp.Q.value = 0.4;
+    const verb = ac.createConvolver(), wet = ac.createGain(); wet.gain.value = 0.22;
+    const len = Math.floor(ac.sampleRate * 1.1), ir = ac.createBuffer(2, len, ac.sampleRate);
+    for(let ch = 0; ch < 2; ch++){ const d = ir.getChannelData(ch); for(let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+    verb.buffer = ir;
+    _sfxIn = ac.createGain();
+    _sfxIn.connect(lp); lp.connect(master); lp.connect(verb); verb.connect(wet); wet.connect(master);
+    master.connect(ac.destination);
+    return _sfxIn;
+  }
+  // Une note : forme d'onde, frequence (avec glissando optionnel), enveloppe douce
+  function tone(o){
     try {
-      _actx = _actx || new (window.AudioContext || window.webkitAudioContext)();
-      const t = _actx.currentTime, o = _actx.createOscillator(), g = _actx.createGain();
-      o.type = deep ? 'triangle' : 'sine';
-      o.frequency.setValueAtTime(deep ? 420 : 1500, t);
-      o.frequency.exponentialRampToValueAtTime(deep ? 90 : 520, t + (deep ? 0.18 : 0.06));
-      g.gain.setValueAtTime(deep ? 0.12 : 0.05, t);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + (deep ? 0.22 : 0.08));
-      o.connect(g).connect(_actx.destination); o.start(t); o.stop(t + 0.25);
+      const bus = sfxBus(), ac = _actx;
+      if(ac.state === 'suspended') ac.resume();
+      const t = ac.currentTime + (o.delay || 0), osc = ac.createOscillator(), g = ac.createGain();
+      osc.type = o.type || 'sine';
+      osc.frequency.setValueAtTime(o.f, t);
+      if(o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t + (o.glide || o.dur * 0.6));
+      const atk = o.atk || 0.005;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(o.vol, t + atk);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
+      osc.connect(g).connect(bus); osc.start(t); osc.stop(t + o.dur + 0.05);
     } catch(e){}
+  }
+  // Clic : "pop" rond et bref ; bouton principal : petit accord qui s'epanouit
+  function clickSound(deep){
+    if(deep){
+      tone({ f:392, to:523, glide:0.08, dur:0.32, vol:0.08, type:'triangle', atk:0.008 });
+      tone({ f:659, dur:0.36, vol:0.04, delay:0.05, atk:0.01 });
+    } else {
+      tone({ f:880, to:620, glide:0.05, dur:0.09, vol:0.06 });
+      tone({ f:1760, dur:0.04, vol:0.012 });
+    }
+  }
+  // Carillon de gain : arpege majeur, plus long et plus aigu selon la rarete (0-4)
+  function chimeSound(level){
+    const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568];
+    const n = 2 + Math.min(4, level || 0);
+    for(let i = 0; i < n; i++){
+      const f = notes[i], d = i * 0.085;
+      tone({ f, dur:0.9, vol:0.06, delay:d, atk:0.006 });
+      tone({ f:f * 2, dur:0.5, vol:0.015, delay:d, atk:0.004 }); // harmonique "cloche"
+    }
+    tone({ f:notes[0] / 2, dur:1.1, vol:0.05, type:'triangle', delay:0, atk:0.02 });
   }
   document.addEventListener('pointerdown', (e)=>{
     const b = e.target.closest && e.target.closest('.btn-go,.btn-side,.route-card,.car-card:not([disabled]),.daily-card,.btn');
@@ -260,6 +303,33 @@
     els.pilotMoney.textContent = '🪙 ' + DG.Economy.money.toLocaleString('fr-FR');
   }
 
+  // Petites memoires locales du jour (confort d'affichage uniquement : les
+  // recompenses restent verifiees cote serveur). Tout est protege par try/catch
+  // car le stockage peut etre indisponible (navigation privee, etc.).
+  function readLocal(k){ try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch(e){ return null; } }
+  function writeLocal(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+  function dailyBestToday(){ const d = readLocal('dg_daily_best'); return (d && d.day === DG.dailyChallenge().days) ? d.score : 0; }
+  function recordDailyRun(result){
+    const dc = DG.dailyChallenge();
+    if(result.carId !== dc.carId || result.score <= dailyBestToday()) return;
+    writeLocal('dg_daily_best', { day:dc.days, score:result.score });
+  }
+  // Serie de jours consecutifs avec le defi reussi
+  function streakCount(){
+    const s = readLocal('dg_streak'), today = DG.dailyChallenge().days;
+    return (s && (s.last === today || s.last === today - 1)) ? s.count : 0;
+  }
+  function bumpStreak(){
+    const s = readLocal('dg_streak') || {}, today = DG.dailyChallenge().days;
+    if(s.last === today) return;
+    writeLocal('dg_streak', { last:today, count: s.last === today - 1 ? (s.count || 0) + 1 : 1 });
+  }
+  function untilTomorrow(){
+    const ms = (Math.floor(Date.now() / 86400000) + 1) * 86400000 - Date.now();
+    const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, sec = Math.floor(ms / 1000) % 60;
+    return [h, m, sec].map(n=>String(n).padStart(2, '0')).join(':');
+  }
+
   function updateDailyCta(){
     if(!els.dailyCard) return;
     const dc = DG.dailyChallenge();
@@ -267,15 +337,47 @@
     const claimed = !!state.dailyClaimedToday;
     const unlocked = DG.Economy.unlocked.indexOf(dc.carId) !== -1;
     const selected = state.selectedCar === dc.carId;
-    els.dailyDesc.textContent = 'Score ≥ ' + dc.target.toLocaleString('fr-FR') + ' avec la ' + car.name + (claimed ? ' — déjà réclamé aujourd\'hui ✓' : '');
+    const best = claimed ? Math.max(dailyBestToday(), dc.target) : dailyBestToday();
+    const pct = Math.min(100, Math.round(best / dc.target * 100));
+    const diff = 1 + (dc.days % 5);
+    els.dailyBrand.textContent = car.brand + ' · ' + (DG.TIERS[car.tier] ? DG.TIERS[car.tier].label : car.tier);
+    els.dailyCarName.textContent = car.name;
+    els.dailyDesc.textContent = 'Fais ≥ ' + dc.target.toLocaleString('fr-FR') + ' points avec cette voiture';
+    els.dailyStars.innerHTML = '★'.repeat(diff) + '<i>' + '★'.repeat(5 - diff) + '</i>';
+    els.dailyReward.textContent = '🪙 +' + dc.reward;
+    els.dailyRing.style.setProperty('--p', pct);
+    els.dailyPct.textContent = claimed ? '✓' : pct + '%';
+    els.dailyBar.style.width = pct + '%';
+    els.dailyNote.innerHTML = claimed ? 'Réussi — <b>+' + dc.reward + '</b> crédits récupérés'
+      : !unlocked ? 'Débloque la <b>' + car.name + '</b> au garage (' + car.price.toLocaleString('fr-FR') + ' 🪙)'
+      : best > 0 ? 'Ton meilleur aujourd\'hui : <b>' + best.toLocaleString('fr-FR') + '</b> / ' + dc.target.toLocaleString('fr-FR')
+      : 'Pas encore tenté aujourd\'hui';
+    const streak = streakCount();
+    els.dailyStreak.textContent = '🔥 ' + streak;
+    els.dailyStreak.classList.toggle('hidden', streak < 2);
     els.dailyCard.classList.toggle('done', claimed);
     els.dailyCard.classList.toggle('locked', !claimed && !unlocked);
     els.dailyCard.classList.toggle('selected', !claimed && unlocked && selected);
     if(claimed) els.dailyCta.textContent = '✓ Fait';
-    else if(!unlocked) els.dailyCta.textContent = '🔒 Débloquer';
+    else if(!unlocked) els.dailyCta.textContent = '🔒 Verrouillé';
     else if(selected) els.dailyCta.textContent = '✓ Choisi';
-    else els.dailyCta.textContent = '🎯 Défi · +' + dc.reward;
+    else els.dailyCta.textContent = '🎯 Relever';
+    tickDailyTimers();
   }
+
+  // Compte a rebours avant le prochain defi / tirage (changement de jour UTC,
+  // comme cote serveur). Si le jour change pendant qu'on est sur le menu, on
+  // recharge les deux cartes.
+  let _timerDay = Math.floor(Date.now() / 86400000);
+  function tickDailyTimers(){
+    if(!els.dailyTimer) return;
+    const day = Math.floor(Date.now() / 86400000);
+    if(day !== _timerDay){ _timerDay = day; renderDailyCard(); renderDrawCard(); return; }
+    const t = untilTomorrow();
+    els.dailyTimer.textContent = '⏱ ' + t;
+    els.drawTimer.textContent = els.drawCard.classList.contains('done') ? '⏱ ' + t : '● Disponible';
+  }
+  setInterval(()=>{ if(state.screen === 'choosing') tickDailyTimers(); }, 1000);
 
   function selectDailyChallenge(){
     const dc = DG.dailyChallenge();
@@ -293,24 +395,39 @@
   async function renderDailyCard(){
     if(!els.dailyCard) return;
     state.dailyClaimedToday = await DG.Economy.hasClaimedDailyChallenge();
+    if(state.dailyClaimedToday) bumpStreak();
     updateDailyCta();
   }
 
   // Tirage du jour : contrairement au defi (qui demande d'atteindre un score),
-  // c'est une action immediate au clic — des credits raisonnables la plupart du
-  // temps, et une chance infime (1%) de gagner une voiture rare directement.
+  // c'est une action immediate — des credits la plupart du temps, et une chance
+  // infime (1%) de gagner une voiture rare. Probabilites : claim_daily_draw() (SQL).
+  const LOOT = [
+    { credits:120,  rarity:'Commun',     color:'#8fa3b8', ico:'🪙', w:55 },
+    { credits:300,  rarity:'Rare',       color:'#3d8bff', ico:'💰', w:30 },
+    { credits:700,  rarity:'Épique',     color:'#b14dff', ico:'💎', w:10 },
+    { credits:1500, rarity:'Légendaire', color:'#ffb020', ico:'👑', w:4 },
+    { jackpot:true, rarity:'Jackpot',    color:'#ff3d6e', ico:'🏆', w:1 }
+  ];
   function updateDrawCta(claimed){
     if(!els.drawCard) return;
     els.drawCard.classList.toggle('done', claimed);
     if(!DG.Auth.isLoggedIn()){
-      els.drawCta.textContent = '🔒 Connecte-toi';
-      els.drawDesc.textContent = 'Connecte-toi pour tenter le tirage du jour.';
+      els.drawCta.textContent = '🔒 Connexion';
+      els.drawDesc.textContent = 'Connecte-toi pour ouvrir ta caisse du jour.';
+      els.drawNote.textContent = 'Un lot garanti chaque jour';
+      tickDailyTimers();
       return;
     }
-    els.drawCta.textContent = claimed ? '✓ Fait' : '🎰 Tenter';
+    els.drawCta.textContent = claimed ? '✓ Ouverte' : '🎁 Ouvrir';
     els.drawDesc.textContent = claimed
-      ? 'Déjà tenté aujourd\'hui — reviens demain ✓'
+      ? 'Reviens demain pour une nouvelle caisse.'
       : 'Crédits garantis, et une chance infime de gagner une voiture rare.';
+    const last = readLocal('dg_draw_last');
+    els.drawNote.innerHTML = claimed
+      ? (last && last.day === DG.dailyChallenge().days ? 'Lot du jour : <b>' + last.label + '</b>' : 'Caisse déjà ouverte aujourd\'hui')
+      : 'Ouvre-la pour découvrir ton lot';
+    tickDailyTimers();
   }
 
   async function renderDrawCard(){
@@ -319,33 +436,59 @@
     updateDrawCta(claimed);
   }
 
-  // Segments de la roue, dans l'ordre visuel (secteurs EGAUX a l'ecran — la
-  // vraie probabilite est deja imposee par claim_daily_draw() cote serveur ;
-  // la roue met juste en scene le resultat deja tire). L'angle est le centre
-  // du secteur, mesure depuis le haut (sens horaire), pour matcher --a en CSS.
-  const WHEEL_SEGMENTS = [
-    { credits:120,  angle:36  },
-    { credits:300,  angle:108 },
-    { credits:700,  angle:180 },
-    { credits:1500, angle:252 },
-    { jackpot:true, angle:324 },
-  ];
-  let _wheelSpins = 0;
+  // Bande de lots : REEL_WIN = position du lot gagnant, les autres sont tires
+  // au hasard avec les memes poids que le serveur (pour que la bande "ressemble"
+  // aux vraies chances : beaucoup de communs, un jackpot de temps en temps).
+  const REEL_LEN = 58, REEL_WIN = 50;
+  function randomLoot(){
+    let r = Math.random() * 100;
+    for(const l of LOOT){ if((r -= l.w) < 0) return l; }
+    return LOOT[0];
+  }
+  function lootHTML(l, carName){
+    const val = l.jackpot ? (carName || 'Voiture') : l.credits.toLocaleString('fr-FR');
+    return '<div class="reel-item" style="--r:' + l.color + '"><span class="ri-ico">' + l.ico + '</span><span class="ri-val">' + val + '</span><span class="ri-lbl">' + l.rarity + '</span></div>';
+  }
+  function buildReel(win){
+    const items = [];
+    for(let i = 0; i < REEL_LEN; i++) items.push(i === REEL_WIN && win ? win : randomLoot());
+    // Petit frisson : un jackpot "rate de peu" juste apres le lot gagnant
+    if(win && !win.jackpot && Math.random() < 0.5) items[REEL_WIN + 1] = LOOT[4];
+    els.reelTrack.innerHTML = items.map((l, i)=>lootHTML(l, i === REEL_WIN ? win && win.carName : null)).join('');
+  }
+  function reelMetrics(){
+    const first = els.reelTrack.firstElementChild;
+    const w = first ? first.getBoundingClientRect().width : 118;
+    const gap = parseFloat(getComputedStyle(els.reelTrack).columnGap) || 10;
+    return { w, step:w + gap, view:els.wheelEl.clientWidth };
+  }
+  function setReelX(x, animate, dur){
+    els.reelTrack.style.transition = animate ? 'transform ' + dur + 'ms cubic-bezier(.12,.55,.08,1)' : 'none';
+    els.reelTrack.style.transform = 'translateX(' + x + 'px)';
+  }
+  // "Tic" de la bande : petit clic boise, doux et court (pas une onde carree qui grince)
+  function tickSound(pitch){
+    tone({ f:pitch || 1200, to:(pitch || 1200) * 0.7, glide:0.025, dur:0.045, vol:0.035, type:'triangle', atk:0.002 });
+  }
+  let _reelRaf = 0;
 
   function openWheel(){
-    if(!DG.Auth.isLoggedIn()){ popup('Connecte-toi pour tenter le tirage du jour', '#ff9090'); return; }
-    if(els.drawCard.classList.contains('done')){ popup('Tirage déjà tenté aujourd\'hui ✓', '#b48cff'); return; }
-    els.wheelResult.textContent = '';
+    if(!DG.Auth.isLoggedIn()){ popup('Connecte-toi pour ouvrir la caisse du jour', '#ff9090'); return; }
+    if(els.drawCard.classList.contains('done')){ popup('Caisse déjà ouverte aujourd\'hui ✓', '#b48cff'); return; }
+    els.wheelResult.innerHTML = '';
+    els.wheelResult.classList.remove('pop');
+    els.wheelEl.classList.remove('settled');
+    els.ovWheel.classList.remove('burst');
     els.btnSpinWheel.disabled = false;
-    els.btnSpinWheel.textContent = '🎰 Lancer la roue';
-    els.wheelEl.style.transition = 'none';
-    els.wheelEl.style.transform = 'rotate(0deg)';
-    void els.wheelEl.offsetWidth;
-    els.wheelEl.style.transition = '';
+    els.btnSpinWheel.textContent = '🎁 Ouvrir la caisse';
     els.ovWheel.classList.remove('hidden');
+    buildReel(null);
+    const m = reelMetrics();
+    setReelX(m.view / 2 - m.w / 2 - m.step * 3, false);
   }
 
   function closeWheel(){
+    cancelAnimationFrame(_reelRaf);
     els.ovWheel.classList.add('hidden');
   }
 
@@ -355,37 +498,62 @@
     const res = await DG.Economy.claimDailyDraw();
     if(!res.ok){
       popup(res.error, '#ff9090');
-      els.wheelResult.textContent = '⚠ ' + res.error;
+      els.wheelResult.innerHTML = '<span class="rr-lbl" style="--r:#ff9090">⚠ ' + res.error + '</span>';
       els.btnSpinWheel.disabled = false;
-      els.btnSpinWheel.textContent = '🎰 Lancer la roue';
+      els.btnSpinWheel.textContent = '🎁 Ouvrir la caisse';
       return;
     }
-    // Retrouve le secteur correspondant au resultat deja tire cote serveur :
-    // voiture (ou le repli 5000 credits quand tout est deja debloque) -> jackpot,
-    // sinon le secteur credits le plus proche.
-    let seg;
-    if(res.carId || res.credits === 5000) seg = WHEEL_SEGMENTS.find(s=>s.jackpot);
-    else seg = WHEEL_SEGMENTS.reduce((best,s)=> (s.credits!=null && Math.abs(s.credits-res.credits) < Math.abs((best.credits||0)-res.credits)) ? s : best, WHEEL_SEGMENTS[0]);
+    // Lot tire cote serveur -> element de la bande : voiture (ou le repli 5000
+    // credits quand tout est deja debloque) = jackpot, sinon la rarete exacte.
+    const carName = res.carId ? (DG.carById(res.carId) || {}).name : null;
+    let win;
+    if(res.carId) win = Object.assign({}, LOOT[4], { carName });
+    else if(res.credits === 5000) win = Object.assign({}, LOOT[4], { jackpot:false, credits:5000, ico:'🏆' });
+    else win = LOOT.find(l=>l.credits === res.credits) || LOOT[0];
+    buildReel(win);
+    const m = reelMetrics();
+    setReelX(m.view / 2 - m.w / 2 - m.step * 3, false);
+    void els.reelTrack.offsetWidth;
+    // Arret legerement decale dans la case gagnante : on ne sait jamais si ca va deborder
+    const jitter = (Math.random() - 0.5) * m.w * 0.7;
+    const endX = m.view / 2 - m.w / 2 - m.step * REEL_WIN + jitter;
+    const DUR = reducedMotion ? 400 : 6200;
+    setReelX(endX, true, DUR);
+    els.btnSpinWheel.textContent = '🎁 Ouverture…';
 
-    _wheelSpins++;
-    const fullTurns = 5 + (_wheelSpins % 3);
-    const targetRotation = fullTurns*360 + (360 - seg.angle);
-    els.wheelEl.style.transform = 'rotate(' + targetRotation + 'deg)';
+    // "Tic" a chaque lot qui passe sous le curseur, comme une roue a crans
+    let lastIdx = -1;
+    const t0 = performance.now();
+    cancelAnimationFrame(_reelRaf);
+    (function watch(){
+      const x = new DOMMatrixReadOnly(getComputedStyle(els.reelTrack).transform).m41;
+      const idx = Math.floor((m.view / 2 - x) / m.step);
+      if(idx !== lastIdx){ if(lastIdx !== -1) tickSound(1100 + (idx % 2) * 120); lastIdx = idx; }
+      if(performance.now() - t0 < DUR) _reelRaf = requestAnimationFrame(watch);
+    })();
 
     setTimeout(()=>{
+      const winEl = els.reelTrack.children[REEL_WIN];
+      if(winEl) winEl.classList.add('win');
+      els.wheelEl.classList.add('settled');
+      els.ovWheel.style.setProperty('--burst', win.color);
+      els.ovWheel.classList.remove('burst'); void els.ovWheel.offsetWidth; els.ovWheel.classList.add('burst');
+      const label = res.carId ? carName : '+' + res.credits.toLocaleString('fr-FR') + ' crédits';
+      writeLocal('dg_draw_last', { day:DG.dailyChallenge().days, label });
+      els.wheelResult.style.setProperty('--r', win.color);
+      els.wheelResult.innerHTML = '<span class="rr-lbl">' + win.rarity + (res.carId ? ' · voiture rare !' : '') + '</span><span class="rr-val">' + (res.carId ? '🏆 ' + carName : '') + '</span>';
+      replay(els.wheelResult, 'pop');
+      if(!res.carId) countUp(els.wheelResult.querySelector('.rr-val'), res.credits, n=>'+' + Math.round(n).toLocaleString('fr-FR') + ' crédits', 900);
+      chimeSound((res.carId || res.credits === 5000) ? 4 : Math.max(0, LOOT.indexOf(win)));
       updateDrawCta(true);
       refreshPilotBar();
+      if(res.carId || res.credits >= 700) confetti(innerWidth/2, innerHeight*0.4);
       if(res.carId){
         els.drawCard.classList.add('jackpot');
-        els.wheelResult.textContent = '🏆 Voiture rare gagnée : ' + (DG.carById(res.carId) || {}).name + ' !';
-        confetti(innerWidth/2, innerHeight*0.4);
-        popup('🏆 Voiture rare gagnée !', '#b48cff');
-      } else {
-        els.wheelResult.textContent = '🎉 +' + res.credits + ' crédits !';
-        popup('🎰 +' + res.credits + ' crédits !', '#b48cff');
-      }
-      els.btnSpinWheel.textContent = '✓ Fait';
-    }, 3700);
+        popup('🏆 Voiture rare gagnée !', '#ff3d6e', true);
+      } else popup('🎁 +' + res.credits + ' crédits !', win.color);
+      els.btnSpinWheel.textContent = '✓ Ouverte';
+    }, DUR + 60);
   }
 
   async function goToChoosing(){
@@ -512,6 +680,7 @@
   async function handleGameOver(result){
     els.hudTop.style.display = 'none'; els.hudBottom.style.display = 'none';
     lastResult = result;
+    recordDailyRun(result);
     const isRecord = result.score > state.personalBest;
     if(isRecord){
       state.personalBest = result.score;
@@ -526,7 +695,7 @@
     els.overCredits.textContent = '+…';
     show('ovOver');
     countUp(els.overScore, result.score, n=>Math.round(n).toLocaleString('fr-FR'), 1500);
-    if(isRecord) setTimeout(()=>confetti(innerWidth/2, innerHeight*0.3), 350);
+    if(isRecord) setTimeout(()=>{ confetti(innerWidth/2, innerHeight*0.3); chimeSound(3); }, 350);
     flashOverScreen(result.carId);
     startOverCarSpin(result.carId);
     const credits = await DG.Economy.recordRun({ name: state.username, score: result.score, carId: result.carId, timeSeconds: result.time, routeId: result.routeId });
@@ -559,7 +728,13 @@
       const res = await DG.Economy.claimDailyChallenge(result.score, result.carId);
       if(res.ok){
         els.btnClaimDaily.textContent = '✓ Réclamé';
-        els.overDailyDesc.textContent = '+' + res.credits + ' crédits ajoutés !';
+        state.dailyClaimedToday = true;
+        bumpStreak();
+        const streak = streakCount();
+        els.overDailyDesc.textContent = '+' + res.credits + ' crédits ajoutés !' + (streak >= 2 ? ' 🔥 ' + streak + ' jours de suite' : '');
+        chimeSound(2);
+        const r = els.btnClaimDaily.getBoundingClientRect();
+        confetti(r.left + r.width / 2, r.top);
       } else {
         els.btnClaimDaily.disabled = false;
         els.btnClaimDaily.textContent = 'Réclamer +' + dc.reward;

@@ -83,9 +83,32 @@
  .viewer-btn:hover{border-color:rgba(var(--accent-rgb),.5);color:var(--text-1)}
  .viewer-btn.active{background:linear-gradient(180deg,var(--accent-light) -40%,var(--accent));border-color:transparent;color:var(--on-accent)}
  .viewer-btn.hidden{display:none}
- .viewer-hint{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.08em;color:var(--text-3)}
+ .viewer-group{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+ .viewer-group + .viewer-group{padding-left:10px;border-left:1px solid var(--line)}
+ .viewer-group.tools{margin-left:auto}
+ .viewer-seg{display:inline-flex;padding:3px;gap:2px;border-radius:12px;border:1px solid var(--line-2);background:var(--glass)}
+ .viewer-seg button{height:32px;padding:0 11px;border:0;border-radius:9px;background:transparent;color:var(--text-3);font-family:inherit;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:background .2s,color .2s}
+ .viewer-seg button:hover{color:var(--text-1)}
+ .viewer-seg button.active{background:rgba(var(--accent-rgb),.22);color:var(--text-1)}
+ .viewer-seg.disabled{opacity:.4;pointer-events:none}
+ .viewer-ico{width:40px;padding:0;justify-content:center;font-size:15px}
+ .viewer-btn .vb-sub{font-size:10px;letter-spacing:.08em;color:inherit;opacity:.75}
+ .viewer-hint{position:absolute;left:18px;bottom:16px;z-index:2;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;letter-spacing:.08em;color:var(--text-3);pointer-events:none;transition:opacity .8s}
+ .viewer-hint.faded{opacity:0}
  .viewer-hint kbd{font-family:inherit;font-size:10px;padding:3px 7px;border-radius:6px;border:1px solid var(--line-2);background:var(--glass)}
- @media (max-width:560px){ .viewer-hint{display:none} .viewer-panel{height:86vh} }
+ /* Bandes cinema + flash de capture, dans la zone 3D */
+ #viewerCanvasHost::before,#viewerCanvasHost::after{content:'';position:absolute;left:0;right:0;height:0;background:#000;z-index:2;pointer-events:none;transition:height .7s cubic-bezier(.16,1,.3,1)}
+ #viewerCanvasHost::before{top:0} #viewerCanvasHost::after{bottom:0}
+ .viewer-panel.cinema #viewerCanvasHost::before,.viewer-panel.cinema #viewerCanvasHost::after{height:11%}
+ .viewer-panel.cinema .viewer-hint{opacity:0}
+ .viewer-flash{position:absolute;inset:0;z-index:3;background:#fff;opacity:0;pointer-events:none}
+ .viewer-flash.go{animation:vFlash .5s ease-out}
+ @keyframes vFlash{0%{opacity:.85}100%{opacity:0}}
+ .viewer-toast{position:absolute;top:16px;left:50%;z-index:4;transform:translate(-50%,-8px);padding:8px 14px;border-radius:10px;background:rgba(0,0,0,.6);border:1px solid var(--line-2);color:var(--text-1);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s}
+ .viewer-toast.show{opacity:1;transform:translate(-50%,0)}
+ .viewer-panel:fullscreen{width:100vw;height:100vh;border-radius:0;border:0}
+ @media (max-width:760px){ .viewer-group.tools{margin-left:0} .viewer-group + .viewer-group{padding-left:0;border-left:0} }
+ @media (max-width:560px){ .viewer-hint{display:none} .viewer-panel{height:86vh} .viewer-controls{padding:10px 12px;gap:6px} .viewer-btn{padding:0 12px;font-size:11px} .viewer-ico{width:38px;padding:0} .viewer-seg button{padding:0 8px;font-size:10.5px} }
 
  .car-card:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
  .car-card .cc-hint{position:absolute;right:18px;bottom:18px}
@@ -201,10 +224,27 @@
       <div id="viewerLoading">Chargement du modèle…</div>
     </div>
     <div class="viewer-controls">
-      <button class="viewer-btn active" id="viewerCamExt">↻ Extérieur</button>
-      <button class="viewer-btn hidden" id="viewerCamInt">🚗 Intérieur</button>
-      <button class="viewer-btn hidden" id="viewerDoors">🚪 Ouvrir les portes</button>
-      <span class="viewer-hint">Glissez pour tourner · <kbd>Échap</kbd> pour fermer</span>
+      <div class="viewer-group">
+        <button class="viewer-btn active" id="viewerCamExt">↻ Extérieur</button>
+        <button class="viewer-btn hidden" id="viewerCamInt">🚗 Intérieur</button>
+        <button class="viewer-btn hidden" id="viewerDoors">🚪 Ouvrir les portes</button>
+      </div>
+      <div class="viewer-group">
+        <div class="viewer-seg" id="viewerViews" role="group" aria-label="Angle de vue">
+          <button data-view="34" title="Trois-quarts (1)">3/4</button>
+          <button data-view="front" title="Avant (2)">Avant</button>
+          <button data-view="side" title="Profil (3)">Profil</button>
+          <button data-view="rear" title="Arrière (4)">Arrière</button>
+          <button data-view="top" title="Dessus (5)">Dessus</button>
+        </div>
+      </div>
+      <div class="viewer-group tools">
+        <button class="viewer-btn viewer-ico active" id="viewerSpin" title="Rotation automatique (Espace)" aria-label="Rotation automatique">⏸</button>
+        <button class="viewer-btn" id="viewerCinema" title="Mode cinéma (C)">🎬 Cinéma</button>
+        <button class="viewer-btn" id="viewerLight" title="Changer d'ambiance (L)">💡 <span class="vb-sub" id="viewerLightName">Studio</span></button>
+        <button class="viewer-btn viewer-ico" id="viewerShot" title="Capture d'écran (P)" aria-label="Capture d'écran">📸</button>
+        <button class="viewer-btn viewer-ico" id="viewerFull" title="Plein écran (F)" aria-label="Plein écran">⛶</button>
+      </div>
     </div>
   </div>
 </div>
@@ -483,7 +523,51 @@
   // WebGL inutile en memoire.
   // ============================================================
   let viewerRoom = null;
-  let viewerState = null; // { scene, raf, mixer, action, actionStarted, camMode, hasInterior, camHolder, dragging, lastX, velocity, rotY }
+  let viewerState = null;
+
+  // Camera exterieure en coordonnees spheriques autour de la voiture : l'azimut
+  // est fixe (c'est la voiture qui tourne), on regle hauteur (el) et distance.
+  // Les modeles normalises regardent vers +Z local : rotY = CAM_AZ = vue de face.
+  const CAM_AZ = Math.atan2(3.7, 5.2);
+  const VIEWS = {
+    '34':  { rot:-0.5,                    el:0.13, dist:6.4, look:0.55 },
+    front: { rot:CAM_AZ,                  el:0.08, dist:6.0, look:0.5 },
+    side:  { rot:CAM_AZ + Math.PI / 2,    el:0.06, dist:6.6, look:0.5 },
+    rear:  { rot:CAM_AZ + Math.PI,        el:0.14, dist:6.2, look:0.5 },
+    top:   { rot:CAM_AZ + Math.PI / 2,    el:1.32, dist:8.2, look:0.2 }
+  };
+  // Plans du mode cinema : chaque plan interpole de `a` vers `b`, puis coupe franche.
+  const SHOTS = [
+    { dur:6.5, a:{ rot:CAM_AZ - 0.7, el:0.03, dist:5.2, look:0.45, fov:40 }, b:{ rot:CAM_AZ + 0.35, el:0.06, dist:4.6, look:0.45, fov:40 } },
+    { dur:6,   a:{ rot:CAM_AZ + 1.9, el:0.05, dist:7.0, look:0.5,  fov:34 }, b:{ rot:CAM_AZ + 1.25, el:0.05, dist:6.2, look:0.5,  fov:34 } },
+    { dur:7,   a:{ rot:CAM_AZ + 2.4, el:0.95, dist:8.4, look:0.3,  fov:44 }, b:{ rot:CAM_AZ + 3.7, el:0.6,  dist:7.2, look:0.35, fov:44 } },
+    { dur:6,   a:{ rot:CAM_AZ + Math.PI - 0.5, el:0.02, dist:5.4, look:0.4, fov:42 }, b:{ rot:CAM_AZ + Math.PI + 0.4, el:0.12, dist:5.9, look:0.45, fov:42 } },
+    { dur:5.5, a:{ rot:CAM_AZ + 1.15, el:0.02, dist:3.9, look:0.3,  fov:36 }, b:{ rot:CAM_AZ + 0.8, el:0.04, dist:3.4, look:0.3,  fov:36 } }
+  ];
+  // Ambiances lumineuses (transition douce entre elles). rim:null = couleur de la voiture.
+  const LIGHTS = [
+    { name:'Studio',   key:0xffffff, keyI:1.35, keyP:[6,10,7],  fill:0xbcd0ff, fillI:0.5,  amb:0.22, rim:null,     rimI:2.4, exp:1.05 },
+    { name:'Néon',     key:0x6a5cff, keyI:0.6,  keyP:[4,6,6],   fill:0xff3dcf, fillI:1.2,  amb:0.08, rim:0x3dd6ff, rimI:5,   exp:0.95 },
+    { name:'Sunset',   key:0xff9a4a, keyI:1.8,  keyP:[9,2.5,4], fill:0x6b4cff, fillI:0.45, amb:0.16, rim:0xff5a2a, rimI:3,   exp:1.1 },
+    { name:'Plein jour', key:0xfff6e8, keyI:2.1, keyP:[3,12,5], fill:0xdfe8ff, fillI:0.9,  amb:0.55, rim:0xffffff, rimI:1,   exp:1.2 },
+    { name:'Nuit',     key:0x8fb0ff, keyI:0.35, keyP:[-3,8,4],  fill:0x223355, fillI:0.3,  amb:0.05, rim:null,     rimI:4.5, exp:0.85 }
+  ];
+  const clamp = (v, a, b)=>Math.max(a, Math.min(b, v));
+  const easeIO = (t)=>t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
+  const easeOutBack = (t)=>{ const c = 1.5; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+  const nearestAngle = (target, from)=>target + Math.PI * 2 * Math.round((from - target) / (Math.PI * 2));
+
+  const panelEl = ()=>document.querySelector('.viewer-panel');
+  function hostHTML(){
+    return '<div id="viewerLoading">Chargement du modèle…</div>' +
+      '<div class="viewer-hint" id="viewerHint">Glisser : tourner · Molette / pincer : zoom · Double-clic : recentrer · <kbd>1</kbd>–<kbd>5</kbd> vues · <kbd>Échap</kbd> fermer</div>' +
+      '<div class="viewer-flash" id="viewerFlash"></div><div class="viewer-toast" id="viewerToast"></div>';
+  }
+  function viewerToast(msg){
+    const t = document.getElementById('viewerToast'); if(!t) return;
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(viewerToast._t); viewerToast._t = setTimeout(()=>t.classList.remove('show'), 1400);
+  }
 
   function closeViewer(){
     if(!viewerState) return;
@@ -500,17 +584,66 @@
       if(viewerState.stage) viewerState.stage.traverse(n=>{ if(n.isMesh){ n.geometry.dispose(); if(n.material.map) n.material.map.dispose(); n.material.dispose(); } });
       s.renderer.dispose();
     }
-    document.getElementById('viewerCanvasHost').innerHTML = '<div id="viewerLoading">Chargement du modèle…</div>';
+    document.getElementById('viewerCanvasHost').innerHTML = hostHTML();
     viewerState = null;
+    panelEl().classList.remove('cinema');
+    if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
     document.getElementById('viewerModal').classList.add('hidden');
   }
 
-  function setCamMode(mode){
+  function markView(name){
+    document.querySelectorAll('#viewerViews [data-view]').forEach(b=>b.classList.toggle('active', b.getAttribute('data-view') === name));
+  }
+  function setSpin(on){
     if(!viewerState) return;
-    if(mode === 'int' && !viewerState.hasInterior) return;
-    viewerState.camMode = mode;
+    viewerState.autoSpin = on;
+    const b = document.getElementById('viewerSpin');
+    b.classList.toggle('active', on); b.textContent = on ? '⏸' : '▶';
+  }
+  function setCinema(on){
+    const st = viewerState; if(!st) return;
+    if(on && st.camMode === 'int') setCamMode('ext');
+    st.cinema = on; st.shot = 0; st.shotT = 0;
+    panelEl().classList.toggle('cinema', on);
+    document.getElementById('viewerCinema').classList.toggle('active', on);
+    document.getElementById('viewerViews').classList.toggle('disabled', on);
+    if(on) markView(null); else { st.fovT = 45; setView('34', true); }
+  }
+  function setView(name, keepSpin){
+    const st = viewerState, v = VIEWS[name];
+    if(!st || !v || st.camMode === 'int') return;
+    if(st.cinema) setCinema(false);
+    st.rotT = nearestAngle(v.rot, st.rotY);
+    st.velocity = 0;
+    st.elT = v.el; st.distT = v.dist; st.lookT = v.look;
+    if(!keepSpin) setSpin(false);
+    markView(name);
+  }
+  function setLight(i){
+    const st = viewerState; if(!st) return;
+    st.light = (i + LIGHTS.length) % LIGHTS.length;
+    document.getElementById('viewerLightName').textContent = LIGHTS[st.light].name;
+    viewerToast('Ambiance · ' + LIGHTS[st.light].name);
+  }
+
+  function setCamMode(mode){
+    const st = viewerState;
+    if(!st) return;
+    if(mode === 'int' && !st.hasInterior) return;
+    if(mode === st.camMode) return;
+    if(mode === 'int'){
+      if(st.cinema) setCinema(false);
+      st.lookYaw = 0; st.lookPitch = 0; st.fovT = 62;
+    } else {
+      // Sortie de l'habitacle : la camera recule en douceur depuis le siege
+      st.blendFrom = st.scene.camera.position.clone();
+      st.blendLook = st.lastLook ? st.lastLook.clone() : null;
+      st.blend = 0; st.fovT = 45;
+    }
+    st.camMode = mode;
     document.getElementById('viewerCamExt').classList.toggle('active', mode === 'ext');
     document.getElementById('viewerCamInt').classList.toggle('active', mode === 'int');
+    document.getElementById('viewerViews').classList.toggle('disabled', mode === 'int' || st.cinema);
   }
 
   function toggleDoors(){
@@ -527,10 +660,17 @@
     document.getElementById('viewerDoors').textContent = viewerState.doorsOpen ? '🚪 Fermer les portes' : '🚪 Ouvrir les portes';
   }
 
+  function toggleFullscreen(){
+    const p = panelEl();
+    if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+    else if(p.requestFullscreen) p.requestFullscreen().catch(()=>{});
+  }
+
   async function openViewer(carId){
     const car = DG.carById(carId);
     if(!car) return;
     closeViewer();
+    document.getElementById('viewerCanvasHost').innerHTML = hostHTML();
     document.getElementById('viewerTitle').textContent = car.brand + ' ' + car.name;
     document.getElementById('viewerModal').classList.remove('hidden');
     const camExtBtn = document.getElementById('viewerCamExt');
@@ -539,6 +679,9 @@
     camIntBtn.classList.add('hidden');
     doorsBtn.classList.add('hidden');
     camExtBtn.classList.add('active'); camIntBtn.classList.remove('active');
+    document.getElementById('viewerViews').classList.remove('disabled');
+    document.getElementById('viewerCinema').classList.remove('active');
+    markView('34');
 
     if(!window.THREE || !window.THREE.GLTFLoader){ await new Promise(res=>{ const t=()=>{ (window.THREE&&window.THREE.GLTFLoader)?res():setTimeout(t,60); }; t(); }); }
     if(!viewerRoom) viewerRoom = new DG.Showroom();
@@ -546,8 +689,18 @@
     const s = viewerRoom.makeScene(host, { glow: car.glow, glowI: 2.4 });
     s.camera.position.set(4.4, 1.5, 6.2);
 
-    const state = { scene:s, raf:0, mixer:null, action:null, actionStarted:false, doorsOpen:false, camMode:'ext', hasInterior:false, camHolder:null, dragging:false, lastX:0, velocity:0, rotY:-0.5 };
+    const v0 = VIEWS['34'];
+    const state = {
+      scene:s, car, raf:0, mixer:null, action:null, actionStarted:false, doorsOpen:false,
+      camMode:'ext', hasInterior:false, camHolder:null, velocity:0,
+      // Entree en scene : la camera arrive de loin et de haut, la voiture tourne sur elle-meme
+      rotY:v0.rot - 2.4, rotT:v0.rot, el:0.55, elT:v0.el, dist:13, distT:v0.dist, look:v0.look, lookT:v0.look,
+      fov:45, fovT:45, autoSpin:true, cinema:false, shot:0, shotT:0, light:0,
+      lookYaw:0, lookPitch:0, intro:0, blend:1, snap:false
+    };
     viewerState = state;
+    setSpin(true);
+    document.getElementById('viewerLightName').textContent = LIGHTS[0].name;
 
     const T = window.THREE;
     const full = await viewerRoom.loadModelFull(car.model);
@@ -651,46 +804,171 @@
       state.camHolder = holder;
     }
 
+    // --- Interactions : 1 doigt/souris = tourner + hauteur, 2 doigts = zoom ---
     const dom = s.renderer.domElement;
     dom.style.cursor = 'grab';
-    const onDown = (e)=>{ state.dragging = true; state.velocity = 0; state.lastX = e.clientX; dom.style.cursor = 'grabbing'; };
-    const onMove = (e)=>{
-      if(!state.dragging) return;
-      const dx = e.movementX != null ? e.movementX : (e.clientX - state.lastX);
-      state.rotY += dx * 0.01;
-      state.velocity = dx * 0.01 * 60;
-      state.lastX = e.clientX;
+    const pointers = new Map();
+    let pinchDist = 0;
+    const pinchSpan = ()=>{ const p = [...pointers.values()]; return Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y); };
+    const onDown = (e)=>{
+      pointers.set(e.pointerId, { x:e.clientX, y:e.clientY });
+      if(pointers.size === 2) pinchDist = pinchSpan();
+      state.velocity = 0; state.rotT = null;
+      if(state.cinema) setCinema(false);
+      markView(null);
+      dom.style.cursor = 'grabbing';
+      try { dom.setPointerCapture(e.pointerId); } catch(_){}
     };
-    const onUp = ()=>{ if(state.dragging){ state.dragging = false; dom.style.cursor = 'grab'; } };
+    const onMove = (e)=>{
+      const p = pointers.get(e.pointerId);
+      if(!p) return;
+      const dx = e.clientX - p.x, dy = e.clientY - p.y;
+      p.x = e.clientX; p.y = e.clientY;
+      if(pointers.size >= 2){
+        const d = pinchSpan();
+        if(pinchDist > 0 && d > 0) zoomBy(pinchDist / d);
+        pinchDist = d;
+        return;
+      }
+      if(state.camMode === 'int'){
+        state.lookYaw = clamp(state.lookYaw - dx * 0.005, -2.3, 2.3);
+        state.lookPitch = clamp(state.lookPitch - dy * 0.004, -0.8, 0.7);
+      } else {
+        state.rotY += dx * 0.01;
+        state.velocity = dx * 0.01 * 60;
+        state.elT = clamp(state.elT + dy * 0.005, -0.02, 1.38);
+      }
+    };
+    const onUp = (e)=>{
+      pointers.delete(e.pointerId);
+      if(pointers.size < 2) pinchDist = 0;
+      if(!pointers.size) dom.style.cursor = 'grab';
+    };
+    function zoomBy(f){
+      if(state.camMode === 'int') state.fovT = clamp(state.fovT * f, 30, 80);
+      else state.distT = clamp(state.distT * f, 3.2, 12);
+    }
+    const onWheel = (e)=>{ e.preventDefault(); if(state.cinema) setCinema(false); zoomBy(Math.exp(e.deltaY * 0.0012)); };
+    const onDbl = ()=>{ if(state.camMode === 'int'){ state.lookYaw = 0; state.lookPitch = 0; state.fovT = 62; } else { setView('34', true); setSpin(true); } };
     dom.addEventListener('pointerdown', onDown);
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    state.cleanup = ()=>{ dom.removeEventListener('pointerdown', onDown); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
+    dom.addEventListener('pointermove', onMove);
+    dom.addEventListener('pointerup', onUp);
+    dom.addEventListener('pointercancel', onUp);
+    dom.addEventListener('wheel', onWheel, { passive:false });
+    dom.addEventListener('dblclick', onDbl);
+    const ro = new ResizeObserver(()=>{
+      const w = host.clientWidth, h = host.clientHeight;
+      if(w && h){ s.renderer.setSize(w, h); s.camera.aspect = w / h; s.camera.updateProjectionMatrix(); }
+    });
+    ro.observe(host);
+    const hintTimer = setTimeout(()=>{ const h = document.getElementById('viewerHint'); if(h) h.classList.add('faded'); }, 6000);
+    state.cleanup = ()=>{
+      dom.removeEventListener('pointerdown', onDown); dom.removeEventListener('pointermove', onMove);
+      dom.removeEventListener('pointerup', onUp); dom.removeEventListener('pointercancel', onUp);
+      dom.removeEventListener('wheel', onWheel); dom.removeEventListener('dblclick', onDbl);
+      ro.disconnect(); clearTimeout(hintTimer);
+    };
 
+    // Couleurs cibles des ambiances (Color pre-construits : pas d'allocation par frame)
+    const lightCols = LIGHTS.map(L=>({
+      key:new T.Color(L.key), fill:new T.Color(L.fill),
+      rim:new T.Color(L.rim != null ? L.rim : car.glow), keyP:new T.Vector3().fromArray(L.keyP)
+    }));
     let last = performance.now();
-    const extTarget = new T.Vector3(3.7, 1.35, 5.2);
     const lookFwd = new T.Vector3(0,0,-1);
+    const euler = new T.Euler(0, 0, 0, 'YXZ');
+    const tmpPos = new T.Vector3(), tmpQuat = new T.Quaternion(), tmpLook = new T.Vector3(), extPos = new T.Vector3(), extLook = new T.Vector3();
     function loop(now){
       state.raf = requestAnimationFrame(loop);
       const dt = Math.min((now-last)/1000, 0.05); last = now;
+      const k = 1 - Math.pow(0.002, dt); // lissage independant du framerate
       if(state.mixer) state.mixer.update(dt);
-      if(!state.dragging){
-        if(Math.abs(state.velocity) > 0.02){ state.rotY += state.velocity*dt; state.velocity *= Math.pow(0.05, dt); }
-        else state.rotY += dt*0.22;
+
+      // Entree en scene : la voiture "pop" avec un leger rebond
+      if(state.intro < 1){
+        state.intro = Math.min(1, state.intro + dt / 1.1);
+        wrap.scale.setScalar(0.55 + 0.45 * easeOutBack(state.intro));
+      }
+
+      if(state.cinema){
+        const sh = SHOTS[state.shot];
+        state.shotT += dt;
+        if(state.shotT >= sh.dur){ state.shotT = 0; state.shot = (state.shot + 1) % SHOTS.length; }
+        const cur = SHOTS[state.shot], t = easeIO(state.shotT / cur.dur);
+        // Coupe franche entre deux plans : valeurs appliquees directement, sans lissage
+        state.rotY = cur.a.rot + (cur.b.rot - cur.a.rot) * t;
+        state.el = state.elT = cur.a.el + (cur.b.el - cur.a.el) * t;
+        state.dist = state.distT = cur.a.dist + (cur.b.dist - cur.a.dist) * t;
+        state.look = state.lookT = cur.a.look + (cur.b.look - cur.a.look) * t;
+        state.fov = state.fovT = cur.a.fov;
+      } else if(state.camMode !== 'int'){
+        if(state.rotT != null){
+          state.rotY += (state.rotT - state.rotY) * Math.min(1, dt * 4);
+          if(Math.abs(state.rotT - state.rotY) < 0.002){ state.rotY = state.rotT; state.rotT = null; }
+        } else if(!pointers.size){
+          if(Math.abs(state.velocity) > 0.02){ state.rotY += state.velocity*dt; state.velocity *= Math.pow(0.05, dt); }
+          else if(state.autoSpin) state.rotY += dt*0.22;
+        }
       }
       wrap.rotation.y = state.rotY;
-      if(state.stage) state.stage.userData.ring.rotation.z -= dt*0.15;
+      state.el += (state.elT - state.el) * k;
+      state.dist += (state.distT - state.dist) * k;
+      state.look += (state.lookT - state.look) * k;
+      if(Math.abs(state.fovT - state.fov) > 0.01){ state.fov += (state.fovT - state.fov) * k; }
+      if(Math.abs(s.camera.fov - state.fov) > 0.01){ s.camera.fov = state.fov; s.camera.updateProjectionMatrix(); }
+
+      // Ambiance
+      const L = LIGHTS[state.light], C = lightCols[state.light];
+      s.key.color.lerp(C.key, k); s.fill.color.lerp(C.fill, k); s.rim.color.lerp(C.rim, k);
+      s.key.intensity += (L.keyI - s.key.intensity) * k;
+      s.fill.intensity += (L.fillI - s.fill.intensity) * k;
+      s.amb.intensity += (L.amb - s.amb.intensity) * k;
+      s.rim.intensity += (L.rimI - s.rim.intensity) * k;
+      s.key.position.lerp(C.keyP, k);
+      s.renderer.toneMappingExposure += (L.exp - s.renderer.toneMappingExposure) * k;
+
+      if(state.stage){
+        state.stage.userData.ring.rotation.z -= dt*0.15;
+        state.stage.userData.ring2.rotation.z += dt*0.06;
+        state.stage.userData.halo.material.opacity = 0.5 + 0.15*Math.sin(now*0.0016);
+      }
+
       if(state.camMode === 'int' && state.hasInterior){
-        const pos = new T.Vector3(); state.camHolder.getWorldPosition(pos);
-        const quat = new T.Quaternion(); state.camHolder.getWorldQuaternion(quat);
-        s.camera.position.copy(pos);
-        const look = lookFwd.clone().applyQuaternion(quat).add(pos);
-        s.camera.lookAt(look);
+        state.camHolder.getWorldPosition(tmpPos);
+        state.camHolder.getWorldQuaternion(tmpQuat);
+        s.camera.position.copy(tmpPos);
+        euler.set(state.lookPitch, state.lookYaw, 0);
+        tmpLook.copy(lookFwd).applyEuler(euler).applyQuaternion(tmpQuat).add(tmpPos);
+        s.camera.lookAt(tmpLook);
+        state.lastLook = (state.lastLook || new T.Vector3()).copy(tmpLook);
       } else {
-        s.camera.position.lerp(extTarget, 0.07);
-        s.camera.lookAt(0, 0.55, 0);
+        // Recul automatique sur ecran etroit (mobile portrait) pour garder la voiture entiere
+        const fit = Math.max(1, 0.95 / (s.camera.aspect || 1));
+        const d = state.dist * fit, ce = Math.cos(state.el);
+        extPos.set(Math.sin(CAM_AZ) * ce * d, state.look + Math.sin(state.el) * d, Math.cos(CAM_AZ) * ce * d);
+        extLook.set(0, state.look, 0);
+        if(state.blend < 1 && state.blendFrom){
+          state.blend = Math.min(1, state.blend + dt * 1.6);
+          const b = easeIO(state.blend);
+          s.camera.position.lerpVectors(state.blendFrom, extPos, b);
+          if(state.blendLook) extLook.lerpVectors(state.blendLook, extLook, b);
+        } else s.camera.position.copy(extPos);
+        s.camera.lookAt(extLook);
       }
       s.renderer.render(s.scene, s.camera);
+      // Capture : lue juste apres le rendu, avant que le navigateur ne vide le tampon
+      if(state.snap){
+        state.snap = false;
+        try {
+          const a = document.createElement('a');
+          a.href = dom.toDataURL('image/png');
+          a.download = (car.brand + '-' + car.name).replace(/[^\w-]+/g, '-').toLowerCase() + '.png';
+          document.body.appendChild(a); a.click(); a.remove();
+          const f = document.getElementById('viewerFlash');
+          if(f){ f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); }
+          viewerToast('📸 Capture enregistrée');
+        } catch(err){ viewerToast('Capture impossible'); }
+      }
     }
     state.raf = requestAnimationFrame(loop);
     s.active = true;
@@ -702,7 +980,29 @@
   document.getElementById('viewerCamExt').addEventListener('click', ()=>setCamMode('ext'));
   document.getElementById('viewerCamInt').addEventListener('click', ()=>setCamMode('int'));
   document.getElementById('viewerDoors').addEventListener('click', toggleDoors);
-  window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeViewer(); });
+  document.querySelectorAll('#viewerViews [data-view]').forEach(b=>b.addEventListener('click', ()=>setView(b.getAttribute('data-view'))));
+  document.getElementById('viewerSpin').addEventListener('click', ()=>{ if(viewerState){ if(viewerState.cinema) setCinema(false); setSpin(!viewerState.autoSpin); } });
+  document.getElementById('viewerCinema').addEventListener('click', ()=>{ if(viewerState) setCinema(!viewerState.cinema); });
+  document.getElementById('viewerLight').addEventListener('click', ()=>{ if(viewerState) setLight(viewerState.light + 1); });
+  document.getElementById('viewerShot').addEventListener('click', ()=>{ if(viewerState) viewerState.snap = true; });
+  document.getElementById('viewerFull').addEventListener('click', toggleFullscreen);
+  window.addEventListener('keydown', (e)=>{
+    if(!viewerState) return;
+    if(e.key === 'Escape'){ closeViewer(); return; }
+    if(e.ctrlKey || e.metaKey || e.altKey || /INPUT|SELECT|TEXTAREA/.test((e.target && e.target.tagName) || '')) return;
+    const st = viewerState, key = e.key.toLowerCase();
+    const views = { '1':'34', '2':'front', '3':'side', '4':'rear', '5':'top' };
+    if(views[key]){ setView(views[key]); }
+    else if(key === ' '){ e.preventDefault(); if(st.cinema) setCinema(false); setSpin(!st.autoSpin); }
+    else if(key === 'c') setCinema(!st.cinema);
+    else if(key === 'l') setLight(st.light + 1);
+    else if(key === 'p') st.snap = true;
+    else if(key === 'f') toggleFullscreen();
+    else if(key === 'i') setCamMode(st.camMode === 'int' ? 'ext' : 'int');
+    else if(key === 'd') toggleDoors();
+    else if(key === 'arrowleft' || key === 'arrowright'){ e.preventDefault(); st.rotT = null; st.velocity = key === 'arrowleft' ? -2.5 : 2.5; markView(null); }
+    else if(key === 'arrowup' || key === 'arrowdown'){ e.preventDefault(); st.elT = clamp(st.elT + (key === 'arrowup' ? 0.12 : -0.12), -0.02, 1.38); markView(null); }
+  });
 })();
 </script>
 </body>
