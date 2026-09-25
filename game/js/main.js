@@ -238,6 +238,9 @@
     'cote-sunset':    { ico:'🌅', grad:'linear-gradient(135deg,#ff9a5a,#3a2350)', glow:'#ffb27a' },
     'centre-neon':    { ico:'🌆', grad:'linear-gradient(135deg,#b43dff,#140828)', glow:'#ff5ad1' },
     'japon-sakura':   { ico:'🌸', grad:'linear-gradient(135deg,#ff9cc0,#3a1f4a)', glow:'#ffb7d0' },
+    'lac-neuchatel':  { ico:'⛵', grad:'linear-gradient(135deg,#5aa8d8,#1a3a5a)', glow:'#8fd0ff' },
+    'autostrada':     { ico:'🏛', grad:'linear-gradient(135deg,#f0c070,#2a5a3a)', glow:'#ffd890' },
+    'provence':       { ico:'💜', grad:'linear-gradient(135deg,#a07ae0,#3a6a3a)', glow:'#c8a8ff' },
   };
   const DIFF_LVL = { 'Détente':1, 'Standard':2, 'Intense':3 };
   function renderRouteTabs(){

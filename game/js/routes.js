@@ -1488,8 +1488,10 @@
     [loadPalmModel, loadUmbrellaModel, loadGasStationModel, loadLampModel, loadCyberBuilding, loadSingaporeBuilding, loadAsianSkyline].forEach(fn=>fn());
   };
 
-  const byId = {}; ROUTES.forEach(r=>byId[r.id]=r);
   DG.ROUTES = ROUTES;
-  DG.routeById = (id)=>byId[id] || ROUTES[0];
+  // Recherche dynamique : d'autres fichiers (routes-europe.js) ajoutent leurs routes a DG.ROUTES
+  DG.routeById = (id)=>DG.ROUTES.find(r=>r.id === id) || DG.ROUTES[0];
+  // Petits outils partages avec les fichiers de routes supplementaires
+  DG.RouteKit = { M, lambert, basic, additive, lightPool, wetStreak, streetlight, guardrail, signTexture, roundTreeGeo, rockGeo, grassTuftGeo, lampModel };
   DG.defaultRouteId = ROUTES[0].id;
 })();
