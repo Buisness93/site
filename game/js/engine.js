@@ -57,6 +57,39 @@
   function hillAt(d){ return Math.sin(d*0.0034 + 0.6) * 0.7 + Math.sin(d*0.0013 + 2.2) * 0.3; }
   const CURVE_X = 0.0011, HILL_Y = 0.00032;
   const JUMP_V = 9.5, GRAVITY = 24;
+  // Conduite : bord de route (glissiere) et force centrifuge dans les virages
+  const ROAD_LIMIT = 4.3, DRIFT_K = 0.0009;
+
+  // Reflets de carrosserie : petite carte d'environnement peinte avec les
+  // couleurs du ciel de la route (zenith -> horizon -> sol sombre) et un point
+  // chaud a la place de l'astre. Sans elle, la peinture des voitures reste mate
+  // et "plastique" ; avec, elle reflete le ciel comme une vraie carrosserie.
+  function skyEnvCanvas(T, route){
+    const c = document.createElement('canvas'); c.width = 256; c.height = 128;
+    const g = c.getContext('2d');
+    const sky = route.sky || { top:0x020207, bottom:0x121a2e };
+    const hex = (h)=>'#' + DG.Scenery.lin2srgb(h).toString(16).padStart(6, '0');
+    const gr = g.createLinearGradient(0, 0, 0, 128);
+    gr.addColorStop(0, hex(sky.top));
+    gr.addColorStop(0.3, hex(sky.mid != null ? sky.mid : sky.top));
+    gr.addColorStop(0.49, hex(sky.bottom));
+    gr.addColorStop(0.52, hex(route.fog));
+    gr.addColorStop(0.62, hex(route.ground || 0x101010));
+    gr.addColorStop(1, '#050505');
+    g.fillStyle = gr; g.fillRect(0, 0, 256, 128);
+    // bande claire au-dessus de l'horizon (ciel lumineux / lampadaires)
+    g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(0, 50, 256, 6);
+    const cel = route.celestial;
+    if(cel){
+      const x = (0.5 + Math.atan2(cel.x, -254) / (Math.PI * 2)) * 256 % 256, y = 64 - Math.atan2(cel.y, 254) / Math.PI * 128;
+      const sg = g.createRadialGradient(x, y, 0, x, y, 26);
+      sg.addColorStop(0, 'rgba(255,250,235,1)'); sg.addColorStop(1, 'rgba(255,250,235,0)');
+      g.fillStyle = sg; g.fillRect(x - 26, y - 26, 52, 52);
+    }
+    const t = new T.CanvasTexture(c);
+    t.mapping = T.EquirectangularReflectionMapping; t.encoding = T.sRGBEncoding;
+    return t;
+  }
   const NEAR_MISS_GAP = 0.85;
   // Vraies voitures/camions de trafic (couleurs d'origine du modele, pas de teinte).
   // len = longueur cible (memes unites que les voitures jouables) : chaque type de
@@ -154,6 +187,11 @@
     renderer.outputEncoding = T.sRGBEncoding;
     renderer.toneMapping = T.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
+    // Ombres portees temps reel, limitees a la voiture et au trafic (voir
+    // _castShadows) sur une petite zone qui suit le joueur : peu couteux, mais
+    // les voitures sont enfin "posees" sur la route.
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = T.PCFSoftShadowMap;
     this.container.appendChild(renderer.domElement);
     this.renderer = renderer;
 
@@ -176,20 +214,25 @@
 
     this.ambientLight = new T.AmbientLight(0xffffff, 0.28); scene.add(this.ambientLight);
     this.keyLight = new T.DirectionalLight(0xffffff, 1.1); this.keyLight.position.set(6,10,7); scene.add(this.keyLight);
+    this.keyLight.castShadow = true;
+    this.keyLight.shadow.mapSize.set(1024, 1024);
+    const sc = this.keyLight.shadow.camera; sc.left = -12; sc.right = 12; sc.top = 22; sc.bottom = -16; sc.near = 1; sc.far = 60;
+    this.keyLight.shadow.bias = -0.0008; this.keyLight.shadow.normalBias = 0.02;
+    this.keyLight.target.position.set(0, 0, -6); scene.add(this.keyLight.target);
     this.hemiLight = new T.HemisphereLight(0x8899ff, 0x060608, 0.45); scene.add(this.hemiLight);
 
     this.groundMat = new T.MeshStandardMaterial({ color:0x050609, metalness:0.05, roughness:0.95 });
     // (longs plans subdivises dans la longueur : un plan en 1 seul morceau ne
     // pourrait pas suivre la courbure des virages/collines)
     const ground = new T.Mesh(new T.PlaneGeometry(340, 320, 12, 64), this.groundMat);
-    ground.rotation.x = -Math.PI/2; ground.position.set(0, -0.03, -100); scene.add(ground);
+    ground.rotation.x = -Math.PI/2; ground.position.set(0, -0.03, -100); ground.receiveShadow = true; scene.add(ground);
 
     // Asphalte : grain procedural qui defile avec la vitesse (sinon la route
     // parait peinte et immobile sous les bandes qui, elles, bougent).
     this._roadTex = asphaltTexture(T);
     this.roadMat = new T.MeshStandardMaterial({ color:0x050609, metalness:0.35, roughness:0.7, map:this._roadTex, roughnessMap:this._roadTex });
     const road = new T.Mesh(new T.PlaneGeometry(14, 260, 2, 104), this.roadMat);
-    road.rotation.x = -Math.PI/2; road.position.z = -100; scene.add(road);
+    road.rotation.x = -Math.PI/2; road.position.z = -100; road.receiveShadow = true; scene.add(road);
 
     // Ciel en degrade calcule au pixel (4 teintes + halo autour de l'astre +
     // tramage anti-bandes) : l'horizon prend exactement la couleur du brouillard,
@@ -439,6 +482,13 @@
     this.roadMat.envMapIntensity = route.roadEnvI || 1;
     this.roadMat.needsUpdate = true;
     this._env = env;
+    if(!route._carEnvRT){
+      const pm = new T.PMREMGenerator(this.renderer);
+      const src = route.roadEnv ? route.roadEnv(T) : skyEnvCanvas(T, route);
+      route._carEnvRT = pm.fromEquirectangular(src);
+      src.dispose(); pm.dispose();
+    }
+    this._carEnv = route._carEnvRT.texture;
     if(route.light){
       const L = route.light;
       this.keyLight.color.setHex(L.key); this.keyLight.intensity = L.keyI;
@@ -559,6 +609,11 @@
     const model = await DG.Loader.loadModel('../' + car.model);
     this._player = model ? DG.Loader.normalizeModel(T, model, 3.4, Math.PI - (car.rotY||0)) : DG.Loader.makeFallbackCar(T, { body:car.body, emissive:0x0a0e16 });
     this._player.position.set(0,0,0);
+    this._carLook(this._player);
+    this._addVehicleLights(this._player);
+    // feux arriere du joueur : materiau a part, pour s'allumer au freinage
+    this._playerTailMat = this._tailMat.clone(); this._playerTailMat.opacity = 0.5;
+    this._player.traverse(n=>{ if(n.isSprite && n.material === this._tailMat) n.material = this._playerTailMat; });
     this.scene.add(this._player);
     this._sharpenTextures(this._player);
     this._buildInteriorHolder();
@@ -570,6 +625,8 @@
     this._drafting = false;
 
     this._lane = 1; this._playerX = LANES[1];
+    this._steer = 0; this._latV = 0; this._brake = false; this._scrapeT = 0;
+    this._roll = 0; this._yaw = 0; this._pitch = 0;
     this._speed = this.mult.baseSpeed;
     this._boostFuel = 1; this._boostHeld = false; this._boostActive = false;
     this._dist = 0; this._time = 0; this._spawnT = 0.7; this._pickupT = 1.2;
@@ -747,9 +804,27 @@
     this._jumpY = 0; this._jumpVy = 0; this._shield = false; this._magnetT = 0;
   };
 
+  // Direction analogique : -1 (gauche) .. 1 (droite), maintenue tant que la
+  // touche/le bouton est enfonce. move() reste pour un simple "coup de volant".
+  GameEngine.prototype.setSteer = function(v){ this._steer = Math.max(-1, Math.min(1, v || 0)); };
+  GameEngine.prototype.setBrake = function(v){ this._brake = !!v; };
   GameEngine.prototype.move = function(d){
     if(!this.playing || this.paused) return;
-    this._lane = Math.max(0, Math.min(3, this._lane + d));
+    this._latV += d * 5;
+  };
+
+  // Reflets du ciel sur la carrosserie + ombre portee (une seule fois par materiau)
+  GameEngine.prototype._carLook = function(root){
+    const env = this._carEnv;
+    root.traverse(n=>{
+      if(!n.isMesh) return;
+      n.castShadow = true;
+      const mats = Array.isArray(n.material) ? n.material : [n.material];
+      mats.forEach(m=>{
+        if(!m || !m.isMeshStandardMaterial || m.envMap === env || (m.envMap && m.userData.dgEnv !== true)) return;
+        m.envMap = env; m.envMapIntensity = 1.1; m.userData.dgEnv = true; m.needsUpdate = true;
+      });
+    });
   };
   GameEngine.prototype.setBoostHeld = function(v){ this._boostHeld = v; };
 
@@ -796,6 +871,7 @@
     }
     if(maxW != null) w = Math.min(w, maxW);
     mesh.position.set(lane, 0, -134);
+    this._carLook(mesh);
     mesh.userData.w = w;
     this.scene.add(mesh);
     this._obstacles.push({ mesh, hit:false, scored:false, laneX:lane, li, kind, v, solo:forceLane == null, lc:null,
@@ -1118,10 +1194,33 @@
 
     if(!this.playing) return;
 
-    // Deplacement lateral (aussi pendant le compte a rebours) : roulis +
-    // leger braquage du nez dans le sens du changement de voie.
-    const targetX = LANES[this._lane];
-    this._playerX += (targetX - this._playerX) * Math.min(1, dt * this.mult.handlingRate);
+    // Conduite libre : on braque tant qu'on maintient la direction. La vitesse
+    // laterale suit la consigne avec l'adherence de la voiture (maniabilite),
+    // et dans les virages la force centrifuge pousse vers l'exterieur : il faut
+    // contre-braquer pour rester dans sa voie.
+    const hand = this.mult.handlingRate;
+    const maxLat = 3.4 + hand * 0.42;
+    const want = this._steer * maxLat * (0.6 + 0.4 * Math.min(1, this._speed / 40));
+    this._latV += (want - this._latV) * Math.min(1, dt * (2.2 + hand * 0.28));
+    const curve = BEND.value.x / CURVE_X;
+    const drift = counting ? 0 : -curve * this._speed * this._speed * DRIFT_K;
+    this._playerX += (this._latV + drift) * dt;
+    // Glissiere : on frotte (etincelles, perte de vitesse) au lieu de mourir
+    const lim = ROAD_LIMIT - (this._playerHalfW || 0.55) * 0.6;
+    if(Math.abs(this._playerX) > lim){
+      const side = Math.sign(this._playerX);
+      this._playerX = side * lim;
+      if(this._latV * side > 0) this._latV = -side * Math.abs(this._latV) * 0.25;
+      this._speed = Math.max(this.mult.baseSpeed * 0.6, this._speed * (1 - dt * 0.9));
+      this._scrapeT = 0.12;
+      if(this.fx){
+        if(Math.random() < 0.7) this.fx.emit(this._playerX + side * 0.4, 0.4, 0.8, 3, 0xffc46a, 5, 1.5, 0.35);
+        this.fx.shake = Math.max(this.fx.shake, 0.12);
+      }
+    } else this._scrapeT = Math.max(0, this._scrapeT - dt);
+    // voie la plus proche (sert aux vagues de trafic qui visent la "planque" du joueur)
+    let best = 0; for(let k = 1; k < 4; k++) if(Math.abs(LANES[k] - this._playerX) < Math.abs(LANES[best] - this._playerX)) best = k;
+    this._lane = best;
     // Saut (tremplin) : simple balistique ; atterrissage avec secousse + etincelles
     if(this._jumpY > 0 || this._jumpVy > 0){
       this._jumpVy -= GRAVITY * dt;
@@ -1138,10 +1237,20 @@
     if(this._player){
       this._player.position.x = this._playerX;
       this._player.position.y = this._jumpY + Math.sin(now*0.02)*0.02 + (this._boostActive ? Math.sin(now*0.09)*0.012 : 0);
-      this._player.rotation.z = (targetX - this._playerX) * 0.14;
-      // nez tourne vers l'interieur du virage + cabre pendant le saut
-      this._player.rotation.y = -(targetX - this._playerX) * 0.07 - BEND.value.x * 110;
-      this._player.rotation.x = this._jumpY > 0 ? Math.max(-0.22, Math.min(0.28, this._jumpVy * 0.03)) : 0;
+      // Dynamique de caisse : roulis vers l'exterieur en braquant, nez qui suit
+      // la trajectoire (et le virage), plongee au freinage, accroupi au boost.
+      const k = Math.min(1, dt * 8);
+      this._roll += (this._latV * 0.028 - this._roll) * k;
+      this._yaw += (-(this._latV + drift) * 0.05 - BEND.value.x * 110 - this._yaw) * k;
+      const pitchT = this._jumpY > 0 ? Math.max(-0.22, Math.min(0.28, this._jumpVy * 0.03)) : (this._brake ? -0.035 : this._boostActive ? 0.03 : 0);
+      this._pitch += (pitchT - this._pitch) * k;
+      this._player.rotation.z = this._roll;
+      this._player.rotation.y = this._yaw;
+      this._player.rotation.x = this._pitch;
+      if(this._playerTailMat){
+        const on = this._brake && this.playing;
+        this._playerTailMat.opacity += ((on ? 1 : 0.5) - this._playerTailMat.opacity) * Math.min(1, dt * 12);
+      }
       if(this._shieldFx){
         this._shieldFx.visible = !!this._shield;
         if(this._shield){ const p = 1 + Math.sin(now*0.006) * 0.04; this._shieldFx.scale.set(p, p, p); }
@@ -1149,10 +1258,12 @@
     }
     this._headlight.intensity += (this._headlightI - this._headlight.intensity) * Math.min(1, dt*3);
     this._headlight.position.set(this._playerX, 1.1, -1.6);
+    this.keyLight.position.set(this._playerX + 6, 10, 1); this.keyLight.target.position.set(this._playerX, 0, -6);
     if(counting) return;
 
     this._time += dt;
-    this._speed += (this.mult.maxSpeed - this._speed) * Math.min(1, dt * this.mult.accelRamp * 0.4);
+    if(this._brake) this._speed = Math.max(this.mult.baseSpeed * 0.65, this._speed - dt * 13);
+    else this._speed += (this.mult.maxSpeed - this._speed) * Math.min(1, dt * this.mult.accelRamp * 0.4);
     this._dist += scroll;
 
     if(this._multiplierT > 0){ this._multiplierT -= dt; if(this._multiplierT <= 0){ this._multiplier = 1; if(this.cb.onPickup) this.cb.onPickup('multiplier-end'); } }
@@ -1197,7 +1308,7 @@
     this._pickupT -= dt;
     if(this._pickupT <= 0){ this._pickupT = 1.1 + Math.random()*1.0; this._spawnPickup(); }
     this._rampT -= dt;
-    if(this._rampT <= 0){ this._rampT = 7 + Math.random()*6; this._spawnRamp(); }
+    if(this._rampT <= 0){ this._rampT = 12 + Math.random()*9; this._spawnRamp(); }
     if(this._magnetT > 0) this._magnetT -= dt;
 
     // Tremplins : pris dans la bonne voie (et au sol) -> saut + bonus

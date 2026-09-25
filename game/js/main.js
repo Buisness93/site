@@ -797,8 +797,14 @@
   els.btnBoardClose.addEventListener('click', ()=>show('ovChoosing'));
 
   function wireControls(){
-    els.btnLeft.addEventListener('pointerdown', ()=>engine.move(-1));
-    els.btnRight.addEventListener('pointerdown', ()=>engine.move(1));
+    // Direction maintenue (clavier et boutons tactiles) : gauche/droite se
+    // combinent, la voiture braque tant qu'on appuie.
+    const held = { l:false, r:false };
+    const applySteer = ()=>engine.setSteer((held.r ? 1 : 0) - (held.l ? 1 : 0));
+    [[els.btnLeft, 'l'], [els.btnRight, 'r']].forEach(([b, k])=>{
+      b.addEventListener('pointerdown', (e)=>{ held[k] = true; applySteer(); try { b.setPointerCapture(e.pointerId); } catch(_){} });
+      ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev=>b.addEventListener(ev, ()=>{ held[k] = false; applySteer(); }));
+    });
     els.btnBoost.addEventListener('pointerdown', ()=>engine.setBoostHeld(true));
     els.btnBoost.addEventListener('pointerup', ()=>engine.setBoostHeld(false));
     els.btnBoost.addEventListener('pointerleave', ()=>engine.setBoostHeld(false));
@@ -810,8 +816,9 @@
 
     window.addEventListener('keydown', (e)=>{
       const k = e.key;
-      if(k==='ArrowLeft'||k==='a'||k==='A'){ engine.move(-1); }
-      if(k==='ArrowRight'||k==='d'||k==='D'){ engine.move(1); }
+      if(k==='ArrowLeft'||k==='a'||k==='A'||k==='q'||k==='Q'){ held.l = true; applySteer(); if(engine.playing) e.preventDefault(); }
+      if(k==='ArrowRight'||k==='d'||k==='D'){ held.r = true; applySteer(); if(engine.playing) e.preventDefault(); }
+      if(k==='ArrowDown'||k==='s'||k==='S'){ engine.setBrake(true); if(engine.playing) e.preventDefault(); }
       if(k===' '||k==='Shift'||k==='ArrowUp'||k==='w'||k==='W'){ engine.setBoostHeld(true); if(engine.playing) e.preventDefault(); }
       if(k==='c'||k==='C'){ engine.cycleCam(); }
       if((k==='p'||k==='P') && engine.playing){ engine.paused ? engine.resume() : engine.pause(); }
@@ -820,7 +827,12 @@
     window.addEventListener('keyup', (e)=>{
       const k = e.key;
       if(k===' '||k==='Shift'||k==='ArrowUp'||k==='w'||k==='W'){ engine.setBoostHeld(false); }
+      if(k==='ArrowLeft'||k==='a'||k==='A'||k==='q'||k==='Q'){ held.l = false; applySteer(); }
+      if(k==='ArrowRight'||k==='d'||k==='D'){ held.r = false; applySteer(); }
+      if(k==='ArrowDown'||k==='s'||k==='S'){ engine.setBrake(false); }
     });
+    // fenetre qui perd le focus : on relache tout (sinon la voiture braque seule)
+    window.addEventListener('blur', ()=>{ held.l = held.r = false; applySteer(); engine.setBrake(false); engine.setBoostHeld(false); });
 
     const fsSupported = document.fullscreenEnabled || document.webkitFullscreenEnabled;
     if(!fsSupported){ els.btnFullscreen.style.display = 'none'; }
