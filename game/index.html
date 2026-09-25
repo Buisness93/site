@@ -177,11 +177,11 @@
   <div class="radar-flash" id="radarFlash"></div>
 
   <div class="overlay toll-overlay hidden" id="ovToll">
-    <div class="toll-panel">
+    <div class="toll-panel" id="tollPanel">
       <div class="toll-head"><span class="toll-logo" id="tollLogo">A1</span><div><div class="toll-kicker" id="tollKicker">Péage</div><div class="toll-station" id="tollStation">—</div></div></div>
       <div class="toll-trip" id="tollTrip">—</div>
       <div class="toll-screen"><span>IMPORTO</span><b id="tollPrice">0,00 €</b></div>
-      <div class="toll-fill hidden" id="tollFill"><div class="tf-label">⛽ Remplissage en cours…</div><div class="tf-bar"><i id="tollFillBar"></i></div><div class="tf-txt" id="tollFillTxt">0</div></div>
+      <div class="toll-fill hidden" id="tollFill"><div class="tf-label" id="tollFillLabel">…</div><div class="tf-bar"><i id="tollFillBar"></i></div><div class="tf-txt" id="tollFillTxt">0</div></div>
       <div class="toll-after hidden" id="tollAfter">
         <button class="toll-btn shop" id="btnShopEnter"><span class="tl-ico">🏪</span><span class="tl-body"><span class="tl-title">Entrer dans la boutique <kbd>B</kbd></span><span class="tl-sub">Café, sandwichs, boissons… petits bonus</span></span></button>
         <button class="toll-btn card" id="btnShopSkip"><span class="tl-ico">🚗</span><span class="tl-body"><span class="tl-title">Repartir <kbd>Entrée</kbd></span><span class="tl-sub">Reprendre la route</span></span></button>
@@ -194,8 +194,30 @@
     </div>
   </div>
 
+  <div class="pump-panel hidden" id="pumpPanel">
+    <div class="pump-head" id="pumpHead">⛽</div>
+    <div class="pump-lcd"><div><span>LITRES</span><b id="pumpQty">0,00</b></div><div><span>MONTANT</span><b id="pumpAmount">0,00</b></div></div>
+    <div class="pump-tank"><i id="pumpBar"></i></div>
+  </div>
+
+  <div class="radar-ticket" id="radarTicket">
+    <div class="rt-head"><span class="rt-flag"></span><b id="ticketTitle">AVIS DE CONTRAVENTION</b></div>
+    <img class="rt-photo" id="ticketPhoto" alt="">
+    <div class="rt-rows" id="ticketRows"></div>
+    <div class="rt-stamp" id="ticketStamp">Police</div>
+  </div>
+
   <div class="shop-panel hidden" id="ovShop">
-    <div class="shop-head"><div class="shop-kicker">🏪 Boutique</div><div class="shop-title" id="shopTitle">—</div><div class="shop-wallet" id="shopWallet">—</div></div>
+    <div class="shop-head"><div class="shop-kicker">🏪 Boutique · caisse</div><div class="shop-title" id="shopTitle">—</div><div class="shop-wallet" id="shopWallet">—</div></div>
+    <div class="shop-counter" id="shopCounter">
+      <div class="sc-line" id="shopFuelLine">—</div>
+      <div class="sc-pay">
+        <button class="toll-btn card" id="btnCounterCard"><span class="tl-ico">💳</span><span class="tl-body"><span class="tl-title">Carte <kbd>C</kbd></span><span class="tl-sub">—</span></span></button>
+        <button class="toll-btn" id="btnCounterCash"><span class="tl-ico">💶</span><span class="tl-body"><span class="tl-title">Espèces <kbd>V</kbd></span><span class="tl-sub">—</span></span></button>
+      </div>
+      <div class="sc-paid">✔ Carburant payé</div>
+    </div>
+    <div class="shop-sub">Envie d'un encas ? <small>(3 articles max.)</small></div>
     <div class="shop-list" id="shopList"></div>
     <div class="shop-msg" id="shopMsg"></div>
     <button class="toll-btn card" id="btnShopLeave"><span class="tl-ico">🚪</span><span class="tl-body"><span class="tl-title">Sortir et repartir <kbd>Échap</kbd></span></span></button>

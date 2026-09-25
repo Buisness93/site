@@ -819,6 +819,7 @@
     {
       id:'autoroute-nuit', name:'Autoroute Nocturne', difficulty:'Standard', spacing:9,
       fuelPrices:[1.86, 1.96, 2.06], fuelLabels:['GAZOLE', 'SP95-E10', 'SP98'], fuelDefault:1, fuelColor:0x1a4fa8, fuelColor2:0xff7a00, fuelStationName:'Aire de service',
+      fuelStationModel:'../uploads/gas-station.glb',
       radars:{ limit:130, style:'fr', police:'Gendarmerie nationale', policeStyle:'fr', chaseOver:50, every:1600, fine:(o)=> o < 20 ? 68 : o < 50 ? 135 : 1500 },
       fog:0x0c1322, fogNear:30, fogFar:140, ground:0x06090a, exposure:1.08,
       road:0x0b0d12, stripe:0xd8dee6, edge:0x1b2129, edgeEmissive:0x1a2a3a,

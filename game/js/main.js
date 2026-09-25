@@ -15,6 +15,9 @@
     drawCard:$('drawCard'), drawDesc:$('drawDesc'), drawCta:$('drawCta'), drawNote:$('drawNote'), drawTimer:$('drawTimer'), drawStreak:$('drawStreak'),
     ovWheel:$('ovWheel'), wheelEl:$('wheelEl'), reelTrack:$('reelTrack'), wheelResult:$('wheelResult'), btnSpinWheel:$('btnSpinWheel'), btnCloseWheel:$('btnCloseWheel'),
     overDailyCard:$('overDailyCard'), overDailyDesc:$('overDailyDesc'), btnClaimDaily:$('btnClaimDaily'),
+    tollPanel:$('tollPanel'), tollFillLabel:$('tollFillLabel'), pumpPanel:$('pumpPanel'), pumpHead:$('pumpHead'), pumpQty:$('pumpQty'), pumpAmount:$('pumpAmount'), pumpBar:$('pumpBar'),
+    shopCounter:$('shopCounter'), shopFuelLine:$('shopFuelLine'), btnCounterCard:$('btnCounterCard'), btnCounterCash:$('btnCounterCash'),
+    radarTicket:$('radarTicket'), ticketTitle:$('ticketTitle'), ticketPhoto:$('ticketPhoto'), ticketRows:$('ticketRows'), ticketStamp:$('ticketStamp'),
     journeyChip:$('journeyChip'), tollAfter:$('tollAfter'), btnShopEnter:$('btnShopEnter'), btnShopSkip:$('btnShopSkip'), ovShop:$('ovShop'), shopTitle:$('shopTitle'), shopList:$('shopList'), shopWallet:$('shopWallet'), shopMsg:$('shopMsg'), btnShopLeave:$('btnShopLeave'), alertChip:$('alertChip'), radarFlash:$('radarFlash'), tollFill:$('tollFill'), tollFillBar:$('tollFillBar'), tollFillTxt:$('tollFillTxt'), tollActions:$('tollActions'), tollLogo:$('tollLogo'), tollKicker:$('tollKicker'), hudFuel:$('hudFuel'), hudFuelCell:$('hudFuelCell'), ovToll:$('ovToll'), tollStation:$('tollStation'), tollTrip:$('tollTrip'), tollPrice:$('tollPrice'), tollMsg:$('tollMsg'), btnTollCash:$('btnTollCash'), btnTollCard:$('btnTollCard'),
     btnLeft:$('btnLeft'), btnRight:$('btnRight'), btnBoost:$('btnBoost'), btnCam:$('btnCam'), btnPause:$('btnPause'), btnFullscreen:$('btnFullscreen'), btnMusic:$('btnMusic'), bgAudio:$('bgAudio'),
     musicPanel:$('musicPanel'), musicTrackName:$('musicTrackName'), btnMusicPrev:$('btnMusicPrev'), btnMusicToggle:$('btnMusicToggle'), btnMusicNext:$('btnMusicNext'), musicVolume:$('musicVolume'), musicList:$('musicList'),
@@ -687,9 +690,9 @@
         else if(kind==='shield-hit') popup('🛡 BOUCLIER BRISÉ', '#3dffb0', true);
         else if(kind==='jump') popup('🚀 SAUT ! +100', '#3df0ff', true);
         else if(kind==='fuel-station') popup('⛽ STATION À 300 m — appuie sur E pour t\'y arrêter', '#ffcc33', true);
+        else if(kind==='telepass'){ popup('📡 Télépéage · ' + money(payload.price, payload.currency) + ' débité (−' + payload.pts + ' pts)', '#ffcc00', true); tone({ f:1760, dur:0.09, vol:0.05 }); tone({ f:2350, dur:0.12, vol:0.05, delay:0.1 }); }
         else if(kind==='radar-flash'){
-          const cur = payload.currency;
-          popup('📸 FLASHÉ à ' + speedTxt(payload.kmh, payload.unitLabel) + ' — amende ' + money(payload.fine, cur) + ' (−' + payload.pts + ' pts)', '#ff5a3d', true);
+          showTicket(payload);
           if(els.radarFlash){ els.radarFlash.classList.remove('go'); void els.radarFlash.offsetWidth; els.radarFlash.classList.add('go'); }
           tone({ f:2400, dur:0.06, vol:0.05 });
         }
@@ -726,107 +729,173 @@
   }
 
 
-  // Menu du peage : la voiture est arretee a la cabine, on choisit comment payer.
+  // ---------- Arrets : peage, police, station (pompe -> caisse -> boutique) ----------
   const money = (v, cur)=>cur === '$' ? '$' + v.toFixed(2) : cur === '¥' ? '¥' + Math.round(v).toLocaleString('fr-FR') : v.toFixed(2).replace('.', ',') + ' ' + cur;
   const speedTxt = (kmh, unit)=>unit === 'mph' ? Math.round(kmh / 1.609) + ' mph' : kmh + ' km/h';
+  const LANE_TXT = { t:'Voie télépéage', cb:'Voie CB — carte uniquement', cash:'Voie espèces & carte' };
+  let _stopKind = null, _stopInfo = null, _processing = false;
   function openToll(info){
-    const fuel = info.kind === 'fuel';
-    _stopKind = info.kind;
+    _stopKind = info.kind; _stopInfo = info;
+    if(info.kind === 'fuel'){ startPump(info); return; }
     const police = info.kind === 'police';
-    els.tollLogo.textContent = fuel ? '⛽' : police ? '🚓' : (info.road || '🛑');
-    els.tollKicker.textContent = info.operator + (fuel ? ' · Faire le plein' : police ? ' · Amende' : ' · Péage');
+    els.tollPanel.dataset.kind = info.kind;
+    els.tollLogo.textContent = police ? '🚓' : (info.road || '🛑');
+    els.tollKicker.textContent = info.operator + (police ? ' · Amende' : ' · Péage');
     els.tollStation.textContent = info.station;
-    els.tollTrip.textContent = fuel
-      ? 'Réservoir ' + info.fuelPct + ' % · ' + info.qty + ' ' + info.unit + ' de ' + info.fuelLabel + ' à ' + money(info.ppl, info.currency) + '/' + info.unit + ' · pompe ' + info.lane
-      : police ? 'Excès de vitesse : ' + speedTxt(info.kmh, info.unitLabel) + ' au lieu de ' + speedTxt(info.limit, info.unitLabel)
-      : info.from + ' → ' + info.station + ' · ' + info.km + ' km · voie ' + info.lane;
+    els.tollTrip.textContent = police ? 'Excès de vitesse : ' + speedTxt(info.kmh, info.unitLabel) + ' au lieu de ' + speedTxt(info.limit, info.unitLabel)
+      : info.from + ' → ' + info.station + ' · ' + info.km + ' km · voie ' + info.lane + ' · ' + (LANE_TXT[info.laneType] || '');
     els.tollFill.classList.add('hidden'); els.tollAfter.classList.add('hidden'); els.tollActions.classList.remove('hidden');
     els.tollPrice.textContent = money(info.price, info.currency); els.tollPrice.dataset.cur = info.currency;
-    const canCash = info.coinsHave >= info.coinsNeed;
+    const cbOnly = !police && info.laneType === 'cb';
+    const canCash = !cbOnly && info.coinsHave >= info.coinsNeed;
     els.btnTollCash.disabled = !canCash;
-    els.btnTollCash.querySelector('.tl-sub').textContent = info.coinsNeed + ' pièces 🪙 (tu en as ' + info.coinsHave + ')';
-    els.btnTollCard.querySelector('.tl-sub').textContent = '−' + info.cardPoints + ' points au score';
-    els.tollMsg.textContent = canCash ? '' : 'Pas assez de pièces ramassées : paie par carte.';
+    els.btnTollCash.querySelector('.tl-sub').textContent = cbOnly ? 'Pas d\'espèces dans cette voie' : info.coinsNeed + ' pièces 🪙 (tu en as ' + info.coinsHave + ')';
+    els.btnTollCard.querySelector('.tl-sub').textContent = 'Sans contact · −' + info.cardPoints + ' points';
+    els.tollMsg.textContent = cbOnly ? '' : canCash ? '' : 'Pas assez de pièces ramassées : paie par carte.';
     els.ovToll.classList.remove('hidden');
+    _processing = false;
     clickSound(true);
   }
+  // Paiement a la borne : carte sans contact ou especes (rendu de monnaie)
   function payToll(method){
-    if(els.tollFill && !els.tollFill.classList.contains('hidden')) return; // deja en cours
-    const FILL = 1.6;
-    const res = engine.payToll(method, _stopKind === 'fuel' ? 'hold' : 0);
+    if(_processing || !_stopInfo) return;
+    if(_stopKind === 'fuel'){ payCounter(method); return; }
+    const PROC = 1.5, info = _stopInfo;
+    const res = engine.payToll(method, PROC);
     if(!res.ok){ els.tollMsg.textContent = res.error || 'Paiement refusé'; return; }
-    chimeSound(1);
-    if(res.kind !== 'fuel'){
-      els.ovToll.classList.add('hidden');
-      popup(res.kind === 'police' ? '🚓 Amende payée — roule prudemment !' : (method === 'cash' ? '💶 ' : '💳 ') + 'PAYÉ — Bonne route !', '#4ee39a', true);
-      return;
-    }
-    // plein : la pompe tourne (litres + montant qui defilent), puis on repart
+    _processing = true;
     els.tollActions.classList.add('hidden'); els.tollMsg.textContent = '';
     els.tollFill.classList.remove('hidden');
+    const cur = info.currency, bills = cur === '¥' ? [1000, 5000, 10000] : [5, 10, 20, 50, 100];
+    const bill = bills.find(b=>b >= info.price) || bills[bills.length - 1];
+    const lines = method === 'card'
+      ? ['📶 Approchez votre carte…', '💳 Lecture…', '✔ Paiement accepté']
+      : ['💶 Billet de ' + money(bill, cur) + ' inséré', '🪙 Rendu : ' + money(Math.max(0, bill - info.price), cur), '✔ Merci, bonne route'];
+    els.tollFillLabel.textContent = lines[0];
     const t0 = performance.now();
     (function step(now){
-      const k = Math.min(1, (now - t0) / (FILL * 1000));
+      const k = Math.min(1, (now - t0) / (PROC * 1000));
       els.tollFillBar.style.width = (k * 100) + '%';
-      els.tollFillTxt.textContent = (res.qty * k).toFixed(res.unit === 'gal' ? 1 : 0) + ' ' + res.unit + ' · ' + money(res.price * k, els.tollPrice.dataset.cur || '€');
+      els.tollFillLabel.textContent = lines[Math.min(2, Math.floor(k * 3))];
+      els.tollFillTxt.textContent = k < 1 ? money(info.price, cur) : '🧾 ' + money(info.price, cur) + ' · ' + (method === 'card' ? 'CB' : 'ESPÈCES');
       if(k < 1) requestAnimationFrame(step);
-      else {
-        // plein fait : on peut entrer dans la boutique ou repartir
-        els.tollFill.classList.add('hidden'); els.tollAfter.classList.remove('hidden');
-        popup('⛽ PLEIN FAIT · ' + res.qty + ' ' + res.unit, '#ffcc33', true);
-      }
+      else { els.ovToll.classList.add('hidden'); _processing = false; chimeSound(1); popup(res.kind === 'police' ? '🚓 Amende payée — roule prudemment !' : '🛣 Barrière ouverte — bonne route !', '#4ee39a', true); }
     })(t0);
   }
-  // Boutique de la station : la camera entre dans le magasin, on achete a
-  // manger / a boire (prix reels du pays), chaque article donne un bonus.
-  const EFFECT_TXT = { coffee:'Nitro plein + gains ×2 (15 s)', drink:'Nitro +50 %', food:null };
-  let _shopItems = [];
-  function openShop(){
-    const route = DG.routeById(state.selectedRoute);
-    const cur = route.currency || '€';
+  // Station 1/3 : a la pompe, le compteur tourne (litres + montant)
+  function startPump(info){
+    els.pumpPanel.classList.remove('hidden');
+    els.pumpHead.textContent = '⛽ Pompe ' + info.lane + ' · ' + info.fuelLabel + ' · ' + money(info.ppl, info.currency) + '/' + info.unit;
+    const FILL = 2.4, t0 = performance.now();
+    (function step(now){
+      const k = Math.min(1, (now - t0) / (FILL * 1000)), e = 1 - Math.pow(1 - k, 1.6);
+      els.pumpQty.textContent = (info.qty * e).toFixed(2).replace('.', ',');
+      els.pumpAmount.textContent = money(info.price * e, info.currency);
+      els.pumpBar.style.width = (info.fuelPct + (100 - info.fuelPct) * e) + '%';
+      if(k < 1){ requestAnimationFrame(step); return; }
+      tone({ f:1320, dur:0.12, vol:0.04 }); // "clic" du pistolet
+      els.pumpHead.textContent = '✔ Réservoir plein — 🚶 direction la caisse…';
+      setTimeout(()=>{ els.pumpPanel.classList.add('hidden'); openCounter(info); }, 900);
+    })(t0);
+  }
+  // Station 2/3 : on entre dans la boutique, on paie le carburant a la caisse
+  const EFFECT_TXT = { coffee:'Nitro plein + gains ×1,5 (10 s)', drink:'Nitro +50 %', food:'Aimant à pièces (8 s)' };
+  let _shopItems = [], _fuelPaid = false;
+  function openCounter(info){
+    const route = DG.routeById(state.selectedRoute), cur = route.currency || '€';
     _shopItems = DG.StopKit ? DG.StopKit.shopItems(route) : [];
-    els.ovToll.classList.add('hidden');
+    _fuelPaid = false;
     engine.enterShop(true);
     els.shopTitle.textContent = route.fuelStationName || 'Boutique';
-    const coinV = route.coinValue || 1;
-    els.shopList.innerHTML = _shopItems.map((it, i)=>{
-      const coins = Math.max(1, Math.ceil(it.price / coinV)), pts = Math.max(1, Math.round(it.price / coinV * 3));
-      const eff = EFFECT_TXT[it.effect] || ('+' + it.pts + ' points');
-      return '<div class="shop-item"><span class="si-ico">' + it.ico + '</span><span class="si-body"><span class="si-name">' + it.label + ' <kbd>' + (i + 1) + '</kbd></span><span class="si-eff">' + eff + '</span></span>' +
-        '<span class="si-price">' + money(it.price, cur) + '</span>' +
-        '<span class="si-buy"><button class="si-btn" data-buy="' + i + '" data-m="cash">🪙 ' + coins + '</button><button class="si-btn card" data-buy="' + i + '" data-m="card">💳 ' + pts + ' pts</button></span></div>';
-    }).join('');
-    els.shopList.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click', ()=>buyShop(+b.dataset.buy, b.dataset.m)));
+    els.shopFuelLine.innerHTML = '<span>⛽ Pompe ' + info.lane + ' · ' + info.qty + ' ' + info.unit + ' ' + info.fuelLabel + '</span><b>' + money(info.price, cur) + '</b>';
+    els.btnCounterCash.querySelector('.tl-sub').textContent = info.coinsNeed + ' pièces (tu en as ' + info.coinsHave + ')';
+    els.btnCounterCard.querySelector('.tl-sub').textContent = '−' + info.cardPoints + ' points';
+    els.btnCounterCash.disabled = info.coinsHave < info.coinsNeed;
+    els.shopCounter.classList.remove('paid');
+    els.btnShopLeave.disabled = true;
+    els.shopMsg.textContent = 'Le caissier t\'attend : règle ton carburant.';
+    renderShopItems(route);
     refreshWallet();
     setTimeout(()=>{ if(engine._shopCam) els.ovShop.classList.remove('hidden'); }, 900); // le temps d'entrer
+  }
+  function renderShopItems(route){
+    const cur = route.currency || '€';
+    els.shopList.innerHTML = _shopItems.map((it, i)=>{
+      const c = engine.shopCost(it);
+      return '<div class="shop-item" data-i="' + i + '"><span class="si-ico">' + it.ico + '</span><span class="si-body"><span class="si-name">' + it.label + ' <kbd>' + (i + 1) + '</kbd></span><span class="si-eff">' + EFFECT_TXT[it.effect] + '</span></span>' +
+        '<span class="si-price">' + money(it.price, cur) + '</span>' +
+        '<span class="si-buy"><button class="si-btn" data-buy="' + i + '" data-m="cash">🪙 ' + c.coins + '</button><button class="si-btn card" data-buy="' + i + '" data-m="card">💳 ' + c.card + ' pts</button></span></div>';
+    }).join('');
+    els.shopList.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click', ()=>buyShop(+b.dataset.buy, b.dataset.m)));
+  }
+  function payCounter(method){
+    if(_fuelPaid) return;
+    const res = engine.payToll(method, 'hold');
+    if(!res.ok){ els.shopMsg.textContent = res.error || 'Paiement refusé'; return; }
+    _fuelPaid = true;
+    els.shopCounter.classList.add('paid');
+    els.btnShopLeave.disabled = false;
+    els.shopMsg.textContent = (method === 'card' ? '💳 Paiement accepté' : '💶 Payé en espèces') + ' — ticket imprimé 🧾';
+    chimeSound(1); refreshWallet();
   }
   function refreshWallet(){ els.shopWallet.textContent = '🪙 ' + Math.floor(engine._coinCredits / 10) + ' pièces · score ' + engine.currentScore().toLocaleString('fr-FR'); }
   function buyShop(i, method){
     const it = _shopItems[i]; if(!it) return;
-    let res = engine.buyItem(it, method);
-    if(!res.ok && method === 'cash'){ els.shopMsg.textContent = 'Pas assez de pièces — paie par carte.'; return; }
-    if(!res.ok) return;
-    els.shopMsg.textContent = it.ico + ' ' + it.label + ' acheté !';
+    const res = engine.buyItem(it, method);
+    if(!res.ok){ els.shopMsg.textContent = res.error || (method === 'cash' ? 'Pas assez de pièces — paie par carte.' : 'Impossible'); return; }
+    const row = els.shopList.querySelector('[data-i="' + i + '"]'); if(row) row.classList.add('bought');
+    els.shopMsg.textContent = it.ico + ' ' + it.label + ' acheté ! (' + res.left + ' article' + (res.left > 1 ? 's' : '') + ' max. encore)';
     clickSound(); chimeSound(0);
-    popup(it.ico + ' ' + (EFFECT_TXT[it.effect] || '+' + it.pts + ' points'), '#ffcc33');
+    popup(it.ico + ' ' + EFFECT_TXT[it.effect], '#ffcc33');
     refreshWallet();
   }
+  // Station 3/3 : on ressort (seulement une fois le carburant paye) et on repart
   function leaveShop(){
-    els.ovShop.classList.add('hidden'); els.shopMsg.textContent = '';
+    if(!_fuelPaid){ els.shopMsg.textContent = '⚠ Paie d\'abord ton carburant à la caisse.'; return; }
+    els.ovShop.classList.add('hidden');
     engine.enterShop(false);
-    setTimeout(()=>{ engine.leaveStop(); popup('🚗 Bonne route !', '#4ee39a'); }, 1100); // on ressort, puis on repart
+    setTimeout(()=>{ engine.leaveStop(); popup('🚗 Bonne route !', '#4ee39a'); }, 1100);
+  }
+  function openShop(){ if(_stopInfo) openCounter(_stopInfo); }
+
+  // Avis de contravention (photo prise au moment du flash)
+  function showTicket(p){
+    if(!els.radarTicket) return;
+    const lang = (DG._journey && DG._journey.lang) || 'fr';
+    els.ticketTitle.textContent = { it:'VERBALE DI CONTRAVVENZIONE', de:'ORDNUNGSBUSSE' }[lang] || (p.currency === '$' ? 'SPEEDING TICKET' : 'AVIS DE CONTRAVENTION');
+    const flags = { '$':'repeating-linear-gradient(180deg,#b22234 0 2px,#fff 2px 4px)', CHF:'radial-gradient(circle,#fff 0 30%,#d52b1e 31%)', '¥':'radial-gradient(circle,#bc002d 0 34%,#fff 35%)' };
+    const flag = flags[p.currency] || (lang === 'it' ? 'linear-gradient(90deg,#009246 33%,#fff 33% 66%,#ce2b37 66%)' : 'linear-gradient(90deg,#1f4fa8 33%,#fff 33% 66%,#d0141e 66%)');
+    const fl = els.radarTicket.querySelector('.rt-flag'); if(fl) fl.style.background = flag;
+    els.ticketPhoto.src = p.photo || '';
+    els.ticketPhoto.style.display = p.photo ? '' : 'none';
+    const d = new Date();
+    els.ticketRows.innerHTML =
+      '<span>Date</span><b>' + d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }) + '</b>' +
+      '<span>Lieu</span><b>' + (p.place || '—') + '</b>' +
+      '<span>Vitesse retenue</span><b class="bad">' + speedTxt(p.kmh, p.unitLabel) + '</b>' +
+      '<span>Limitation</span><b>' + speedTxt(p.limit, p.unitLabel) + '</b>' +
+      '<span>Amende</span><b class="bad">' + money(p.fine, p.currency) + ' (−' + p.pts + ' pts)</b>';
+    els.ticketStamp.textContent = p.police || 'Police';
+    els.radarTicket.classList.remove('show'); void els.radarTicket.offsetWidth; els.radarTicket.classList.add('show');
+    clearTimeout(showTicket._t); showTicket._t = setTimeout(()=>els.radarTicket.classList.remove('show'), 5500);
   }
 
   // Bandeau d'alerte : poursuite > radar > station (on peut toucher / E pour la station)
-  let _stopKind = null;
   const alerts = { police:null, radar:null, station:null };
   let _siren = 0;
   function renderAlert(){
     const el = els.alertChip; if(!el) return;
     let html = '', cls = '';
-    if(alerts.police){ html = '🚓 <b>POLICE</b> à ' + Math.round(alerts.police.gap) + ' m — <b>nitro</b> pour la semer !'; cls = 'police'; }
-    else if(alerts.radar){ const r = alerts.radar, over = r.kmh > r.limit + 5; html = '📸 RADAR <b>' + speedTxt(r.limit, r.unitLabel) + '</b> dans ' + Math.round(r.dist) + ' m' + (over ? ' — <b>freine ↓</b>' : ' ✓'); cls = over ? 'radar over' : 'radar'; }
-    else if(alerts.station){ const s = alerts.station; html = s.requested ? '⛽ Direction la pompe…' : '⛽ STATION dans ' + Math.round(s.dist) + ' m — <kbd>E</kbd> / touche ici pour faire le plein'; cls = 'station' + (s.fuel < 0.35 ? ' low' : '') + (s.requested ? ' requested' : ''); }
+    if(alerts.police){ html = '<span class="ac-ico">🚓</span><span><b>POLICE</b> à ' + Math.round(alerts.police.gap) + ' m<br><small>nitro pour la semer !</small></span>'; cls = 'police'; }
+    else if(alerts.radar){
+      const r = alerts.radar, over = r.kmh > r.limit + 5, us = r.unitLabel === 'mph';
+      const lim = us ? Math.round(r.limit / 1.609) : r.limit, cur = us ? Math.round(r.kmh / 1.609) : r.kmh;
+      html = '<span class="rw-sign' + (us ? ' us' : '') + '">' + (us ? '<small>SPEED<br>LIMIT</small>' : '') + lim + '</span>' +
+        '<span class="rw-speed' + (over ? ' over' : '') + '">' + cur + '<small>' + (us ? 'mph' : 'km/h') + '</small></span>' +
+        '<span class="rw-info"><b>' + (r.mobile ? '⚠ CONTRÔLE MOBILE' : '📸 RADAR') + '</b><small>' + Math.round(r.dist) + ' m' + (over ? ' · freine ↓' : ' · OK ✓') + '</small></span>';
+      cls = 'radar' + (over ? ' over' : '');
+    }
+    else if(alerts.station){ const s = alerts.station; html = '<span class="ac-ico">⛽</span><span>' + (s.requested ? 'Direction la pompe…' : '<b>STATION</b> dans ' + Math.round(s.dist) + ' m<br><small><kbd>E</kbd> / touche ici pour faire le plein</small>') + '</span>'; cls = 'station' + (s.fuel < 0.35 ? ' low' : '') + (s.requested ? ' requested' : ''); }
     el.className = 'alert-chip ' + cls + (html ? '' : ' hidden');
     el.innerHTML = html;
   }
@@ -838,6 +907,8 @@
 
   function startRun(){
     if(els.ovToll) els.ovToll.classList.add('hidden');
+    if(els.pumpPanel) els.pumpPanel.classList.add('hidden');
+    if(els.radarTicket) els.radarTicket.classList.remove('show');
     if(els.ovShop) els.ovShop.classList.add('hidden');
     alerts.police = alerts.radar = alerts.station = null; renderAlert();
     const rt = DG.routeById(state.selectedRoute);
@@ -991,10 +1062,14 @@
     els.btnShopEnter.addEventListener('click', openShop);
     els.btnShopSkip.addEventListener('click', ()=>{ els.ovToll.classList.add('hidden'); engine.leaveStop(); popup('🚗 Bonne route !', '#4ee39a'); });
     els.btnShopLeave.addEventListener('click', leaveShop);
+    els.btnCounterCard.addEventListener('click', ()=>payCounter('card'));
+    els.btnCounterCash.addEventListener('click', ()=>payCounter('cash'));
     window.addEventListener('keydown', (e)=>{
       if(!els.ovShop.classList.contains('hidden')){
         const n = parseInt(e.key, 10);
         if(n >= 1 && n <= _shopItems.length){ buyShop(n - 1, Math.floor(engine._coinCredits / 10) > 0 ? 'cash' : 'card'); }
+        if(e.key === 'c' || e.key === 'C') payCounter('card');
+        if(e.key === 'v' || e.key === 'V') payCounter('cash');
         if(e.key === 'Escape' || e.key === 'Enter'){ e.preventDefault(); leaveShop(); }
       } else if(!els.tollAfter.classList.contains('hidden') && !els.ovToll.classList.contains('hidden')){
         if(e.key === 'b' || e.key === 'B') openShop();

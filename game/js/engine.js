@@ -2,7 +2,11 @@
 // du DOM/HUD au-delà des callbacks fournis — game-ui.js s'occupe de l'affichage.
 (function(){
   window.DG = window.DG || {};
-  const LANES = [-3.3, -1.1, 1.1, 3.3];
+  // Voies de circulation : 4 par defaut, 5 sur les routes qui le demandent
+  // (route.lanes, ex. l'A1 italienne). LAST = indice de la voie de droite.
+  const LANES4 = [-3.3, -1.1, 1.1, 3.3], LANES5 = [-4.4, -2.2, 0, 2.2, 4.4], LANES2 = [-1.8, 1.8];
+  let LANES = LANES4, LAST = 3;
+  const allLanes = ()=>LANES.map((_, i)=>i);
 
   // Virages et collines facon "monde courbe" : la route reste droite pour la
   // logique du jeu (voies, collisions), mais au dessin chaque sommet est decale
@@ -231,6 +235,7 @@
     this.roadMat = new T.MeshStandardMaterial({ color:0x050609, metalness:0.35, roughness:0.7, map:this._roadTex, roughnessMap:this._roadTex });
     const road = new T.Mesh(new T.PlaneGeometry(14, 260, 2, 104), this.roadMat);
     road.rotation.x = -Math.PI/2; road.position.z = -100; road.receiveShadow = true; scene.add(road);
+    this._roadMesh = road;
 
     // Ciel en degrade calcule au pixel (4 teintes + halo autour de l'astre +
     // tramage anti-bandes) : l'horizon prend exactement la couleur du brouillard,
@@ -269,13 +274,14 @@
     this._scrollTex = [];
 
     this.stripeMat = new T.MeshBasicMaterial({ color:0x39404d });
-    for(const lane of [-2.2, 0, 2.2]){
+    for(let sep = 0; sep < 4; sep++){
       for(let i=0;i<48;i++){
         const st = new T.Mesh(new T.BoxGeometry(0.13,0.02,2), this.stripeMat);
-        st.position.set(lane, 0.02, -i*5);
+        st.position.set(0, 0.02, -i*5); st.userData.sep = sep;
         scene.add(st); this._stripes.push(st);
       }
     }
+    this._layoutLanes(4);
     this.edgeMat = new T.MeshStandardMaterial({ color:0x1b2129, emissive:0x0a1a3a, emissiveIntensity:0.8 });
     this._edges = [-5.5, 5.5].map(x=>{
       const edge = new T.Mesh(new T.BoxGeometry(0.16,0.18,260, 1, 1, 104), this.edgeMat);
@@ -285,9 +291,10 @@
 
     // Lignes de rive continues (comme sur une vraie 2x4 voies)
     this.edgeLineMat = new T.MeshBasicMaterial({ color:0xd8dee6 });
-    [-4.45, 4.45].forEach(x=>{
+    this._edgeLines = [-4.45, 4.45].map(x=>{
       const l = new T.Mesh(new T.PlaneGeometry(0.14, 260, 1, 104), this.edgeLineMat);
       l.rotation.x = -Math.PI/2; l.position.set(x, 0.021, -100); scene.add(l);
+      return l;
     });
 
     this.fx = DG.GameFX ? new DG.GameFX(this) : null;
@@ -445,9 +452,24 @@
     root.userData._mc = countMeshes(root);
   }
 
+  // Dispose la chaussee pour 4 ou 5 voies : separateurs, lignes de rive,
+  // largeur de l'asphalte et bordures.
+  GameEngine.prototype._layoutLanes = function(n){
+    LANES = n === 5 ? LANES5 : n === 2 ? LANES2 : LANES4; LAST = LANES.length - 1;
+    const seps = LANES.slice(1).map((x, i)=>(LANES[i] + x) / 2);
+    for(const st of this._stripes){ const k = st.userData.sep; st.visible = k < seps.length; if(k < seps.length) st.position.x = seps[k]; }
+    const edge = LANES[LAST] + 1.15;
+    if(this._edgeLines){ this._edgeLines[0].position.x = -edge; this._edgeLines[1].position.x = edge; }
+    if(this._edges){ this._edges[0].position.x = -(edge + 1.05); this._edges[1].position.x = edge + 1.05; }
+    if(this._roadMesh) this._roadMesh.scale.x = (edge + 2.55) / 7;
+    this._laneShift = LANES[LAST] - 3.3; // decalage des stations / peages / radars vers la droite
+  };
+
   GameEngine.prototype.setRoute = function(routeId){
+    DG._journey = null;
     const T = window.THREE;
     const route = DG.routeById(routeId);
+    this._layoutLanes(route.lanes || 4);
     this.route = route;
     this._decor.forEach(o=>{ this.scene.remove(o); disposeDeep(o); });
     this._decor = [];
@@ -623,6 +645,7 @@
     this._drafting = false;
 
     this._lane = 1; this._playerX = LANES[1];
+    this._layoutLanes(this.route.lanes || 4); this._lane = Math.min(LAST, 1); this._playerX = LANES[this._lane];
     this._brake = false;
     this._roll = 0; this._yaw = 0; this._pitch = 0;
     this._speed = this.mult.baseSpeed;
@@ -647,7 +670,7 @@
     // desactive avec le temps) : sert a reperer la "planque" du joueur — les 2
     // voies ou il se contente de rester — pour l'en deloger explicitement au
     // lieu de bloquer 2 voies au hasard (voir la vague double dans _update).
-    this._laneUse = [0, 0, 0, 0];
+    this._laneUse = LANES.map(()=>0);
 
     this._decor.forEach(d=>{ if(countMeshes(d) !== d.userData._mc) mergeStatic(T, d); });
     this._prewarm();
@@ -811,7 +834,8 @@
   GameEngine.prototype.setBrake = function(v){ this._brake = !!v; };
   GameEngine.prototype.move = function(d){
     if(!this.playing || this.paused || this._tollHold) return;
-    this._lane = Math.max(0, Math.min(3, this._lane + d));
+    if(this._toll && this._toll.lockLane != null && this._toll.state === 'approach') return;
+    this._lane = Math.max(0, Math.min(LAST, this._lane + d));
   };
 
   // ---------- Arrets : peages (route.journey) et stations-service ----------
@@ -828,7 +852,9 @@
     const j = this.route && this.route.journey;
     this._jr = j ? { stops:j.stops.slice(), from:j.from, to:j.to, idx:0, base:0, lap:1, lastTollKm:0 } : null;
     this._toll = null; this._tollHold = false; this._tollLock = false;
-    this._fuel = 1; this._fuelOut = false; this._fuelWarned = false; this._fuelNext = 1300; this._ghost = false;
+    // (sinon les panneaux reprenaient le trajet de la route precedente : "Lugano" sur l'A1)
+    DG._journey = this._jr ? this._journeyInfo() : null;
+    this._fuel = 1; this._fuelOut = false; this._fuelWarned = false; this._fuelNext = 1300; this._ghost = false; this._xOverride = null; this._openLane = null;
     if(this._radar){ this.scene.remove(this._radar.mesh); this._radar = null; }
     if(this._police){ this.scene.remove(this._police.mesh); this._police = null; }
     this._radarNext = 1000;
@@ -838,14 +864,15 @@
     const jr = this._jr, j = this.route.journey;
     const km = this._dist / j.unitsPerKm - jr.base;
     const stop = jr.stops[jr.idx], total = jr.stops[jr.stops.length - 1].km;
-    return { road:j.road || '', from:jr.from, to:jr.to, next:stop.name, kmNext:Math.max(0, stop.km - km), kmDone:Math.min(total, km), kmTotal:total, toll:!!stop.toll, lap:jr.lap };
+    const upcoming = jr.stops.slice(jr.idx, jr.idx + 3).map(s=>({ name:s.name, km:Math.max(0, s.km - km), toll:!!s.toll }));
+    return { road:j.road || '', routeId:this.route.id, lang:j.lang || 'fr', upcoming, from:jr.from, to:jr.to, next:stop.name, kmNext:Math.max(0, stop.km - km), kmDone:Math.min(total, km), kmTotal:total, toll:!!stop.toll, lap:jr.lap };
   };
   GameEngine.prototype._spawnStop = function(kind, unitsAhead, stop){
     const T = window.THREE, SK = DG.StopKit;
     let mesh;
     if(kind === 'toll') mesh = this.route.tollPlaza ? this.route.tollPlaza(T, stop) : (SK ? SK.tollPlaza(T, stop, this.route.tollStyle) : new T.Group());
     else mesh = SK ? SK.fuelStation(T, this.route) : new T.Group();
-    mesh.position.set(0, 0, -unitsAhead - 6);
+    mesh.position.set(kind === 'toll' ? LANES[0] + 3.3 : this._laneShift || 0, 0, -unitsAhead - 6);
     this.scene.add(mesh);
     bendScene(mesh);
     // une poursuite en cours s'arrete (on ne peut pas etre controle au peage)
@@ -859,7 +886,8 @@
       const lanes = mesh.userData.queueLanes || [], models = (this._trafficModels || []).filter(t=>t.len <= 5.2);
       this._toll.queue = [];
       if(models.length) lanes.forEach((ln, k)=>{
-        for(let q = 0; q < 2; q++){
+        if(ln.type === 't' && Math.random() < 0.6) return; // voies telepeage : souvent libres
+        for(let q = 0; q < (ln.k <= LAST ? 1 : 2); q++){
           const t = models[(k * 2 + q) % models.length];
           const car = this._instance(t.model, t.len, Math.PI, true);
           car.position.set(ln.x, 0, 9 + q * 7.5); mesh.add(car); this._carLook(car);
@@ -920,31 +948,54 @@
       if(tl.wantStop){
         this._ghost = true;
         tl.steerT = (tl.steerT || 0) - dt;
-        if(this._lane < 3 && tl.steerT <= 0){ tl.steerT = 0.3; this._lane++; }
+        if(this._lane < LAST && tl.steerT <= 0){ tl.steerT = 0.3; this._lane++; }
       }
-      const enter = (tl.wantStop || this._fuel < 0.5) && this._lane === 3 && Math.abs(this._playerX - LANES[3]) < 0.6;
+      const enter = (tl.wantStop || this._fuel < 0.5) && this._lane === LAST && Math.abs(this._playerX - LANES[LAST]) < 0.6;
       if(enter && d > 10){
-        tl.state = 'approach'; this._ghost = true;
-        for(let i = this._obstacles.length - 1; i >= 0; i--){ const o = this._obstacles[i]; if(o.li >= 2 && o.mesh.position.z < 2){ this.scene.remove(o.mesh); this._release(o.mesh); this._obstacles.splice(i, 1); } }
+        tl.state = 'approach'; this._ghost = true; this._xOverride = 6.9 + (this._laneShift || 0); // on sort sur la voie de service
+        for(let i = this._obstacles.length - 1; i >= 0; i--){ const o = this._obstacles[i]; if(o.li >= LAST - 1 && o.mesh.position.z < 2){ this.scene.remove(o.mesh); this._release(o.mesh); this._obstacles.splice(i, 1); } }
         if(this.cb.onPickup) this.cb.onPickup('fuel-enter');
       } else if(tl.mesh.position.z > 20){
         this.scene.remove(tl.mesh); this._toll = null; this._ghost = false; this._fuelNext = this._dist + FUEL_GAP * 0.55;
       }
     } else if(tl.state === 'approach'){
-      // freinage progressif : vitesse maxi = racine(2 * decel * distance restante)
-      const vmax = Math.sqrt(Math.max(0, 2 * 16 * d));
+      // Peage : a 70 unites de la barriere on reste dans sa voie ; s'il y a une
+      // voiture a notre cabine, on s'arrete derriere elle et on attend qu'elle
+      // ait paye et soit partie, puis on avance jusqu'a la barriere.
+      let stopZ = 6, lane = null;
+      if(tl.kind === 'toll'){
+        const lanes = tl.mesh.userData.queueLanes || [];
+        lane = lanes.find(l=>l.k === this._lane) || null;
+        if(d < 70 && tl.lockLane == null) tl.lockLane = this._lane;
+        const ahead = (tl.queue || []).find(c=>c.lane.k === this._lane && c.state === 'wait' && c.slot === 0 && !c.retired);
+        if(ahead){ stopZ = 12.6; if(d < 30) ahead.wait = Math.min(ahead.wait, 1.6 + Math.random()); }
+        tl.laneType = lane ? lane.type : 'cash';
+      }
+      const dd = -(tl.mesh.position.z + stopZ) - 2.2;
+      // telepeage : on ne s'arrete pas, on passe au pas et c'est debite tout seul
+      const creep = tl.kind === 'toll' && tl.laneType === 't' && stopZ === 6 ? 7 : 0;
+      const vmax = Math.max(creep, Math.sqrt(Math.max(0, 2 * 16 * dd)));
       if(this._speed > vmax) this._speed = vmax;
-      if(d <= 0.05){
+      if(creep && dd <= 0.6){
+        const coinV = this.route.coinValue || 1, j2 = this.route.journey;
+        const km = tl.stop.km - (this._jr ? this._jr.lastTollKm : 0);
+        tl.price = tl.stop.price != null ? tl.stop.price : Math.max(1.2, Math.round(km * j2.pricePerKm * 10) / 10);
+        const pts = Math.round(tl.price / coinV * 10);
+        this._obstacleBonus -= pts;
+        tl.state = 'open'; tl.t = 0;
+        if(this.cb.onPickup) this.cb.onPickup('telepass', { price:tl.price, pts, currency:this.route.currency || (j2 && j2.currency) || '€', station:tl.stop.name });
+      } else if(stopZ === 6 && dd <= 0.05 && !creep){
         this._speed = 0; tl.state = 'stopped'; this._tollHold = true;
+        const hose = tl.mesh.getObjectByName('hose'); if(hose) hose.visible = true;
         const r = this.route, cur = r.currency || (j && j.currency) || '€';
         const coinV = r.coinValue || 1; // valeur d'une piece dans la monnaie locale
         const coinsHave = Math.floor(this._coinCredits / 10);
-        const cost = (p)=>{ tl.coins = Math.max(1, Math.ceil(p / coinV)); tl.card = Math.round(p / coinV * 3); };
+        const cost = (p)=>{ tl.coins = Math.max(1, Math.ceil(p / coinV * 2)); tl.card = Math.round(p / coinV * 10); };
         if(tl.kind === 'toll'){
           const km = tl.stop.km - jr.lastTollKm;
           tl.price = tl.stop.price != null ? tl.stop.price : Math.max(1.2, Math.round(km * j.pricePerKm * 10) / 10);
           cost(tl.price);
-          if(this.cb.onToll) this.cb.onToll({ kind:'toll', operator:j.operator || 'Péage', road:j.road || '', currency:cur, station:tl.stop.name, from:jr.lastTollName || jr.from, km:Math.round(km), price:tl.price, coinsNeed:tl.coins, coinsHave, cardPoints:tl.card, lane:this._lane + 1 });
+          if(this.cb.onToll) this.cb.onToll({ laneType:tl.laneType || 'cash', lang:j.lang || 'fr', kind:'toll', operator:j.operator || 'Péage', road:j.road || '', currency:cur, station:tl.stop.name, from:jr.lastTollName || jr.from, km:Math.round(km), price:tl.price, coinsNeed:tl.coins, coinsHave, cardPoints:tl.card, lane:this._lane + 1 });
         } else {
           const prices = r.fuelPrices || [r.fuelPrice || 1.89], fi = r.fuelDefault || 0;
           const ppu = prices[fi], gal = r.fuelUnit === 'gal';
@@ -959,7 +1010,8 @@
       // barriere qui se leve (peage) puis on repart
       const arm = tl.mesh.getObjectByName('arm' + this._lane);
       if(arm) arm.rotation.z = Math.min(Math.PI/2 * 0.95, arm.rotation.z + dt * 3.2);
-      if(tl.t > 0.55 && this._tollHold){ this._tollHold = false; this._ghost = false; }
+      if(tl.t > 0.55 && this._tollHold){ this._tollHold = false; this._ghost = false; this._xOverride = null; }
+      const hose = tl.mesh.getObjectByName('hose'); if(hose) hose.visible = false;
       if(tl.mesh.position.z > 30){
         this.scene.remove(tl.mesh); this._toll = null;
         if(tl.kind === 'toll') this._journeyNext();
@@ -999,28 +1051,34 @@
     const T = window.THREE, SK = DG.StopKit;
     const kmh = Math.round(this._speed * 5);
     // radar suivant
-    if(!this._radar && !this._toll && this._dist > this._radarNext - 300 && SK){
-      const mesh = SK.speedCamera(T, R, this.route);
-      mesh.position.z = -300; this.scene.add(mesh); bendScene(mesh);
-      this._radar = { mesh, done:false };
+    if(!this._radar && !this._toll && this._dist > this._radarNext - 600 && SK){
+      // 35 % de radars mobiles (voiture de police sur le bas-cote, sans panneau)
+      const mobile = R.mobile !== false && Math.random() < 0.35;
+      const mesh = SK.speedCamera(T, R, this.route, LANES[LAST] + 2.3, mobile);
+      mesh.position.z = -600; this.scene.add(mesh); bendScene(mesh); this._carLook(mesh);
+      this._radar = { mesh, done:false, mobile };
     }
     const rd = this._radar;
     if(rd){
       rd.mesh.position.z += scroll;
       const dist = -rd.mesh.position.z;
-      if(this.cb.onRadar){ rd.hudT = (rd.hudT || 0) - dt; if(rd.hudT <= 0){ rd.hudT = 0.15; this.cb.onRadar(!rd.done && dist < 300 ? { dist:Math.max(0, dist), limit:R.limit, kmh, unitLabel:R.unitLabel } : null); } }
+      if(this.cb.onRadar){ rd.hudT = (rd.hudT || 0) - dt; if(rd.hudT <= 0){ rd.hudT = 0.12; this.cb.onRadar(!rd.done && dist < (rd.mobile ? 170 : 600) ? { dist:Math.max(0, dist), limit:R.limit, kmh, unitLabel:R.unitLabel, mobile:rd.mobile } : null); } }
       if(!rd.done && dist <= 1){
         rd.done = true;
         const over = kmh - R.limit;
         if(over > 5){
+          const fl = rd.mesh.getObjectByName('radarFlash'); if(fl){ fl.material.opacity = 1; rd.flashT = 0.18; }
+          let photo = null;
+          try { this.renderer.render(this.scene, this.camera); photo = this.renderer.domElement.toDataURL('image/jpeg', 0.6); } catch(e){}
           const fine = R.fine(over);
           const pts = Math.round(fine / (this.route.coinValue || 1) * 0.6); // amende en points : dissuasive sans ruiner la partie
           this._obstacleBonus -= pts;
           if(this.fx){ this.fx.emit(5.4, 3.6, -1, 30, 0xffffff, 6, 1, 0.3); }
-          if(this.cb.onPickup) this.cb.onPickup('radar-flash', { kmh, limit:R.limit, fine, pts, currency:this.route.currency || '€', unitLabel:R.unitLabel });
+          if(this.cb.onPickup) this.cb.onPickup('radar-flash', { kmh, limit:R.limit, fine, pts, currency:this.route.currency || '€', unitLabel:R.unitLabel, photo, place:(DG._journey && DG._journey.next) || this.route.name, police:R.police });
           if(over >= R.chaseOver && !this._police && !this._toll) this._startPolice(kmh);
         } else if(this.cb.onPickup) this.cb.onPickup('radar-ok', { kmh, limit:R.limit });
       }
+      if(rd.flashT > 0){ rd.flashT -= dt; if(rd.flashT <= 0){ const fl = rd.mesh.getObjectByName('radarFlash'); if(fl) fl.material.opacity = 0; } }
       if(rd.mesh.position.z > 20){ this.scene.remove(rd.mesh); this._radar = null; this._radarNext = this._dist + (R.every || 1500) * (0.8 + Math.random()*0.4); }
     }
     // poursuite
@@ -1038,7 +1096,7 @@
       if(pc.z > 30){
         // semee !
         this.scene.remove(pc.mesh); this._police = null;
-        this._obstacleBonus += 200 * this._multiplier;
+        this._obstacleBonus += 150 * this._multiplier;
         if(this.cb.onPickup) this.cb.onPickup('police-lost');
         if(this.cb.onPolice) this.cb.onPolice(null);
       } else if(pc.z < 3.6 && !this._toll){
@@ -1050,12 +1108,12 @@
       this._speed = Math.max(0, this._speed - dt * 22);
       pc.z = Math.max(4.2, pc.z - dt * 2);
       pc.mesh.position.z = pc.z;
-      if(this._lane < 3){ pc.steerT = (pc.steerT || 0) - dt; if(pc.steerT <= 0){ pc.steerT = 0.35; this._lane++; } }
+      if(this._lane < LAST){ pc.steerT = (pc.steerT || 0) - dt; if(pc.steerT <= 0){ pc.steerT = 0.35; this._lane++; } }
       if(this._speed <= 0.5){
         this._speed = 0; this._tollHold = true;
         const fine = R.fine(pc.over + 10) + (R.policeExtra || 0);
         const coinV = this.route.coinValue || 1;
-        this._toll = { mesh:pc.mesh, kind:'police', state:'stopped', t:0, price:fine, coins:Math.ceil(fine / coinV), card:Math.round(fine / coinV * 0.6) };
+        this._toll = { mesh:pc.mesh, kind:'police', state:'stopped', t:0, price:fine, coins:Math.ceil(fine / coinV * 2), card:Math.round(fine / coinV * 1.2) };
         this._police = null;
         if(this.cb.onPolice) this.cb.onPolice(null);
         if(this.cb.onToll) this.cb.onToll({ kind:'police', operator:R.police || 'Police', currency:this.route.currency || '€', station:'Contrôle de vitesse', kmh:pc.kmh, limit:R.limit, unitLabel:R.unitLabel, price:fine, coinsNeed:this._toll.coins, coinsHave:Math.floor(this._coinCredits / 10), cardPoints:this._toll.card, lane:this._lane + 1 });
@@ -1087,6 +1145,7 @@
         if(arm) arm.rotation.z = Math.min(Math.PI/2 * 0.95, arm.rotation.z + dt * 3);
         c.v = Math.min(22, c.v + dt * 9);
         c.car.position.z -= c.v * dt;
+        if(c.car.position.z < -40 && c.lane.k <= LAST){ c.retired = true; c.car.visible = false; c.state = 'done'; continue; }
         if(c.car.position.z < -40){
           // au bout de la file ; l'autre voiture de la voie passe en tete
           c.state = 'wait'; c.slot = 1; c.car.position.z = BACK + 10; c.wait = 3 + Math.random() * 3;
@@ -1117,6 +1176,7 @@
   GameEngine.prototype.payToll = function(method, delay){
     const tl = this._toll;
     if(!tl || tl.state !== 'stopped') return { ok:false };
+    if(method === 'cash' && tl.kind === 'toll' && tl.laneType === 'cb') return { ok:false, error:'Voie CB : carte uniquement' };
     if(method === 'cash'){
       const need = (tl.coins || Math.ceil(tl.price)) * 10;
       if(this._coinCredits < need) return { ok:false, error:'Pas assez de pièces' };
@@ -1138,7 +1198,8 @@
   // on achete a manger / a boire, chaque article donne un petit bonus.
   GameEngine.prototype.enterShop = function(on){
     const tl = this._toll;
-    this._shopCam = !!(on && tl && tl.kind === 'fuel' && tl.state === 'paid');
+    // on entre dans la boutique apres le plein, AVANT de payer : on paie a la caisse
+    this._shopCam = !!(on && tl && tl.kind === 'fuel' && (tl.state === 'paid' || tl.state === 'stopped'));
     return this._shopCam;
   };
   GameEngine.prototype.leaveStop = function(){
@@ -1147,19 +1208,28 @@
     if(tl && tl.state === 'paid'){ tl.state = 'open'; tl.t = 0; }
   };
   // item : { price, effect:'coffee'|'food'|'drink', pts }
+  // Limites : 3 articles par visite, chaque article une seule fois ; les
+  // points de la nourriture ne remboursent jamais son prix (pas d'abus).
+  GameEngine.prototype.shopCost = function(item){
+    const coinV = this.route.coinValue || 1;
+    return { coins:Math.max(1, Math.ceil(item.price / coinV * 2)), card:Math.max(1, Math.round(item.price / coinV * 10)) };
+  };
   GameEngine.prototype.buyItem = function(item, method){
     const tl = this._toll;
-    if(!tl || tl.state !== 'paid') return { ok:false };
-    const coinV = this.route.coinValue || 1;
-    const coins = Math.max(1, Math.ceil(item.price / coinV)), card = Math.max(1, Math.round(item.price / coinV * 3));
+    if(!tl || (tl.state !== 'paid' && tl.state !== 'stopped')) return { ok:false };
+    tl.bought = tl.bought || [];
+    if(tl.bought.length >= 3) return { ok:false, error:'Maximum 3 articles par arrêt' };
+    if(tl.bought.indexOf(item.label) !== -1) return { ok:false, error:'Déjà acheté' };
+    const { coins, card } = this.shopCost(item);
     if(method === 'cash'){
       if(this._coinCredits < coins * 10) return { ok:false, error:'Pas assez de pièces' };
       this._coinCredits -= coins * 10;
     } else this._obstacleBonus -= card;
-    if(item.effect === 'coffee'){ this._boostFuel = 1; this._multiplier = 2; this._multiplierT = 15; }
+    tl.bought.push(item.label);
+    if(item.effect === 'coffee'){ this._boostFuel = 1; this._multiplier = Math.max(this._multiplier, 1.5); this._multiplierT = Math.max(this._multiplierT, 10); }
     else if(item.effect === 'drink') this._boostFuel = Math.min(1, this._boostFuel + 0.5);
-    else this._obstacleBonus += (item.pts || 100) * this._multiplier;
-    return { ok:true, coins, card, method };
+    else { this._magnetT = Math.max(this._magnetT || 0, item.magnet || 8); this._obstacleBonus += Math.round(card * 0.4); }
+    return { ok:true, coins, card, method, left:3 - tl.bought.length };
   };
 
   // Reflets du ciel sur la carrosserie + ombre portee (une seule fois par materiau)
@@ -1189,7 +1259,7 @@
   // visuellement le vehicule de la voie d'a cote.
   GameEngine.prototype._spawnObstacle = function(forceLane, maxW){
     const T = window.THREE;
-    const li = forceLane != null ? forceLane : Math.floor(Math.random()*4);
+    const li = forceLane != null ? forceLane : Math.floor(Math.random()*LANES.length);
     const lane = LANES[li];
     let mesh, w = 0.95;
     const r = Math.random();
@@ -1203,11 +1273,13 @@
       let t = models[Math.floor(Math.random()*models.length)];
       if(models.length > 1 && t === this._lastTrafficModel) t = models[(models.indexOf(t)+1) % models.length];
       this._lastTrafficModel = t;
-      mesh = this._instance(t.model, t.len, Math.PI, true);
+      const oncoming = this.route && this.route.twoWay && li === 0;
+      mesh = this._instance(t.model, t.len, oncoming ? 0 : Math.PI, true);
       kind = 'car';
       // Le trafic roule dans le meme sens que le joueur, a sa propre allure :
       // poids lourds plus lents, citadines un peu plus vives.
       v = t.len > 6 ? 3.5 + Math.random()*1.5 : 5 + Math.random()*3.5;
+      if(oncoming) v = -(24 + Math.random()*10); // elle vient vers nous
       // Largeur de collision proportionnelle a la taille du vehicule, plafonnee pour
       // qu'un bus/camion reste toujours doublable depuis la voie d'a cote.
       w = Math.min(1.3, 0.95 * (t.len / 3.6));
@@ -1223,7 +1295,7 @@
     this._carLook(mesh);
     mesh.userData.w = w;
     this.scene.add(mesh);
-    this._obstacles.push({ mesh, hit:false, scored:false, laneX:lane, li, kind, v, solo:forceLane == null, lc:null,
+    this._obstacles.push({ mesh, hit:false, scored:false, laneX:lane, li, kind, v, solo:forceLane == null && !(this.route && this.route.twoWay), lc:null,
       blinkL:mesh.getObjectByName('dgBlinkL'), blinkR:mesh.getObjectByName('dgBlinkR') });
     return li;
   };
@@ -1239,7 +1311,7 @@
     if(!tpl){
       let skinned = false; model.traverse(n=>{ if(n.isSkinnedMesh) skinned = true; });
       tpl = { obj: DG.Loader.normalizeModel(T, model, len, rotY), skinned };
-      if(lights) this._addVehicleLights(tpl.obj);
+      if(lights) this._addVehicleLights(tpl.obj, rotY === 0);
       this._tpl.set(key, tpl);
     }
     if(tpl.skinned){ const o = DG.Loader.normalizeModel(T, model, len, rotY); if(lights) this._addVehicleLights(o); return o; }
@@ -1258,7 +1330,7 @@
 
   // Feux arriere (toujours allumes) + clignotants (allumes pendant un
   // changement de voie) en sprites additifs : lisibles la nuit, quasi gratuits.
-  GameEngine.prototype._addVehicleLights = function(wrap){
+  GameEngine.prototype._addVehicleLights = function(wrap, head){
     const T = window.THREE;
     if(!this._tailMat){
       this._tailMat = new T.SpriteMaterial({ map:glow(T), color:0xff2a1a, transparent:true, opacity:.95, blending:T.AdditiveBlending, depthWrite:false });
@@ -1269,7 +1341,8 @@
     const sx = box.max.x - box.min.x, sy = box.max.y - box.min.y;
     const y = box.min.y + Math.min(sy * 0.42, 1.1), z = box.max.z + 0.03;
     [-1, 1].forEach(side=>{
-      const t = new T.Sprite(this._tailMat); t.scale.set(0.55, 0.38, 1); t.position.set(side * sx * 0.36, y, z); wrap.add(t);
+      if(head && !this._headMat) this._headMat = new T.SpriteMaterial({ map:glow(T), color:0xfff4dc, transparent:true, opacity:.9, blending:T.AdditiveBlending, depthWrite:false });
+      const t = new T.Sprite(head ? this._headMat : this._tailMat); t.scale.set(head ? 0.8 : 0.55, head ? 0.5 : 0.38, 1); t.position.set(side * sx * 0.36, y, z); wrap.add(t);
       const b = new T.Sprite(this._blinkMat); b.scale.set(0.75, 0.75, 1); b.position.set(side * sx * 0.47, y + 0.05, z); b.visible = false;
       b.name = side < 0 ? 'dgBlinkL' : 'dgBlinkR'; wrap.add(b);
     });
@@ -1325,7 +1398,7 @@
         if(li2 !== -1) blockedLanes.add(li2);
       }
     }
-    const freeLanes = [0,1,2,3].filter(l=>!blockedLanes.has(l));
+    const freeLanes = allLanes().filter(l=>!blockedLanes.has(l));
     if(!freeLanes.length) return; // toutes les voies occupees : on saute ce cycle
     const li = freeLanes[Math.floor(Math.random()*freeLanes.length)];
     const roll = Math.random();
@@ -1385,7 +1458,7 @@
     const Z = -134;
     const busy = new Set();
     for(const o of this._obstacles){ if(o.mesh.position.z < Z + 30 && o.mesh.position.z > Z - 30) busy.add(o.li); }
-    const free = [0,1,2,3].filter(l=>!busy.has(l));
+    const free = allLanes().filter(l=>!busy.has(l));
     if(!free.length) return;
     const li = free[Math.floor(Math.random()*free.length)], x = LANES[li];
     const mesh = this._rampMesh();
@@ -1489,8 +1562,8 @@
         const m = this._toll.mesh; m.updateMatrixWorld(true);
         this._camSaved = (this._camSaved || new T.Vector3()).copy(this.camera.position);
         const b = this._shopBlend * this._shopBlend * (3 - 2 * this._shopBlend);
-        const sp = m.localToWorld((this._shopP || (this._shopP = new T.Vector3())).set(13.2, 1.7, 10.4));
-        const sl = m.localToWorld((this._shopL || (this._shopL = new T.Vector3())).set(17.6, 1.25, 5.2));
+        const sp = m.localToWorld((this._shopP || (this._shopP = new T.Vector3())).set(15.7, 1.7, 10.4));
+        const sl = m.localToWorld((this._shopL || (this._shopL = new T.Vector3())).set(20.1, 1.25, 5.2));
         const lk = (this._shopLk || (this._shopLk = new T.Vector3())).copy(this._look).lerp(sl, b);
         this.camera.position.lerp(sp, b);
         this.camera.lookAt(lk);
@@ -1552,7 +1625,7 @@
     const dip = this.route && this.route.dips;
     if(dip){ const k = Math.PI * 2 / dip.len; DIP.value.set(DIP.value.x + (dip.amp - DIP.value.x) * bk, k, (this._bendD % dip.len) * k); }
     else DIP.value.x += (0 - DIP.value.x) * bk;
-    const hilly = !!(this.route && this.route.dips); // bosses et creux : uniquement la Route 66
+    const hilly = !!(this.route && this.route.hills); // pente douce : uniquement la Route 66
     BEND.value.y += ((hilly ? hillAt(this._bendD * (bamp.yf || 1)) * HILL_Y * (bamp.y != null ? bamp.y : 1) : 0) - BEND.value.y) * bk;
     const speedK = this.playing && this.mult ? Math.max(0, Math.min(1, (this._speed - this.mult.baseSpeed*0.7) / (this.mult.maxSpeed - this.mult.baseSpeed*0.7))) : 0;
     this._speedK = speedK;
@@ -1562,7 +1635,7 @@
 
     // Changement de voie (systeme d'origine) : la voiture glisse vers le centre
     // de la voie choisie, a la vitesse de sa maniabilite.
-    const targetX = LANES[this._lane];
+    const targetX = this._xOverride != null ? this._xOverride : LANES[this._lane];
     this._playerX += (targetX - this._playerX) * Math.min(1, dt * this.mult.handlingRate);
     // Saut (tremplin) : simple balistique ; atterrissage avec secousse + etincelles
     if(this._jumpY > 0 || this._jumpVy > 0){
@@ -1628,7 +1701,7 @@
     // Moyenne glissante du temps passe dans chaque voie (voir la vague double
     // plus bas) : la voie courante monte, les 3 autres redescendent avec le temps.
     this._laneUse[this._lane] += dt;
-    for(let k=0;k<4;k++) this._laneUse[k] *= Math.max(0, 1 - dt*0.12);
+    for(let k=0;k<LANES.length;k++) this._laneUse[k] *= Math.max(0, 1 - dt*0.12);
 
     this._spawnT -= dt;
     // Le trafic arrivait trop lentement et par voie unique la plupart du temps :
@@ -1638,29 +1711,42 @@
     // un vrai "mur" qui ne laisse qu'un seul passage — forcent a utiliser toute la
     // largeur de la route. Il reste toujours au moins une voie praticable : jamais
     // impossible, juste plus exigeant.
-    const interval = Math.max(0.32, 1.0 - this._time*0.024);
+    // Voie de passage garantie : aucune apparition ne la bloque, et elle ne se
+    // deplace que d'UNE voie a la fois, assez lentement pour qu'on puisse
+    // toujours la suivre (avant, 2 murs de voitures pouvaient laisser leurs
+    // trous aux 2 extremites de la route : impossible a passer).
+    this._openT = (this._openT || 0) - dt;
+    if(this._openLane == null) this._openLane = this._lane;
+    if(this._openT <= 0){
+      this._openT = 1.1 + Math.random() * 0.9;
+      const step = Math.random() < 0.5 ? -1 : 1;
+      this._openLane = Math.max(0, Math.min(LAST, this._openLane + step));
+    }
+    const open = this._openLane;
+    const interval = Math.max(0.42, 1.0 - this._time*0.022);
     if(this._spawnT <= 0 && this._tollLock) this._spawnT = 0.4;
     if(this._spawnT <= 0){
       this._spawnT = interval;
-      const tripleChance = this._time > 35 ? Math.min(0.22, (this._time-35)*0.006) : 0;
-      const doubleChance = this._time > 8 ? Math.min(0.55, (this._time-8)*0.02) : 0;
+      const tripleChance = this._time > 45 ? Math.min(0.14, (this._time-45)*0.004) : 0;
+      const doubleChance = this._time > 10 ? Math.min(0.42, (this._time-10)*0.015) : 0;
       const roll = Math.random();
       if(roll < tripleChance){
-        const gapIdx = Math.floor(Math.random()*4);
-        [0,1,2,3].filter(l=>l!==gapIdx).forEach(l=>this._spawnObstacle(l));
+        allLanes().filter(l=>l!==open).forEach(l=>this._spawnObstacle(l));
+        this._spawnT += 0.35; // un mur = un peu de repit juste apres
       } else if(roll < tripleChance + doubleChance){
         // Vise directement les 2 voies ou le joueur se planque (le plus utilise
         // recemment, cf. _laneUse) au lieu de 2 voies prises au hasard : sinon il
         // suffit de trouver une paire de voies jamais visee et de ne plus en
         // bouger. Si ces 2 voies sont adjacentes, on plafonne leur largeur pour
         // eviter que 2 gros vehicules (bus/camion) se chevauchent visuellement.
-        const order = [0,1,2,3].slice().sort((a,b)=>this._laneUse[b]-this._laneUse[a]);
-        const l1 = order[0], l2 = order[1];
+        const order = allLanes().filter(l=>l!==open).sort((a,b)=>this._laneUse[b]-this._laneUse[a]);
+        const l1 = order[0], l2 = order.length > 1 ? order[1] : order[0];
         const adjacent = Math.abs(l1-l2) === 1;
         this._spawnObstacle(l1, adjacent ? 0.9 : null);
         this._spawnObstacle(l2, adjacent ? 0.9 : null);
       } else {
-        this._spawnObstacle();
+        const free = allLanes().filter(l=>l!==open);
+        this._spawnObstacle(free[Math.floor(Math.random()*free.length)]);
       }
     }
     this._pickupT -= dt;
@@ -1827,7 +1913,7 @@
     if(Math.random() > dt * 0.35) return;
     const dir = Math.random() < 0.5 ? -1 : 1;
     const to = o.li + dir;
-    if(to < 0 || to > 3) return;
+    if(to < 0 || to > LAST || to === this._openLane) return;
     for(const q of this._obstacles){
       if(q === o) continue;
       const qTo = q.lc ? q.lc.toLi : q.li;
