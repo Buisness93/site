@@ -422,56 +422,96 @@
   }
 
   // ---------- Boutique de la station (interieur 3D) ----------
-  // Piece a l'interieur du batiment de la boutique (murs vus de l'interieur),
-  // carrelage, plafonniers, gondoles remplies de produits, frigos a boissons
-  // eclaires, comptoir avec caisse et machine a cafe, affiches.
+  // Piece vue depuis l'entree, face a la caisse : comptoir avec caissier(e),
+  // caisse enregistreuse, terminal de carte, machine a cafe et vitrine chaude,
+  // meuble a produits derriere le comptoir, frigos a boissons eclaires sur le
+  // cote, petites gondoles basses, carrelage, dalles lumineuses, affiches.
+  // Repere local : camera en (-1.8, 1.65, 0.3), regard vers +x (le comptoir).
   function shopInterior(T, route){
     const g = new T.Group();
-    const W = 6.4, H = 3.3, D = 11.4;
-    const floorTex = M('tex:shopFloor', ()=>{ const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); for(let i = 0; i < 4; i++) for(let j = 0; j < 4; j++){ x.fillStyle = (i + j) % 2 ? '#d8d4cc' : '#b8b2a8'; x.fillRect(i*16, j*16, 16, 16); } const t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(6, 10); t.encoding = T.sRGBEncoding; return t; });
-    const room = new T.Mesh(new T.BoxGeometry(W, H, D), [
-      M('std:shopWall', ()=>new T.MeshStandardMaterial({ color:0xe4e0d8, roughness:0.8, side:T.BackSide, emissive:0x2a2824 })),
-      M('std:shopWall', ()=>null), M('std:shopCeil', ()=>new T.MeshStandardMaterial({ color:0xf0f0ee, roughness:0.9, side:T.BackSide, emissive:0x3a3a38 })),
-      M('std:shopFloor', ()=>new T.MeshStandardMaterial({ map:floorTex, roughness:0.35, metalness:0.1, side:T.BackSide, emissive:0x1a1a18 })),
-      M('std:shopWall', ()=>null), M('std:shopWall', ()=>null)
-    ]);
+    const W = 7.2, H = 3.2, D = 11.6;
+    const brandCol = route.fuelColor || 0x1a7a3a;
+    const floorTex = M('tex:shopFloor2', ()=>{ const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); for(let i = 0; i < 4; i++) for(let j = 0; j < 4; j++){ x.fillStyle = (i + j) % 2 ? '#e2ded6' : '#cfcac0'; x.fillRect(i*32, j*32, 32, 32); } x.strokeStyle = 'rgba(0,0,0,.08)'; for(let i = 0; i <= 4; i++){ x.beginPath(); x.moveTo(i*32, 0); x.lineTo(i*32, 128); x.moveTo(0, i*32); x.lineTo(128, i*32); x.stroke(); } const t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(4, 6); t.encoding = T.sRGBEncoding; return t; });
+    const wall = M('std:shopWall2', ()=>new T.MeshStandardMaterial({ color:0xd8d6d0, roughness:0.85, side:T.BackSide, emissive:0x3a3a36 }));
+    const ceil = M('std:shopCeil2', ()=>new T.MeshStandardMaterial({ color:0xf2f2f0, roughness:0.9, side:T.BackSide, emissive:0x4a4a48 }));
+    const floor = M('std:shopFloor2', ()=>new T.MeshStandardMaterial({ map:floorTex, roughness:0.3, metalness:0.1, side:T.BackSide, emissive:0x2a2a28 }));
+    const room = new T.Mesh(new T.BoxGeometry(W, H, D), [wall, wall, ceil, floor, wall, wall]);
     room.position.set(0, H/2 + 0.05, 0); g.add(room);
-    // plafonniers
-    for(let k = -1; k <= 1; k++){ const l = new T.Mesh(new T.BoxGeometry(1.4, 0.05, 0.4), M('bas:shopLight', ()=>new T.MeshBasicMaterial({ color:0xfffcf0 }))); l.position.set(0, H - 0.02, k * 3.4); g.add(l); }
-    // gondoles avec produits de toutes les couleurs (1 geometrie fusionnee par gondole)
+    // bandeau a la couleur de l'enseigne en haut des murs
+    const band = M('bas:shopBand' + brandCol, ()=>new T.MeshBasicMaterial({ color:brandCol }));
+    [[W/2 - 0.03, 0, -Math.PI/2, D], [0, -D/2 + 0.03, 0, W], [0, D/2 - 0.03, Math.PI, W]].forEach(([x, z, ry, len])=>{ const b = new T.Mesh(new T.PlaneGeometry(len, 0.35), band); b.position.set(x, H - 0.35, z); b.rotation.y = ry; g.add(b); });
+    // dalles lumineuses au plafond
+    const panel = M('bas:shopPanel', ()=>new T.MeshBasicMaterial({ color:0xfffdf4 }));
+    [[-1.5, -3], [-1.5, 0], [-1.5, 3], [1.5, -3], [1.5, 0], [1.5, 3]].forEach(([x, z])=>{ const p = new T.Mesh(M('geo:ceilPanel', ()=>new T.BoxGeometry(1.2, 0.04, 1.2)), panel); p.position.set(x, H + 0.02, z); g.add(p); });
+    // comptoir (face a la camera), plan de travail clair, facade a la couleur de l'enseigne
+    const counter = new T.Mesh(M('geo:counter2:' + brandCol, ()=>S().merge(T, [
+      { geo:new T.BoxGeometry(0.9, 1.0, 4.6), pos:[0, 0.5, 0], color:brandCol },
+      { geo:new T.BoxGeometry(1.05, 0.06, 4.8), pos:[0, 1.03, 0], color:0xe8e4dc },
+      { geo:new T.BoxGeometry(0.02, 0.12, 4.6), pos:[-0.46, 0.9, 0], color:0xf2f2f2 },
+    ])), vc('counter2'));
+    counter.position.set(1.9, 0.05, 0.3); g.add(counter);
+    // caisse enregistreuse + ecran client, terminal de carte, bonbons
+    const reg = new T.Mesh(M('geo:register', ()=>S().merge(T, [
+      { geo:new T.BoxGeometry(0.45, 0.14, 0.5), pos:[0, 0.07, 0], color:0x2a2a2e },
+      { geo:new T.BoxGeometry(0.06, 0.34, 0.42), pos:[0.1, 0.3, 0], rot:[0, 0, 0.25], color:0x1a1a1e },
+      { geo:new T.BoxGeometry(0.02, 0.26, 0.36), pos:[0.06, 0.3, 0], rot:[0, 0, 0.25], color:0x3a8aff },
+    ])), vc('register'));
+    reg.position.set(1.95, 1.08, 1.0); g.add(reg);
+    const tpe = new T.Mesh(M('geo:tpe', ()=>S().merge(T, [
+      { geo:new T.BoxGeometry(0.16, 0.05, 0.1), pos:[0, 0.025, 0], color:0x222226 },
+      { geo:new T.BoxGeometry(0.1, 0.18, 0.08), pos:[-0.02, 0.1, 0], rot:[0, 0, 0.35], color:0x1a1a1e },
+      { geo:new T.BoxGeometry(0.02, 0.07, 0.06), pos:[-0.05, 0.14, 0], rot:[0, 0, 0.35], color:0x6dff9e },
+    ])), vc('tpe'));
+    tpe.position.set(1.55, 1.08, 0.4); g.add(tpe);
+    const candy = new T.Mesh(M('geo:candy', ()=>{ const parts = []; for(let k = 0; k < 12; k++) parts.push({ geo:new T.BoxGeometry(0.08, 0.14, 0.05), pos:[(k % 3) * 0.1, 0.07, Math.floor(k / 3) * 0.08], color:[0xd8202a, 0xffc21a, 0x1f6ad8, 0x2fae4a, 0xff7a1a, 0x8a3ad8][k % 6] }); return S().merge(T, parts); }), vc('candy'));
+    candy.position.set(1.5, 1.08, -1.2); g.add(candy);
+    // machine a cafe + vitrine chaude au bout du comptoir
+    const coffee = new T.Mesh(M('geo:coffeeMachine', ()=>S().merge(T, [
+      { geo:new T.BoxGeometry(0.5, 0.7, 0.55), pos:[0, 0.35, 0], color:0x2a2a2e },
+      { geo:new T.BoxGeometry(0.52, 0.12, 0.57), pos:[0, 0.72, 0], color:0xb0b4ba },
+      { geo:new T.BoxGeometry(0.02, 0.22, 0.3), pos:[-0.26, 0.45, 0], color:0x6dff9e },
+    ])), vc('coffee'));
+    coffee.position.set(2.0, 1.08, -2.1); g.add(coffee);
+    const hot = new T.Mesh(M('geo:hotCase', ()=>S().merge(T, [ { geo:new T.BoxGeometry(0.6, 0.45, 0.9), pos:[0, 0.22, 0], color:0xffd08a }, { geo:new T.BoxGeometry(0.62, 0.05, 0.92), pos:[0, 0.47, 0], color:0x9aa0a6 } ])), vc('hotcase'));
+    hot.position.set(1.95, 1.08, 2.1); g.add(hot);
+    // caissier(e) derriere le comptoir (polo aux couleurs de l'enseigne)
+    const clerk = new T.Group();
+    const body = new T.Mesh(M('geo:clerkBody', ()=>new T.CylinderGeometry(0.22, 0.26, 0.75, 10)), M('std:clerkShirt' + brandCol, ()=>new T.MeshStandardMaterial({ color:brandCol, roughness:0.8 }))); body.position.y = 1.35; clerk.add(body);
+    const head = new T.Mesh(M('geo:clerkHead', ()=>new T.SphereGeometry(0.15, 14, 10)), M('std:skin', ()=>new T.MeshStandardMaterial({ color:0xe0b090, roughness:0.7 }))); head.position.y = 1.9; clerk.add(head);
+    const hair = new T.Mesh(M('geo:clerkHair', ()=>new T.SphereGeometry(0.155, 14, 10, 0, Math.PI*2, 0, Math.PI/2)), M('std:hair', ()=>new T.MeshStandardMaterial({ color:0x3a2418, roughness:0.9 }))); hair.position.y = 1.93; clerk.add(hair);
+    [-0.27, 0.27].forEach(z=>{ const arm = new T.Mesh(M('geo:clerkArm', ()=>new T.CylinderGeometry(0.06, 0.06, 0.55, 8)), M('std:clerkShirt' + brandCol, ()=>null)); arm.position.set(-0.08, 1.3, z); arm.rotation.z = 0.35; clerk.add(arm); });
+    clerk.position.set(2.7, 0.05, 0.6); g.add(clerk);
+    g.userData.clerk = clerk;
+    // meuble mural derriere le comptoir, rempli de produits
     const prodCols = [0xd8202a, 0xffc21a, 0x1f6ad8, 0x2fae4a, 0xff7a1a, 0x8a3ad8, 0xf2f2f2, 0x6a3a1a];
-    const gondola = M('geo:gondola', ()=>{
-      const parts = [{ geo:new T.BoxGeometry(0.8, 1.6, 3.4), pos:[0, 0.8, 0], color:0x5a5e64 }];
-      for(let lv = 0; lv < 3; lv++) for(let k = 0; k < 9; k++) [-1, 1].forEach(s=>{
-        const w = 0.18 + (k % 3) * 0.05, h = 0.22 + ((k + lv) % 4) * 0.06;
-        parts.push({ geo:new T.BoxGeometry(0.2, h, w), pos:[s * 0.5, 0.3 + lv * 0.5 + h/2, -1.5 + k * 0.37], color:prodCols[(k * 3 + lv + (s > 0 ? 2 : 0)) % prodCols.length] });
-      });
+    const back = new T.Mesh(M('geo:backShelf', ()=>{
+      const parts = [{ geo:new T.BoxGeometry(0.45, 2.3, 5.2), pos:[0, 1.15, 0], color:0x4a4e54 }];
+      for(let lv = 0; lv < 5; lv++){ parts.push({ geo:new T.BoxGeometry(0.47, 0.03, 5.2), pos:[0, 0.3 + lv * 0.45, 0], color:0x9aa0a6 }); for(let k = 0; k < 20; k++){ const h = 0.14 + ((k + lv) % 4) * 0.04; parts.push({ geo:new T.BoxGeometry(0.16, h, 0.18), pos:[-0.12, 0.32 + lv * 0.45 + h/2, -2.45 + k * 0.26], color:prodCols[(k * 3 + lv) % prodCols.length] }); } }
+      return S().merge(T, parts);
+    }), vc('backShelf'));
+    back.position.set(W/2 - 0.3, 0.05, 0.3); g.add(back);
+    // frigos a boissons eclaires sur le mur de gauche
+    const fridge = new T.Mesh(M('geo:fridge2', ()=>{
+      const parts = [{ geo:new T.BoxGeometry(3.6, 2.3, 0.7), pos:[0, 1.15, 0], color:0x2a2e34 }];
+      for(let lv = 0; lv < 5; lv++) for(let k = 0; k < 16; k++) parts.push({ geo:new T.CylinderGeometry(0.05, 0.05, 0.26, 6), pos:[-1.6 + k * 0.21, 0.35 + lv * 0.42, 0.05], color:prodCols[(k + lv * 2) % prodCols.length] });
+      return S().merge(T, parts);
+    }), vc('fridge2'));
+    fridge.position.set(-0.4, 0.05, -D/2 + 0.4); g.add(fridge);
+    const glow = new T.Mesh(new T.PlaneGeometry(3.5, 2.1), M('mat:fridgeGlow', ()=>new T.MeshBasicMaterial({ color:0xbfe0ff, transparent:true, opacity:.25, blending:T.AdditiveBlending, depthWrite:false })));
+    glow.position.set(-0.4, 1.2, -D/2 + 0.78); g.add(glow);
+    // gondoles basses de part et d'autre de l'allee (ne cachent pas le comptoir)
+    const low = M('geo:lowGondola', ()=>{
+      const parts = [{ geo:new T.BoxGeometry(2.2, 1.0, 0.7), pos:[0, 0.5, 0], color:0x5a5e64 }];
+      for(let lv = 0; lv < 2; lv++) for(let k = 0; k < 10; k++) [-1, 1].forEach(s=>{ const h = 0.16 + (k % 3) * 0.04; parts.push({ geo:new T.BoxGeometry(0.18, h, 0.16), pos:[-0.95 + k * 0.21, 0.25 + lv * 0.42 + h/2, s * 0.3], color:prodCols[(k * 2 + lv + (s > 0 ? 3 : 0)) % prodCols.length] }); });
       return S().merge(T, parts);
     });
-    [[-0.2, -3.4], [1.6, -3.4], [0.5, 0.2]].forEach(([x, z])=>{ const m = new T.Mesh(gondola, vc('gondola')); m.position.set(x, 0.05, z); g.add(m); });
-    // frigos a boissons au fond (portes vitrees eclairees)
-    const fridge = M('geo:fridge', ()=>{
-      const parts = [{ geo:new T.BoxGeometry(0.8, 2.3, 4.8), pos:[0, 1.15, 0], color:0x2a2e34 }];
-      for(let lv = 0; lv < 5; lv++) for(let k = 0; k < 14; k++) parts.push({ geo:new T.CylinderGeometry(0.07, 0.07, 0.3, 6), pos:[-0.1, 0.35 + lv * 0.42, -2.2 + k * 0.33], color:prodCols[(k + lv * 2) % prodCols.length] });
-      return S().merge(T, parts);
-    });
-    const fr = new T.Mesh(fridge, vc('fridge')); fr.position.set(W/2 - 0.5, 0.05, -2.2); g.add(fr);
-    const glass = new T.Mesh(new T.PlaneGeometry(4.6, 2.1), M('mat:fridgeGlass', ()=>new T.MeshBasicMaterial({ color:0xcfe8ff, transparent:true, opacity:.22, blending:T.AdditiveBlending, depthWrite:false })));
-    glass.rotation.y = -Math.PI/2; glass.position.set(W/2 - 0.92, 1.2, -2.2); g.add(glass);
-    // comptoir, caisse, machine a cafe, vitrine chaude
-    const counter = new T.Mesh(M('geo:shopCounter', ()=>S().merge(T, [
-      { geo:new T.BoxGeometry(1.0, 1.05, 3.4), pos:[0, 0.52, 0], color:0x6a4a2e },
-      { geo:new T.BoxGeometry(1.1, 0.06, 3.5), pos:[0, 1.08, 0], color:0xd8d4cc },
-      { geo:new T.BoxGeometry(0.45, 0.35, 0.4), pos:[0, 1.28, -1.1], color:0x1a1a1e },
-      { geo:new T.BoxGeometry(0.5, 0.7, 0.5), pos:[0, 1.45, 1.1], color:0x9aa0a6 },
-      { geo:new T.BoxGeometry(0.9, 0.45, 1.0), pos:[0, 1.33, 0.1], color:0xffcf8a },
-    ])), vc('counter'));
-    counter.position.set(1.8, 0.05, 3.6); g.add(counter);
-    // affiches
-    const poster = (txt, col, x, z, ry)=>{ const c = document.createElement('canvas'); c.width = 256; c.height = 96; const k = c.getContext('2d'); k.fillStyle = col; k.fillRect(0, 0, 256, 96); k.fillStyle = '#fff'; k.font = '900 44px Arial'; k.textAlign = 'center'; k.textBaseline = 'middle'; k.fillText(txt, 128, 50); const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; const m = new T.Mesh(new T.PlaneGeometry(1.8, 0.68), new T.MeshBasicMaterial({ map:t })); m.position.set(x, 2.55, z); m.rotation.y = ry; g.add(m); };
-    const items = shopItems(route);
-    poster(items[0].label.split(' ')[0].toUpperCase(), '#b01818', W/2 - 0.06, 3.6, -Math.PI/2);
-    poster('SNACK', '#1f6ad8', 0, -D/2 + 0.06, 0);
+    [[-0.6, -3.2], [-0.6, 3.6]].forEach(([x, z])=>{ const m = new T.Mesh(low, vc('lowGondola')); m.position.set(x, 0.05, z); g.add(m); });
+    // affiches : offre du moment + nom de la station
+    const poster = (txt, sub, col, x, y, z, ry, w)=>{ const c = document.createElement('canvas'); c.width = 256; c.height = 128; const k = c.getContext('2d'); k.fillStyle = col; k.fillRect(0, 0, 256, 128); k.fillStyle = '#fff'; k.textAlign = 'center'; k.font = '900 40px Arial'; k.fillText(txt, 128, 58); k.font = '700 22px Arial'; k.fillText(sub, 128, 98); const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; const m = new T.Mesh(new T.PlaneGeometry(w || 1.6, (w || 1.6) / 2), new T.MeshBasicMaterial({ map:t, toneMapped:false })); m.position.set(x, y, z); m.rotation.y = ry; g.add(m); };
+    const items = shopItems(route), cur = route.currency || '€';
+    const priceTxt = (v)=> cur === '$' ? '$' + v.toFixed(2) : cur === '¥' ? '¥' + Math.round(v) : v.toFixed(2).replace('.', ',') + ' ' + cur;
+    poster(items[0].label.toUpperCase(), priceTxt(items[0].price), '#b01818', W/2 - 0.55, 2.55, -1.6, -Math.PI/2, 1.3);
+    poster(items[1].label.split(' ')[0].toUpperCase(), priceTxt(items[1].price), '#1f6ad8', W/2 - 0.55, 2.55, 2.2, -Math.PI/2, 1.3);
     return g;
   }
   // Articles de la boutique, prix reels par pays (monnaie de la route)

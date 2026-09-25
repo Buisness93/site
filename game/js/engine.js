@@ -21,6 +21,10 @@
   // et au loin (horizon et montagnes ne bougent pas). x = amplitude,
   // y = nombre d'onde, z = phase (liee a la distance parcourue).
   const DIP = { value:null };
+  // Zone degagee (station-service / peage) : les elements de decor instancies
+  // (rangs de vigne, arbres, clotures...) dont l'origine tombe dedans ne sont
+  // pas dessines. x = x mini, y = z mini, z = z maxi (monde), w = actif.
+  const CLIP = { value:null };
   const BEND_GLSL = [
     '{',
     '  float bzd = max(-mvPosition.z, 0.0);',
@@ -29,6 +33,10 @@
     '  mvPosition.y += uBend.y * bdy * bdy;',
     '  mvPosition.y += uDip.x * sin(uDip.y * bzd + uDip.z) * smoothstep(14.0, 44.0, bzd) * (1.0 - smoothstep(170.0, 230.0, bzd));',
     '  gl_Position = projectionMatrix * mvPosition;',
+    '  #ifdef USE_INSTANCING',
+    '  vec4 dgIo = modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);',
+    '  if(uClip.w > 0.5 && dgIo.x > uClip.x && dgIo.z > uClip.y && dgIo.z < uClip.z) gl_Position = vec4(0.0, 0.0, -10.0, 1.0);',
+    '  #endif',
     '}'
   ].join('\n');
   function bendMaterial(m){
@@ -41,12 +49,12 @@
     m.customProgramCacheKey = function(){ return 'dgBend|' + prevKey; };
     m.onBeforeCompile = function(sh, renderer){
       prev.call(this, sh, renderer);
-      sh.uniforms.uBend = BEND; sh.uniforms.uDip = DIP;
+      sh.uniforms.uBend = BEND; sh.uniforms.uDip = DIP; sh.uniforms.uClip = CLIP;
       let vs = sh.vertexShader;
       if(vs.indexOf('#include <project_vertex>') !== -1) vs = vs.replace('#include <project_vertex>', '#include <project_vertex>\n' + BEND_GLSL);
       else if(vs.indexOf('gl_Position = projectionMatrix * mvPosition;') !== -1) vs = vs.replace('gl_Position = projectionMatrix * mvPosition;', 'gl_Position = projectionMatrix * mvPosition;\n' + BEND_GLSL); // sprites
       else return;
-      sh.vertexShader = 'uniform vec2 uBend;\nuniform vec3 uDip;\n' + vs;
+      sh.vertexShader = 'uniform vec2 uBend;\nuniform vec3 uDip;\nuniform vec4 uClip;\n' + vs;
     };
     m.needsUpdate = true;
   }
@@ -181,7 +189,7 @@
   GameEngine.prototype.init = function(){
     const T = window.THREE;
     const w = this.container.clientWidth, h = this.container.clientHeight;
-    BEND.value = new T.Vector2(0, 0); DIP.value = new T.Vector3(0, 0, 0);
+    BEND.value = new T.Vector2(0, 0); DIP.value = new T.Vector3(0, 0, 0); CLIP.value = new T.Vector4(0, 0, 0, 0);
     this._bendD = 0;
     const renderer = new T.WebGLRenderer({ antialias:true, alpha:true, powerPreference:'high-performance' });
     renderer.setPixelRatio(Math.min((window.devicePixelRatio||1) < 1.5 ? (window.devicePixelRatio||1) * 1.25 : (window.devicePixelRatio||1), 2));
@@ -1158,6 +1166,25 @@
   // devant la station-service, pour ne pas traverser les cabines / pompes.
   GameEngine.prototype._roadsideVisibility = function(tl){
     const z0 = tl ? tl.mesh.position.z : null;
+    const zone = tl && (tl.kind === 'fuel' || tl.kind === 'toll')
+      ? (tl.kind === 'fuel' ? { x:tl.mesh.position.x + 4.5, z1:z0 - 40, z2:z0 + 48 } : { x:LANES[LAST] + 1.25, z1:z0 - 62, z2:z0 + 62 })
+      : null;
+    if(CLIP.value){ if(zone) CLIP.value.set(zone.x, zone.z1, zone.z2, 1); else CLIP.value.w = 0; }
+    for(const d of this._decor){
+      if(d.isInstancedMesh) continue;
+      if(d.userData._zoneMc !== d.userData._mc){
+        d.userData._zoneMc = d.userData._mc;
+        const list = [];
+        d.traverse(n=>{ if(n.isMesh && !n.isInstancedMesh && n.geometry){ if(!n.geometry.boundingBox) n.geometry.computeBoundingBox(); list.push(n); } });
+        d.userData._zoneMeshes = list;
+      }
+      for(const n of d.userData._zoneMeshes){
+        const bb = n.geometry.boundingBox; if(!bb) continue;
+        const hit = zone && (d.position.x + n.position.x + bb.max.x * n.scale.x > zone.x) && (d.position.z + bb.max.z > zone.z1) && (d.position.z + bb.min.z < zone.z2);
+        if(hit) { n.visible = false; n.userData._zoneHidden = true; }
+        else if(n.userData._zoneHidden){ n.visible = true; n.userData._zoneHidden = false; }
+      }
+    }
     for(const d of this._decor){
       if(d.userData._roadside === undefined || d.userData._rsMc !== d.userData._mc){ d.userData._rsMc = d.userData._mc; const list = []; d.traverse(n=>{ if(n.isMesh && n.material && n.material.name === 'dg-roadside') list.push(n); }); d.userData._roadside = list; }
       const list = d.userData._roadside; if(!list.length) continue;
@@ -1562,8 +1589,8 @@
         const m = this._toll.mesh; m.updateMatrixWorld(true);
         this._camSaved = (this._camSaved || new T.Vector3()).copy(this.camera.position);
         const b = this._shopBlend * this._shopBlend * (3 - 2 * this._shopBlend);
-        const sp = m.localToWorld((this._shopP || (this._shopP = new T.Vector3())).set(15.7, 1.7, 10.4));
-        const sl = m.localToWorld((this._shopL || (this._shopL = new T.Vector3())).set(20.1, 1.25, 5.2));
+        const sp = m.localToWorld((this._shopP || (this._shopP = new T.Vector3())).set(16.2, 1.65, 7.3));
+        const sl = m.localToWorld((this._shopL || (this._shopL = new T.Vector3())).set(20.4, 1.4, 7.4));
         const lk = (this._shopLk || (this._shopLk = new T.Vector3())).copy(this._look).lerp(sl, b);
         this.camera.position.lerp(sp, b);
         this.camera.lookAt(lk);

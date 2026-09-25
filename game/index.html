@@ -200,6 +200,14 @@
     <div class="pump-tank"><i id="pumpBar"></i></div>
   </div>
 
+  <div class="pay-modal hidden" id="payModal">
+    <div class="pm-card">
+      <div class="pm-head"><span class="pm-icon" id="pmIcon">💳</span><div><div class="pm-kicker" id="pmKicker">Paiement</div><div class="pm-total" id="pmTotal">0,00 €</div></div></div>
+      <div class="pm-stage" id="pmStage"></div>
+      <div class="pm-foot" id="pmFoot"></div>
+    </div>
+  </div>
+
   <div class="radar-ticket" id="radarTicket">
     <div class="rt-head"><span class="rt-flag"></span><b id="ticketTitle">AVIS DE CONTRAVENTION</b></div>
     <img class="rt-photo" id="ticketPhoto" alt="">
@@ -217,7 +225,7 @@
       </div>
       <div class="sc-paid">✔ Carburant payé</div>
     </div>
-    <div class="shop-sub">Envie d'un encas ? <small>(3 articles max.)</small></div>
+    <div class="shop-sub">Ajouter au panier <small>(3 articles max.)</small></div>
     <div class="shop-list" id="shopList"></div>
     <div class="shop-msg" id="shopMsg"></div>
     <button class="toll-btn card" id="btnShopLeave"><span class="tl-ico">🚪</span><span class="tl-body"><span class="tl-title">Sortir et repartir <kbd>Échap</kbd></span></span></button>

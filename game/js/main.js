@@ -15,6 +15,7 @@
     drawCard:$('drawCard'), drawDesc:$('drawDesc'), drawCta:$('drawCta'), drawNote:$('drawNote'), drawTimer:$('drawTimer'), drawStreak:$('drawStreak'),
     ovWheel:$('ovWheel'), wheelEl:$('wheelEl'), reelTrack:$('reelTrack'), wheelResult:$('wheelResult'), btnSpinWheel:$('btnSpinWheel'), btnCloseWheel:$('btnCloseWheel'),
     overDailyCard:$('overDailyCard'), overDailyDesc:$('overDailyDesc'), btnClaimDaily:$('btnClaimDaily'),
+    payModal:$('payModal'), pmIcon:$('pmIcon'), pmKicker:$('pmKicker'), pmTotal:$('pmTotal'), pmStage:$('pmStage'), pmFoot:$('pmFoot'),
     tollPanel:$('tollPanel'), tollFillLabel:$('tollFillLabel'), pumpPanel:$('pumpPanel'), pumpHead:$('pumpHead'), pumpQty:$('pumpQty'), pumpAmount:$('pumpAmount'), pumpBar:$('pumpBar'),
     shopCounter:$('shopCounter'), shopFuelLine:$('shopFuelLine'), btnCounterCard:$('btnCounterCard'), btnCounterCash:$('btnCounterCash'),
     radarTicket:$('radarTicket'), ticketTitle:$('ticketTitle'), ticketPhoto:$('ticketPhoto'), ticketRows:$('ticketRows'), ticketStamp:$('ticketStamp'),
@@ -733,7 +734,140 @@
   const money = (v, cur)=>cur === '$' ? '$' + v.toFixed(2) : cur === '¥' ? '¥' + Math.round(v).toLocaleString('fr-FR') : v.toFixed(2).replace('.', ',') + ' ' + cur;
   const speedTxt = (kmh, unit)=>unit === 'mph' ? Math.round(kmh / 1.609) + ' mph' : kmh + ' km/h';
   const LANE_TXT = { t:'Voie télépéage', cb:'Voie CB — carte uniquement', cash:'Voie espèces & carte' };
-  let _stopKind = null, _stopInfo = null, _processing = false;
+  let _stopKind = null, _stopInfo = null;
+  const curRoute = ()=>DG.routeById(state.selectedRoute);
+  // Argent liquide du joueur = pieces ramassees (1 piece = 0,50 unite de monnaie locale)
+  const walletCash = ()=>Math.floor(engine._coinCredits / 10) * 0.5 * (curRoute().coinValue || 1);
+
+  // ======== Paiement : terminal de carte (code PIN) ou especes (billets) ========
+  const DENOMS = { '€':[50, 20, 10, 5, 2, 1, 0.5], 'CHF':[100, 50, 20, 10, 5, 2, 1], '$':[20, 10, 5, 1, 0.25], '¥':[10000, 5000, 1000, 500, 100] };
+  let _pay = null;
+  function openPayment(o){
+    // o : { method, amount, currency, pin, label, onDone }
+    _pay = Object.assign({ step:0, code:'' }, o);
+    els.payModal.classList.remove('hidden');
+    els.payModal.dataset.method = o.method;
+    els.pmIcon.textContent = o.method === 'card' ? '💳' : '💶';
+    els.pmKicker.textContent = o.label || 'Paiement';
+    els.pmTotal.textContent = money(o.amount, o.currency);
+    if(o.method === 'card') cardStep0(); else cashStep0();
+  }
+  function closePayment(ok){
+    const p = _pay; _pay = null;
+    els.payModal.classList.add('hidden');
+    if(p && p.onDone) p.onDone(ok);
+  }
+  // --- carte ---
+  function terminalHTML(screen, extra){
+    return '<div class="tpe"><div class="tpe-screen">' + screen + '</div>' + (extra || '') + '<div class="tpe-slot"></div></div>';
+  }
+  function cardStep0(){
+    const p = _pay;
+    els.pmStage.innerHTML = terminalHTML('<small>MONTANT</small><b>' + money(p.amount, p.currency) + '</b><small>' + (p.pin ? 'INSÉREZ VOTRE CARTE' : 'PRÉSENTEZ VOTRE CARTE') + '</small>') +
+      '<button class="pm-bankcard" id="pmCard"><span class="bc-chip"></span><span class="bc-num">•••• •••• •••• 4821</span><span class="bc-name">PILOTE</span><span class="bc-logo">' + (p.pin ? 'CB' : '))) ') + '</span></button>';
+    els.pmFoot.innerHTML = '<span class="pm-hint">Clique sur la carte (ou <kbd>Entrée</kbd>)</span><button class="pm-cancel" id="pmCancel">Annuler</button>';
+    document.getElementById('pmCard').addEventListener('click', cardInsert);
+    document.getElementById('pmCancel').addEventListener('click', ()=>closePayment(false));
+  }
+  function cardInsert(){
+    const p = _pay; if(!p || p.step !== 0) return;
+    p.step = 1;
+    const card = document.getElementById('pmCard'); if(card) card.classList.add(p.pin ? 'insert' : 'tap');
+    tone({ f:880, dur:0.08, vol:0.04 });
+    setTimeout(()=>{ if(_pay === p){ if(p.pin) cardPin(); else cardProcess(); } }, p.pin ? 700 : 600);
+  }
+  function cardPin(){
+    const p = _pay;
+    const dots = ()=>'<span class="pin-dots">' + [0, 1, 2, 3].map(i=>'<i class="' + (i < p.code.length ? 'on' : '') + '"></i>').join('') + '</span>';
+    const keys = ['1','2','3','4','5','6','7','8','9','✕','0','✔'];
+    const render = ()=>{
+      els.pmStage.innerHTML = terminalHTML('<small>' + money(p.amount, p.currency) + '</small><b>CODE</b>' + dots(),
+        '<div class="tpe-keys">' + keys.map(k=>'<button data-k="' + k + '" class="' + (k === '✕' ? 'red' : k === '✔' ? 'green' : '') + '">' + k + '</button>').join('') + '</div>');
+      els.pmStage.querySelectorAll('[data-k]').forEach(b=>b.addEventListener('click', ()=>pinKey(b.dataset.k)));
+    };
+    p.renderPin = render; render();
+    els.pmFoot.innerHTML = '<span class="pm-hint">Tape ton code à 4 chiffres (clavier ou pavé) puis ✔</span>';
+  }
+  function pinKey(k){
+    const p = _pay; if(!p || !p.renderPin) return;
+    if(k === '✕'){ p.code = p.code.slice(0, -1); }
+    else if(k === '✔'){ if(p.code.length === 4){ p.renderPin = null; cardProcess(); return; } }
+    else if(p.code.length < 4) p.code += k;
+    tone({ f:k === '✔' ? 1320 : 1040, dur:0.05, vol:0.035 });
+    p.renderPin();
+    if(p.code.length === 4 && k !== '✕') setTimeout(()=>{ if(_pay === p && p.renderPin){ p.renderPin = null; cardProcess(); } }, 350);
+  }
+  function cardProcess(){
+    const p = _pay;
+    els.pmStage.innerHTML = terminalHTML('<small>' + money(p.amount, p.currency) + '</small><b class="proc">PAIEMENT EN COURS<span class="dots"><i></i><i></i><i></i></span></b>');
+    els.pmFoot.innerHTML = '';
+    setTimeout(()=>{
+      if(_pay !== p) return;
+      tone({ f:1568, dur:0.12, vol:0.05 }); tone({ f:2093, dur:0.16, vol:0.05, delay:0.12 });
+      const d = new Date();
+      els.pmStage.innerHTML = terminalHTML('<b class="ok">✔ PAIEMENT ACCEPTÉ</b><small>MERCI</small>') +
+        '<div class="receipt"><b>' + (p.merchant || 'REÇU') + '</b><span>' + d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }) + '</span>' +
+        (p.lines || []).map(l=>'<span class="rl"><em>' + l[0] + '</em><em>' + l[1] + '</em></span>').join('') +
+        '<span class="rl tot"><em>TOTAL</em><em>' + money(p.amount, p.currency) + '</em></span><span>CARTE •••• 4821' + (p.pin ? ' · CODE OK' : ' · SANS CONTACT') + '</span></div>';
+      setTimeout(()=>{ if(_pay === p) closePayment(true); }, 1700);
+    }, 1300);
+  }
+  // --- especes ---
+  function cashStep0(){
+    const p = _pay, cur = p.currency, den = DENOMS[cur] || DENOMS['€'];
+    // porte-monnaie : l'argent liquide du joueur decompose en billets / pieces
+    let left = Math.round(walletCash() * 100) / 100; const wallet = [];
+    den.forEach(v=>{ while(left + 1e-6 >= v && wallet.length < 14){ wallet.push(v); left = Math.round((left - v) * 100) / 100; } });
+    p.wallet = wallet; p.given = [];
+    const render = ()=>{
+      const given = p.given.reduce((a, b)=>a + b, 0);
+      els.pmStage.innerHTML =
+        '<div class="cash-tray"><small>PLATEAU</small><div class="tray-notes">' + p.given.map(v=>noteHTML(v, cur, true)).join('') + '</div><b>' + money(given, cur) + ' / ' + money(p.amount, cur) + '</b></div>' +
+        '<div class="cash-wallet"><small>TON PORTE-MONNAIE · ' + money(p.wallet.reduce((a, b)=>a + b, 0), cur) + '</small><div class="wallet-notes">' + p.wallet.map((v, i)=>'<button data-w="' + i + '">' + noteHTML(v, cur) + '</button>').join('') + '</div></div>';
+      els.pmStage.querySelectorAll('[data-w]').forEach(b=>b.addEventListener('click', ()=>giveNote(+b.dataset.w)));
+      const enough = given + 1e-6 >= p.amount;
+      els.pmFoot.innerHTML = (enough ? '<button class="pm-ok" id="pmCashOk">Donner ' + money(given, cur) + '</button>' : '<span class="pm-hint">' + (p.wallet.reduce((a, b)=>a + b, 0) + given + 1e-6 < p.amount ? '⚠ Pas assez d\'espèces — paie par carte' : 'Clique sur tes billets pour les donner') + '</span>') + '<button class="pm-cancel" id="pmCancel">Annuler</button>';
+      const ok = document.getElementById('pmCashOk'); if(ok) ok.addEventListener('click', cashChange);
+      document.getElementById('pmCancel').addEventListener('click', ()=>closePayment(false));
+    };
+    p.renderCash = render; render();
+  }
+  function noteHTML(v, cur, small){
+    const coin = (cur === '€' && v <= 2) || (cur === 'CHF' && v <= 5) || (cur === '$' && v < 1) || (cur === '¥' && v <= 500);
+    return '<span class="' + (coin ? 'coin' : 'note') + ' n' + String(v).replace('.', '_') + (small ? ' sm' : '') + '" data-cur="' + cur + '">' + (coin ? money(v, cur).replace(/[,.]00/, '') : money(v, cur).replace(/[,.]00/, '')) + '</span>';
+  }
+  function giveNote(i){
+    const p = _pay; if(!p || !p.renderCash) return;
+    const v = p.wallet.splice(i, 1)[0]; if(v == null) return;
+    p.given.push(v);
+    tone({ f:620 + Math.random() * 120, dur:0.05, vol:0.03 });
+    p.renderCash();
+  }
+  function cashChange(){
+    const p = _pay, cur = p.currency;
+    const given = p.given.reduce((a, b)=>a + b, 0);
+    const change = Math.round((given - p.amount) * 100) / 100;
+    const den = DENOMS[cur] || DENOMS['€'], back = [];
+    let left = change; den.forEach(v=>{ while(left + 1e-6 >= v && back.length < 10){ back.push(v); left = Math.round((left - v) * 100) / 100; } });
+    if(left > 0.001) back.push(left); // petite monnaie
+    p.renderCash = null;
+    els.pmStage.innerHTML = '<div class="cash-tray given"><small>ENCAISSÉ</small><div class="tray-notes">' + p.given.map(v=>noteHTML(v, cur, true)).join('') + '</div></div>' +
+      '<div class="cash-change"><small>MONNAIE RENDUE</small><div class="change-notes">' + back.map((v, k)=>'<span style="animation-delay:' + (0.15 + k * 0.12) + 's">' + noteHTML(v, cur, true) + '</span>').join('') + '</div><b>' + money(change, cur) + '</b></div>';
+    els.pmFoot.innerHTML = '<span class="pm-hint">Merci et bonne route !</span>';
+    back.forEach((_, k)=>tone({ f:1800 + k * 60, dur:0.04, vol:0.025, delay:0.15 + k * 0.12 }));
+    setTimeout(()=>{ if(_pay === p) closePayment(true); }, 1400 + back.length * 120);
+  }
+  window.addEventListener('keydown', (e)=>{
+    if(!_pay) return;
+    e.stopImmediatePropagation(); // pendant un paiement, les autres raccourcis sont ignores
+    if(_pay.renderPin && /^[0-9]$/.test(e.key)){ e.preventDefault(); pinKey(e.key); }
+    else if(_pay.renderPin && e.key === 'Backspace'){ e.preventDefault(); pinKey('✕'); }
+    else if(_pay.renderPin && e.key === 'Enter'){ e.preventDefault(); pinKey('✔'); }
+    else if(_pay.method === 'card' && _pay.step === 0 && e.key === 'Enter'){ e.preventDefault(); cardInsert(); }
+    else if(e.key === 'Escape' && (_pay.step === 0 || _pay.renderCash)){ e.preventDefault(); closePayment(false); }
+  }, true);
+
+  // ======== Peage / amende ========
   function openToll(info){
     _stopKind = info.kind; _stopInfo = info;
     if(info.kind === 'fuel'){ startPump(info); return; }
@@ -747,46 +881,36 @@
     els.tollFill.classList.add('hidden'); els.tollAfter.classList.add('hidden'); els.tollActions.classList.remove('hidden');
     els.tollPrice.textContent = money(info.price, info.currency); els.tollPrice.dataset.cur = info.currency;
     const cbOnly = !police && info.laneType === 'cb';
-    const canCash = !cbOnly && info.coinsHave >= info.coinsNeed;
+    const canCash = !cbOnly && walletCash() + 1e-6 >= info.price;
     els.btnTollCash.disabled = !canCash;
-    els.btnTollCash.querySelector('.tl-sub').textContent = cbOnly ? 'Pas d\'espèces dans cette voie' : info.coinsNeed + ' pièces 🪙 (tu en as ' + info.coinsHave + ')';
-    els.btnTollCard.querySelector('.tl-sub').textContent = 'Sans contact · −' + info.cardPoints + ' points';
-    els.tollMsg.textContent = cbOnly ? '' : canCash ? '' : 'Pas assez de pièces ramassées : paie par carte.';
+    els.btnTollCash.querySelector('.tl-sub').textContent = cbOnly ? 'Pas d\'espèces dans cette voie' : 'Porte-monnaie : ' + money(walletCash(), info.currency);
+    els.btnTollCard.querySelector('.tl-sub').textContent = (police ? 'Carte + code' : 'Sans contact') + ' · −' + info.cardPoints + ' points';
+    els.tollMsg.textContent = cbOnly || canCash ? '' : 'Pas assez d\'espèces : paie par carte.';
     els.ovToll.classList.remove('hidden');
-    _processing = false;
     clickSound(true);
   }
-  // Paiement a la borne : carte sans contact ou especes (rendu de monnaie)
   function payToll(method){
-    if(_processing || !_stopInfo) return;
+    if(_pay || !_stopInfo) return;
     if(_stopKind === 'fuel'){ payCounter(method); return; }
-    const PROC = 1.5, info = _stopInfo;
-    const res = engine.payToll(method, PROC);
-    if(!res.ok){ els.tollMsg.textContent = res.error || 'Paiement refusé'; return; }
-    _processing = true;
-    els.tollActions.classList.add('hidden'); els.tollMsg.textContent = '';
-    els.tollFill.classList.remove('hidden');
-    const cur = info.currency, bills = cur === '¥' ? [1000, 5000, 10000] : [5, 10, 20, 50, 100];
-    const bill = bills.find(b=>b >= info.price) || bills[bills.length - 1];
-    const lines = method === 'card'
-      ? ['📶 Approchez votre carte…', '💳 Lecture…', '✔ Paiement accepté']
-      : ['💶 Billet de ' + money(bill, cur) + ' inséré', '🪙 Rendu : ' + money(Math.max(0, bill - info.price), cur), '✔ Merci, bonne route'];
-    els.tollFillLabel.textContent = lines[0];
-    const t0 = performance.now();
-    (function step(now){
-      const k = Math.min(1, (now - t0) / (PROC * 1000));
-      els.tollFillBar.style.width = (k * 100) + '%';
-      els.tollFillLabel.textContent = lines[Math.min(2, Math.floor(k * 3))];
-      els.tollFillTxt.textContent = k < 1 ? money(info.price, cur) : '🧾 ' + money(info.price, cur) + ' · ' + (method === 'card' ? 'CB' : 'ESPÈCES');
-      if(k < 1) requestAnimationFrame(step);
-      else { els.ovToll.classList.add('hidden'); _processing = false; chimeSound(1); popup(res.kind === 'police' ? '🚓 Amende payée — roule prudemment !' : '🛣 Barrière ouverte — bonne route !', '#4ee39a', true); }
-    })(t0);
+    const info = _stopInfo, police = info.kind === 'police';
+    if(method === 'cash' && els.btnTollCash.disabled) return;
+    els.ovToll.classList.add('hidden');
+    openPayment({ method, amount:info.price, currency:info.currency, pin:police, label:police ? info.operator + ' · amende' : info.station,
+      merchant:police ? info.operator.toUpperCase() : info.station.toUpperCase(), lines:[[police ? 'Amende' : 'Péage', money(info.price, info.currency)]],
+      onDone:(ok)=>{
+        if(!ok){ els.ovToll.classList.remove('hidden'); return; }
+        const res = engine.payToll(method, 0.2);
+        if(!res.ok){ els.ovToll.classList.remove('hidden'); els.tollMsg.textContent = res.error || 'Paiement refusé'; return; }
+        chimeSound(1);
+        popup(police ? '🚓 Amende payée — roule prudemment !' : '🛣 Barrière ouverte — bonne route !', '#4ee39a', true);
+      } });
   }
-  // Station 1/3 : a la pompe, le compteur tourne (litres + montant)
+
+  // ======== Station : pompe -> caisse (panier) -> sortie ========
   function startPump(info){
     els.pumpPanel.classList.remove('hidden');
     els.pumpHead.textContent = '⛽ Pompe ' + info.lane + ' · ' + info.fuelLabel + ' · ' + money(info.ppl, info.currency) + '/' + info.unit;
-    const FILL = 2.4, t0 = performance.now();
+    const FILL = 2.2, t0 = performance.now();
     (function step(now){
       const k = Math.min(1, (now - t0) / (FILL * 1000)), e = 1 - Math.pow(1 - k, 1.6);
       els.pumpQty.textContent = (info.qty * e).toFixed(2).replace('.', ',');
@@ -794,69 +918,83 @@
       els.pumpBar.style.width = (info.fuelPct + (100 - info.fuelPct) * e) + '%';
       if(k < 1){ requestAnimationFrame(step); return; }
       tone({ f:1320, dur:0.12, vol:0.04 }); // "clic" du pistolet
-      els.pumpHead.textContent = '✔ Réservoir plein — 🚶 direction la caisse…';
-      setTimeout(()=>{ els.pumpPanel.classList.add('hidden'); openCounter(info); }, 900);
+      els.pumpHead.textContent = '✔ Plein fait — 🚶 direction la caisse…';
+      setTimeout(()=>{ els.pumpPanel.classList.add('hidden'); openCounter(info); }, 700);
     })(t0);
   }
-  // Station 2/3 : on entre dans la boutique, on paie le carburant a la caisse
   const EFFECT_TXT = { coffee:'Nitro plein + gains ×1,5 (10 s)', drink:'Nitro +50 %', food:'Aimant à pièces (8 s)' };
-  let _shopItems = [], _fuelPaid = false;
+  let _shopItems = [], _fuelPaid = false, _basket = [];
   function openCounter(info){
-    const route = DG.routeById(state.selectedRoute), cur = route.currency || '€';
+    const route = curRoute();
     _shopItems = DG.StopKit ? DG.StopKit.shopItems(route) : [];
-    _fuelPaid = false;
+    _fuelPaid = false; _basket = [];
     engine.enterShop(true);
     els.shopTitle.textContent = route.fuelStationName || 'Boutique';
-    els.shopFuelLine.innerHTML = '<span>⛽ Pompe ' + info.lane + ' · ' + info.qty + ' ' + info.unit + ' ' + info.fuelLabel + '</span><b>' + money(info.price, cur) + '</b>';
-    els.btnCounterCash.querySelector('.tl-sub').textContent = info.coinsNeed + ' pièces (tu en as ' + info.coinsHave + ')';
-    els.btnCounterCard.querySelector('.tl-sub').textContent = '−' + info.cardPoints + ' points';
-    els.btnCounterCash.disabled = info.coinsHave < info.coinsNeed;
     els.shopCounter.classList.remove('paid');
     els.btnShopLeave.disabled = true;
-    els.shopMsg.textContent = 'Le caissier t\'attend : règle ton carburant.';
-    renderShopItems(route);
-    refreshWallet();
-    setTimeout(()=>{ if(engine._shopCam) els.ovShop.classList.remove('hidden'); }, 900); // le temps d'entrer
+    renderShopItems(); renderBasket();
+    els.shopMsg.textContent = 'Le caissier t\'attend : ajoute un encas si tu veux, puis paie.';
+    setTimeout(()=>{ if(engine._shopCam) els.ovShop.classList.remove('hidden'); }, 800); // le temps d'entrer
   }
-  function renderShopItems(route){
-    const cur = route.currency || '€';
+  function renderShopItems(){
+    const cur = curRoute().currency || '€';
     els.shopList.innerHTML = _shopItems.map((it, i)=>{
-      const c = engine.shopCost(it);
-      return '<div class="shop-item" data-i="' + i + '"><span class="si-ico">' + it.ico + '</span><span class="si-body"><span class="si-name">' + it.label + ' <kbd>' + (i + 1) + '</kbd></span><span class="si-eff">' + EFFECT_TXT[it.effect] + '</span></span>' +
-        '<span class="si-price">' + money(it.price, cur) + '</span>' +
-        '<span class="si-buy"><button class="si-btn" data-buy="' + i + '" data-m="cash">🪙 ' + c.coins + '</button><button class="si-btn card" data-buy="' + i + '" data-m="card">💳 ' + c.card + ' pts</button></span></div>';
+      const inB = _basket.indexOf(i) !== -1;
+      return '<button class="shop-item' + (inB ? ' in' : '') + '" data-add="' + i + '"' + (_fuelPaid ? ' disabled' : '') + '><span class="si-ico">' + it.ico + '</span><span class="si-body"><span class="si-name">' + it.label + ' <kbd>' + (i + 1) + '</kbd></span><span class="si-eff">' + EFFECT_TXT[it.effect] + '</span></span>' +
+        '<span class="si-price">' + money(it.price, cur) + '</span><span class="si-add">' + (inB ? '✓' : '+') + '</span></button>';
     }).join('');
-    els.shopList.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click', ()=>buyShop(+b.dataset.buy, b.dataset.m)));
+    els.shopList.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click', ()=>toggleItem(+b.dataset.add)));
+  }
+  function toggleItem(i){
+    if(_fuelPaid) return;
+    const k = _basket.indexOf(i);
+    if(k !== -1) _basket.splice(k, 1);
+    else if(_basket.length >= 3){ els.shopMsg.textContent = '3 articles maximum par passage.'; return; }
+    else _basket.push(i);
+    clickSound(); renderShopItems(); renderBasket();
+  }
+  function basketTotal(){ return (_stopInfo ? _stopInfo.price : 0) + _basket.reduce((a, i)=>a + _shopItems[i].price, 0); }
+  function renderBasket(){
+    const info = _stopInfo, cur = info.currency;
+    els.shopFuelLine.innerHTML = '<span>⛽ Pompe ' + info.lane + ' · ' + info.qty + ' ' + info.unit + ' ' + info.fuelLabel + '</span><b>' + money(info.price, cur) + '</b>' +
+      _basket.map(i=>'<span class="bl">' + _shopItems[i].ico + ' ' + _shopItems[i].label + '</span><b class="bl">' + money(_shopItems[i].price, cur) + '</b>').join('') +
+      '<span class="tot">TOTAL</span><b class="tot">' + money(basketTotal(), cur) + '</b>';
+    const canCash = walletCash() + 1e-6 >= basketTotal();
+    els.btnCounterCash.disabled = !canCash;
+    els.btnCounterCash.querySelector('.tl-sub').textContent = 'Porte-monnaie : ' + money(walletCash(), cur);
+    const pts = (info.cardPoints || 0) + _basket.reduce((a, i)=>a + engine.shopCost(_shopItems[i]).card, 0);
+    els.btnCounterCard.querySelector('.tl-sub').textContent = 'Carte + code · −' + pts + ' pts';
+    els.shopWallet.textContent = '👛 ' + money(walletCash(), cur) + ' en liquide · score ' + engine.currentScore().toLocaleString('fr-FR');
   }
   function payCounter(method){
-    if(_fuelPaid) return;
-    const res = engine.payToll(method, 'hold');
-    if(!res.ok){ els.shopMsg.textContent = res.error || 'Paiement refusé'; return; }
-    _fuelPaid = true;
-    els.shopCounter.classList.add('paid');
-    els.btnShopLeave.disabled = false;
-    els.shopMsg.textContent = (method === 'card' ? '💳 Paiement accepté' : '💶 Payé en espèces') + ' — ticket imprimé 🧾';
-    chimeSound(1); refreshWallet();
+    if(_fuelPaid || _pay) return;
+    if(method === 'cash' && els.btnCounterCash.disabled){ els.shopMsg.textContent = 'Pas assez d\'espèces : paie par carte.'; return; }
+    const info = _stopInfo, cur = info.currency, route = curRoute();
+    els.ovShop.classList.add('hidden');
+    openPayment({ method, amount:basketTotal(), currency:cur, pin:true, label:'Caisse · ' + (route.fuelStationName || 'Station'), merchant:(route.fuelStationName || 'STATION').toUpperCase(),
+      lines:[[info.qty + ' ' + info.unit + ' ' + info.fuelLabel, money(info.price, cur)]].concat(_basket.map(i=>[_shopItems[i].label, money(_shopItems[i].price, cur)])),
+      onDone:(ok)=>{
+        els.ovShop.classList.remove('hidden');
+        if(!ok) return;
+        const res = engine.payToll(method, 'hold');
+        if(!res.ok){ els.shopMsg.textContent = res.error || 'Paiement refusé'; return; }
+        _basket.forEach(i=>{ const r = engine.buyItem(_shopItems[i], method); if(r.ok) popup(_shopItems[i].ico + ' ' + EFFECT_TXT[_shopItems[i].effect], '#ffcc33'); });
+        _fuelPaid = true;
+        els.shopCounter.classList.add('paid');
+        els.btnShopLeave.disabled = false;
+        els.shopMsg.textContent = '🧾 Merci ! Tu peux reprendre la route.';
+        chimeSound(1); renderShopItems(); renderBasket();
+      } });
   }
-  function refreshWallet(){ els.shopWallet.textContent = '🪙 ' + Math.floor(engine._coinCredits / 10) + ' pièces · score ' + engine.currentScore().toLocaleString('fr-FR'); }
-  function buyShop(i, method){
-    const it = _shopItems[i]; if(!it) return;
-    const res = engine.buyItem(it, method);
-    if(!res.ok){ els.shopMsg.textContent = res.error || (method === 'cash' ? 'Pas assez de pièces — paie par carte.' : 'Impossible'); return; }
-    const row = els.shopList.querySelector('[data-i="' + i + '"]'); if(row) row.classList.add('bought');
-    els.shopMsg.textContent = it.ico + ' ' + it.label + ' acheté ! (' + res.left + ' article' + (res.left > 1 ? 's' : '') + ' max. encore)';
-    clickSound(); chimeSound(0);
-    popup(it.ico + ' ' + EFFECT_TXT[it.effect], '#ffcc33');
-    refreshWallet();
-  }
-  // Station 3/3 : on ressort (seulement une fois le carburant paye) et on repart
   function leaveShop(){
-    if(!_fuelPaid){ els.shopMsg.textContent = '⚠ Paie d\'abord ton carburant à la caisse.'; return; }
+    if(!_fuelPaid){ els.shopMsg.textContent = '⚠ Paie d\'abord à la caisse.'; return; }
     els.ovShop.classList.add('hidden');
     engine.enterShop(false);
     setTimeout(()=>{ engine.leaveStop(); popup('🚗 Bonne route !', '#4ee39a'); }, 1100);
   }
   function openShop(){ if(_stopInfo) openCounter(_stopInfo); }
+  function buyShop(i){ toggleItem(i); } // raccourcis 1..5 : ajouter / retirer du panier
+  function refreshWallet(){ if(_stopInfo) renderBasket(); }
 
   // Avis de contravention (photo prise au moment du flash)
   function showTicket(p){
@@ -907,6 +1045,7 @@
 
   function startRun(){
     if(els.ovToll) els.ovToll.classList.add('hidden');
+    if(els.payModal){ els.payModal.classList.add('hidden'); _pay = null; }
     if(els.pumpPanel) els.pumpPanel.classList.add('hidden');
     if(els.radarTicket) els.radarTicket.classList.remove('show');
     if(els.ovShop) els.ovShop.classList.add('hidden');
