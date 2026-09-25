@@ -70,11 +70,13 @@
     <div class="controls-wrap">
       <div class="boost-bar" id="boostBar"><div class="boost-fill" id="boostFill"></div></div>
       <div class="controls-row">
+        <button class="btn-pedal brake" id="btnBrakeP" aria-label="Freiner">▼</button>
         <button class="btn-lane" id="btnLeft">◀</button>
         <button class="btn-boost" id="btnBoost">⚡ Boost</button>
         <button class="btn-lane" id="btnRight">▶</button>
+        <button class="btn-pedal gas" id="btnGas" aria-label="Accélérer">▲</button>
       </div>
-      <div class="kbd-hint">ESPACE boost · ← → changer de voie · ↓ freiner · C caméra · P pause · roule dans le sillage pour recharger le nitro</div>
+      <div class="kbd-hint">▲ / W accélérer · ▼ / S freiner · ← → changer de voie (→ bande d'arrêt d'urgence en cas de panne) · ESPACE boost · C caméra · P pause</div>
     </div>
   </div>
 
@@ -174,6 +176,7 @@
 
   <div class="journey-chip hidden" id="journeyChip"></div>
   <div class="alert-chip hidden" id="alertChip"></div>
+  <div class="lane-strip hidden" id="laneStrip"></div>
   <div class="radar-flash" id="radarFlash"></div>
 
   <div class="overlay toll-overlay hidden" id="ovToll">
@@ -196,8 +199,12 @@
 
   <div class="pump-panel hidden" id="pumpPanel">
     <div class="pump-head" id="pumpHead">⛽</div>
-    <div class="pump-lcd"><div><span>LITRES</span><b id="pumpQty">0,00</b></div><div><span>MONTANT</span><b id="pumpAmount">0,00</b></div></div>
+    <div class="pump-grades" id="pumpGrades"></div>
+    <div class="pump-presets" id="pumpPresets"></div>
+    <div class="pump-lcd"><div><span id="pumpUnitLbl">LITRES</span><b id="pumpQty">0,00</b></div><div><span>MONTANT</span><b id="pumpAmount">0,00</b></div></div>
     <div class="pump-tank"><i id="pumpBar"></i></div>
+    <button class="pump-nozzle" id="pumpNozzle"><b>⛽ MAINTIENS LE PISTOLET</b><small>clic maintenu ou <kbd>Espace</kbd> maintenu</small></button>
+    <div class="pump-row"><button class="pump-skip" id="pumpSkip">Repartir sans essence</button><button class="pump-done" id="pumpDone" disabled>Raccrocher → caisse <kbd>Entrée</kbd></button></div>
   </div>
 
   <div class="pay-modal hidden" id="payModal">

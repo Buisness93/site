@@ -278,14 +278,32 @@
     const hose = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(hosePts), 14, 0.05, 6), M('std:hose', ()=>new T.MeshStandardMaterial({ color:0x121212, roughness:0.6 })));
     hose.name = 'hose'; hose.visible = false; g.add(hose);
     // boutique vitree eclairee + enseigne
-    const shop = new T.Mesh(M('geo:fuelShopV3', ()=>S().merge(T, [
-      { geo:new T.BoxGeometry(7, 3.6, 12), pos:[0, 1.8, 0], color:0xd8d4cc },
+    // coque de la boutique ouverte cote vitrine (on voit l'interieur et on y entre)
+    const shop = new T.Mesh(M('geo:fuelShopV4', ()=>S().merge(T, [
+      { geo:new T.BoxGeometry(0.2, 3.6, 12), pos:[3.75, 1.8, 0], color:0xd8d4cc },
+      { geo:new T.BoxGeometry(7, 3.6, 0.2), pos:[0, 1.8, -6.02], color:0xd8d4cc },
+      { geo:new T.BoxGeometry(7, 3.6, 0.2), pos:[0, 1.8, 6.02], color:0xd8d4cc },
+      { geo:new T.BoxGeometry(0.2, 0.85, 12), pos:[-3.4, 3.18, 0], color:0xd8d4cc },
       { geo:new T.BoxGeometry(7.4, 0.5, 12.4), pos:[0, 3.8, 0], color:0x4a4e54 },
-      { geo:new T.BoxGeometry(0.1, 0.4, 12), pos:[-3.52, 0.2, 0], color:0x6a6e74 },
+      { geo:new T.BoxGeometry(0.1, 0.34, 7.6), pos:[-3.52, 0.17, -2.2], color:0x6a6e74 },
+      { geo:new T.BoxGeometry(0.1, 0.34, 2.6), pos:[-3.52, 0.17, 4.7], color:0x6a6e74 },
     ])), vc('fuelshop'));
     shop.position.set(18, 0, 7); g.add(shop);
-    const shopGlass = new T.Mesh(new T.PlaneGeometry(9, 2.4), M('std:shopGlass', ()=>new T.MeshStandardMaterial({ color:0x9ab8cc, metalness:0.7, roughness:0.08, emissive:0x5a4a30, emissiveIntensity:0.55, transparent:true, opacity:0.55 })));
-    shopGlass.rotation.y = -Math.PI/2; shopGlass.position.set(14.47, 1.55, 7); g.add(shopGlass);
+    // vitrine (2 panneaux fixes) + portes automatiques coulissantes au milieu
+    const glassMat = M('std:shopGlass2', ()=>new T.MeshStandardMaterial({ color:0x9ab8cc, metalness:0.7, roughness:0.08, emissive:0x5a4a30, emissiveIntensity:0.45, transparent:true, opacity:0.42, side:T.DoubleSide, depthWrite:false }));
+    [[6.1, 5.55], [1.1, 10.95]].forEach(([w, z])=>{ const p = new T.Mesh(new T.PlaneGeometry(w, 2.4), glassMat); p.rotation.y = -Math.PI/2; p.position.set(14.47, 1.55, z); g.add(p); });
+    const frameMat = M('std:doorFrame', ()=>new T.MeshStandardMaterial({ color:0x2a2e34, metalness:0.7, roughness:0.35 }));
+    const doorGlass = M('std:doorGlass', ()=>new T.MeshStandardMaterial({ color:0xb8d4e4, metalness:0.6, roughness:0.05, emissive:0x3a3428, emissiveIntensity:0.4, transparent:true, opacity:0.35, side:T.DoubleSide, depthWrite:false }));
+    ['shopDoorA', 'shopDoorB'].forEach((n, k)=>{
+      const d = new T.Group(); d.name = n;
+      const gl = new T.Mesh(new T.PlaneGeometry(0.9, 2.3), doorGlass); gl.rotation.y = -Math.PI/2; d.add(gl);
+      [[0, 1.17, 0, 0.06, 0.06, 0.92], [0, -1.17, 0, 0.06, 0.06, 0.92], [0, 0, 0.45, 0.06, 2.36, 0.05], [0, 0, -0.45, 0.06, 2.36, 0.05]].forEach(([x, y, z, sx, sy, sz])=>{ const b = new T.Mesh(new T.BoxGeometry(sx, sy, sz), frameMat); b.position.set(x, y, z); d.add(b); });
+      const handle = new T.Mesh(new T.BoxGeometry(0.05, 0.5, 0.04), frameMat); handle.position.set(-0.05, 0, k ? -0.36 : 0.36); d.add(handle);
+      d.position.set(14.42, 1.2, k ? 9.95 : 9.05); g.add(d);
+    });
+    [[14.45, 2.5, 9.5, 0.14, 0.18, 1.9], [14.45, 1.25, 8.56, 0.12, 2.5, 0.08], [14.45, 1.25, 10.44, 0.12, 2.5, 0.08], [14.36, 2.66, 9.5, 0.1, 0.1, 0.3]].forEach(([x, y, z, sx, sy, sz])=>{ const b = new T.Mesh(new T.BoxGeometry(sx, sy, sz), frameMat); b.position.set(x, y, z); g.add(b); });
+    const mat = new T.Mesh(new T.PlaneGeometry(1.2, 1.7), M('std:doormat', ()=>new T.MeshStandardMaterial({ color:0x2a2c30, roughness:1 }))); mat.rotation.x = -Math.PI/2; mat.position.set(13.8, 0.03, 9.5); g.add(mat);
+    const mat2 = mat.clone(); mat2.position.set(15.2, 0.07, 9.5); g.add(mat2);
     const shopSign = new T.Mesh(new T.PlaneGeometry(4.2, 0.7), new T.MeshBasicMaterial({ map:(()=>{ const c = document.createElement('canvas'); c.width = 384; c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#' + col.toString(16).padStart(6, '0'); x.fillRect(0, 0, 384, 64); x.fillStyle = '#fff'; x.font = '900 34px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText((route.shopWord || (cur === '$' ? 'FOOD · SHOP' : cur === '¥' ? 'コンビニ' : cur === 'CHF' && route.journey && route.journey.lang === 'de' ? 'SHOP · CAFÉ' : 'BOUTIQUE · CAFÉ')), 192, 34); const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return t; })(), toneMapped:false }));
     shopSign.rotation.y = -Math.PI/2; shopSign.position.set(14.4, 3.2, 7); g.add(shopSign);
     const inside = shopInterior(T, route); inside.position.set(18, 0, 7); g.add(inside);
@@ -299,6 +317,7 @@
         const box = DG.Loader.worldBox(T, clone), size = new T.Vector3(), c = new T.Vector3(); box.getSize(size); box.getCenter(c);
         const k = 44 / (Math.max(size.x, size.z) || 1);
         clone.position.set(-c.x, -box.min.y, -c.z);
+        clone.traverse(n=>{ n.frustumCulled = false; if(n.material) (Array.isArray(n.material) ? n.material : [n.material]).forEach(m=>{ m.userData.dgWiden = true; m.needsUpdate = true; }); }); // decor : elargi avec la route
         const inner = new T.Group(); inner.add(clone); inner.scale.setScalar(k); holder.add(inner);
       });
     }
@@ -435,7 +454,9 @@
     const wall = M('std:shopWall2', ()=>new T.MeshStandardMaterial({ color:0xd8d6d0, roughness:0.85, side:T.BackSide, emissive:0x3a3a36 }));
     const ceil = M('std:shopCeil2', ()=>new T.MeshStandardMaterial({ color:0xf2f2f0, roughness:0.9, side:T.BackSide, emissive:0x4a4a48 }));
     const floor = M('std:shopFloor2', ()=>new T.MeshStandardMaterial({ map:floorTex, roughness:0.3, metalness:0.1, side:T.BackSide, emissive:0x2a2a28 }));
-    const room = new T.Mesh(new T.BoxGeometry(W, H, D), [wall, wall, ceil, floor, wall, wall]);
+    // (face avant absente : c'est la vitrine, on voit dehors et on entre par la porte)
+    const none = M('bas:none', ()=>{ const m = new T.MeshBasicMaterial(); m.visible = false; return m; });
+    const room = new T.Mesh(new T.BoxGeometry(W, H, D), [wall, none, ceil, floor, wall, wall]);
     room.position.set(0, H/2 + 0.05, 0); g.add(room);
     // bandeau a la couleur de l'enseigne en haut des murs
     const band = M('bas:shopBand' + brandCol, ()=>new T.MeshBasicMaterial({ color:brandCol }));

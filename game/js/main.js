@@ -16,7 +16,7 @@
     ovWheel:$('ovWheel'), wheelEl:$('wheelEl'), reelTrack:$('reelTrack'), wheelResult:$('wheelResult'), btnSpinWheel:$('btnSpinWheel'), btnCloseWheel:$('btnCloseWheel'),
     overDailyCard:$('overDailyCard'), overDailyDesc:$('overDailyDesc'), btnClaimDaily:$('btnClaimDaily'),
     payModal:$('payModal'), pmIcon:$('pmIcon'), pmKicker:$('pmKicker'), pmTotal:$('pmTotal'), pmStage:$('pmStage'), pmFoot:$('pmFoot'),
-    tollPanel:$('tollPanel'), tollFillLabel:$('tollFillLabel'), pumpPanel:$('pumpPanel'), pumpHead:$('pumpHead'), pumpQty:$('pumpQty'), pumpAmount:$('pumpAmount'), pumpBar:$('pumpBar'),
+    tollPanel:$('tollPanel'), tollFillLabel:$('tollFillLabel'), pumpPanel:$('pumpPanel'), pumpHead:$('pumpHead'), pumpGrades:$('pumpGrades'), pumpPresets:$('pumpPresets'), pumpNozzle:$('pumpNozzle'), pumpDone:$('pumpDone'), pumpSkip:$('pumpSkip'), pumpUnitLbl:$('pumpUnitLbl'), laneStrip:$('laneStrip'), pumpQty:$('pumpQty'), pumpAmount:$('pumpAmount'), pumpBar:$('pumpBar'),
     shopCounter:$('shopCounter'), shopFuelLine:$('shopFuelLine'), btnCounterCard:$('btnCounterCard'), btnCounterCash:$('btnCounterCash'),
     radarTicket:$('radarTicket'), ticketTitle:$('ticketTitle'), ticketPhoto:$('ticketPhoto'), ticketRows:$('ticketRows'), ticketStamp:$('ticketStamp'),
     journeyChip:$('journeyChip'), tollAfter:$('tollAfter'), btnShopEnter:$('btnShopEnter'), btnShopSkip:$('btnShopSkip'), ovShop:$('ovShop'), shopTitle:$('shopTitle'), shopList:$('shopList'), shopWallet:$('shopWallet'), shopMsg:$('shopMsg'), btnShopLeave:$('btnShopLeave'), alertChip:$('alertChip'), radarFlash:$('radarFlash'), tollFill:$('tollFill'), tollFillBar:$('tollFillBar'), tollFillTxt:$('tollFillTxt'), tollActions:$('tollActions'), tollLogo:$('tollLogo'), tollKicker:$('tollKicker'), hudFuel:$('hudFuel'), hudFuelCell:$('hudFuelCell'), ovToll:$('ovToll'), tollStation:$('tollStation'), tollTrip:$('tollTrip'), tollPrice:$('tollPrice'), tollMsg:$('tollMsg'), btnTollCash:$('btnTollCash'), btnTollCard:$('btnTollCard'),
@@ -674,6 +674,10 @@
       onPolice(p){ alerts.police = p; renderAlert(); if(p && !_siren){ sirenTick(); _siren = setInterval(sirenTick, 560); } },
       onTollApproach(stop){ popup('🛑 PÉAGE · ' + stop.name + ' — ralentis', '#ffcc00', true); },
       onToll(info){ openToll(info); },
+      onTollLanes(t){ renderLaneStrip(t); },
+      onAccident(a){ alerts.accident = a; renderAlert(); },
+      onRescue(r){ alerts.rescue = r; renderAlert(); },
+      onWalk(kind){ walkSound(kind); },
       onPickup(kind, payload){
         if(kind==='coin') popup('+10 🪙', '#ffcc00');
         else if(kind==='near-miss'){
@@ -689,7 +693,11 @@
         else if(kind==='magnet') popup('🧲 AIMANT !', '#ff6a6a', true);
         else if(kind==='shield') popup('🛡 BOUCLIER !', '#3dffb0', true);
         else if(kind==='shield-hit') popup('🛡 BOUCLIER BRISÉ', '#3dffb0', true);
-        else if(kind==='jump') popup('🚀 SAUT ! +100', '#3df0ff', true);
+        else if(kind==='accident'){ popup('🚧 ACCIDENT · voie ' + payload.lane + ' fermée — change de voie ' + (payload.side > 0 ? '▶' : '◀'), '#ff5a3d', true); tone({ f:960, to:720, glide:0.24, dur:0.26, vol:0.03, type:'sawtooth' }); tone({ f:720, to:960, glide:0.24, dur:0.26, vol:0.03, type:'sawtooth', delay:0.28 }); }
+        else if(kind==='rule-warn') popup(payload.text, payload.danger ? '#ff5a3d' : '#ffcc00', true);
+        else if(kind==='rule-fine'){ popup('🧾 AMENDE ' + money(payload.fine, payload.currency) + ' · ' + payload.title + ' (−' + payload.pts + ' pts)', '#ff5a3d', true); tone({ f:330, dur:0.2, vol:0.05, type:'square' }); }
+        else if(kind==='horn'){ popup('📯 ATTENTION DERRIÈRE !', '#ff5a3d', true); tone({ f:392, dur:0.55, vol:0.06, type:'sawtooth' }); tone({ f:494, dur:0.55, vol:0.05, type:'sawtooth' }); }
+        else if(kind==='breakdown') popup('🚨 Feux de détresse · dépanneuse appelée, attends sur la bande d\'arrêt d\'urgence', '#ffcc00', true);
         else if(kind==='fuel-station') popup('⛽ STATION À 300 m — appuie sur E pour t\'y arrêter', '#ffcc33', true);
         else if(kind==='telepass'){ popup('📡 Télépéage · ' + money(payload.price, payload.currency) + ' débité (−' + payload.pts + ' pts)', '#ffcc00', true); tone({ f:1760, dur:0.09, vol:0.05 }); tone({ f:2350, dur:0.12, vol:0.05, delay:0.1 }); }
         else if(kind==='radar-flash'){
@@ -702,7 +710,7 @@
         else if(kind==='police-lost'){ popup('🚓 Police semée ! +200', '#4ee39a', true); chimeSound(2); }
         else if(kind==='fuel-enter') popup('⛽ Arrêt à la pompe…', '#ffcc33');
         else if(kind==='fuel-low') popup('⚠ RÉSERVE ! Fais le plein à la prochaine station', '#ff5a3d', true);
-        else if(kind==='out-of-fuel') popup('⛽ PANNE SÈCHE…', '#ff5a3d', true);
+        else if(kind==='out-of-fuel') popup('⛽ PANNE SÈCHE ! Range-toi à droite ▶ sur la bande d\'arrêt d\'urgence', '#ff5a3d', true);
         else if(kind==='arrival'){ popup('🏁 ARRIVÉE À ' + ((payload && payload.city) || '').toUpperCase() + ' ! +500', '#4ee39a', true); confetti(innerWidth/2, innerHeight*0.35); chimeSound(4); }
       },
       onRecordBroken(){
@@ -758,31 +766,121 @@
     if(p && p.onDone) p.onDone(ok);
   }
   // --- carte ---
-  function terminalHTML(screen, extra){
-    return '<div class="tpe"><div class="tpe-screen">' + screen + '</div>' + (extra || '') + '<div class="tpe-slot"></div></div>';
+  // Terminal : 4 voyants sans contact au-dessus de l'ecran, fente en bas.
+  const NFC_LIMIT = { '€':50, 'CHF':80, '$':100, '¥':15000 };
+  const CARD_FACE = '<span class="bc-chip"></span><span class="bc-nfc">)))</span><span class="bc-num">•••• •••• •••• 4821</span><span class="bc-name">PILOTE</span><span class="bc-logo">CB</span>';
+  function terminalHTML(screen, extra, leds, id){
+    return '<div class="tpe"' + (id ? ' id="' + id + '"' : '') + '><div class="tpe-nfc" id="pmNfc"><span class="nfc-leds">' + [0, 1, 2, 3].map(k=>'<i class="' + (k < (leds || 0) ? 'ok' : '') + '"></i>').join('') + '</span><span class="nfc-sym">)))</span></div>' +
+      '<div class="tpe-screen" id="pmScreen">' + screen + '</div>' + (extra || '') + '<div class="tpe-slot" id="pmSlot"></div></div>';
   }
   function cardStep0(){
-    const p = _pay;
-    els.pmStage.innerHTML = terminalHTML('<small>MONTANT</small><b>' + money(p.amount, p.currency) + '</b><small>' + (p.pin ? 'INSÉREZ VOTRE CARTE' : 'PRÉSENTEZ VOTRE CARTE') + '</small>') +
-      '<button class="pm-bankcard" id="pmCard"><span class="bc-chip"></span><span class="bc-num">•••• •••• •••• 4821</span><span class="bc-name">PILOTE</span><span class="bc-logo">' + (p.pin ? 'CB' : '))) ') + '</span></button>';
-    els.pmFoot.innerHTML = '<span class="pm-hint">Clique sur la carte (ou <kbd>Entrée</kbd>)</span><button class="pm-cancel" id="pmCancel">Annuler</button>';
-    document.getElementById('pmCard').addEventListener('click', cardInsert);
+    const p = _pay, lim = NFC_LIMIT[p.currency] || 50;
+    p.nfcOk = !p.pin && p.amount <= lim + 1e-6;
+    const msg = p.nfcOk ? 'PRÉSENTEZ OU INSÉREZ<br>VOTRE CARTE' : p.pin ? 'INSÉREZ VOTRE CARTE' : 'SANS CONTACT MAX ' + money(lim, p.currency) + '<br>INSÉREZ VOTRE CARTE';
+    p.screen0 = '<small>MONTANT</small><b>' + money(p.amount, p.currency) + '</b><small>' + msg + '</small>';
+    els.pmStage.innerHTML = terminalHTML(p.screen0) + '<div class="pm-card-zone" id="pmCardZone"><div class="pm-bankcard" id="pmCard">' + CARD_FACE + '</div></div>';
+    els.pmFoot.innerHTML = '<span class="pm-hint">' + (p.nfcOk ? '🖐 Attrape la carte et <b>maintiens-la sur )))</b> jusqu\'aux 4 voyants — ou glisse-la dans la fente' : '🖐 Attrape la carte et <b>glisse-la dans la fente</b> du terminal') + ' · <kbd>Entrée</kbd></span><button class="pm-cancel" id="pmCancel">Annuler</button>';
     document.getElementById('pmCancel').addEventListener('click', ()=>closePayment(false));
+    wireCard(p);
   }
-  function cardInsert(){
-    const p = _pay; if(!p || p.step !== 0) return;
-    p.step = 1;
-    const card = document.getElementById('pmCard'); if(card) card.classList.add(p.pin ? 'insert' : 'tap');
-    tone({ f:880, dur:0.08, vol:0.04 });
-    setTimeout(()=>{ if(_pay === p){ if(p.pin) cardPin(); else cardProcess(); } }, p.pin ? 700 : 600);
+  function wireCard(p){
+    const card = document.getElementById('pmCard'), zoneEl = document.getElementById('pmCardZone');
+    const nfc = document.getElementById('pmNfc'), slot = document.getElementById('pmSlot'), scr = document.getElementById('pmScreen');
+    const leds = nfc.querySelectorAll('i');
+    let drag = null, over = null, hold = 0, last = 0, raf = 0, read = false, off = { x:0, y:0 };
+    const setLeds = (n, cls)=>leds.forEach((l, k)=>{ l.className = k < n ? (cls || 'on') : ''; });
+    const place = (x, y, rot)=>{ off.x = x; off.y = y; card.style.transform = 'translate(' + x + 'px,' + y + 'px) rotate(' + (rot || 0) + 'deg)'; };
+    const zone = ()=>{
+      const c = card.getBoundingClientRect(), n = nfc.getBoundingClientRect(), s = slot.getBoundingClientRect();
+      const cx = (c.left + c.right) / 2, cy = (c.top + c.bottom) / 2;
+      if(cx > n.left - 25 && cx < n.right + 25 && cy > n.top - 45 && cy < n.bottom + 55) return 'nfc';
+      if(Math.abs(c.top - s.top) < 24 && cx > s.left - 25 && cx < s.right + 25) return 'slot';
+      return null;
+    };
+    const setOver = (z)=>{
+      if(z === over) return;
+      over = z;
+      slot.classList.toggle('hot', z === 'slot'); nfc.classList.toggle('hot', z === 'nfc');
+      if(z === 'nfc' && !p.nfcOk){ scr.innerHTML = '<b class="err">SANS CONTACT REFUSÉ</b><small>INSÉREZ VOTRE CARTE</small>'; tone({ f:330, dur:0.15, vol:0.04, type:'square' }); }
+      else if(z === 'nfc') tone({ f:1400, dur:0.03, vol:0.03 });
+      else if(z === 'slot') scr.innerHTML = '<small>RELÂCHE POUR</small><b>INSÉRER</b>';
+      else if(!read) scr.innerHTML = p.screen0;
+    };
+    const tick = (now)=>{
+      raf = 0; if(!drag || read || _pay !== p) return;
+      const dt = Math.min(0.1, Math.max(0, (now - last) / 1000)); last = now;
+      if(over === 'nfc' && p.nfcOk){
+        hold += dt;
+        setLeds(Math.min(4, 1 + Math.floor(hold / 0.3)));
+        scr.innerHTML = '<small>' + money(p.amount, p.currency) + '</small><b>LECTURE…</b><small>NE BOUGEZ PAS LA CARTE</small>';
+        if(hold >= 1.2){
+          read = true; setLeds(4, 'ok'); p.usedNfc = true;
+          tone({ f:2093, dur:0.18, vol:0.05 });
+          scr.innerHTML = '<b class="ok">✔ CARTE LUE</b><small>VOUS POUVEZ RETIRER LA CARTE</small>';
+          setTimeout(()=>{ if(_pay === p) finish('nfc'); }, 500);
+          return;
+        }
+      } else if(hold > 0){
+        hold = 0; setLeds(0);
+        tone({ f:300, dur:0.2, vol:0.05, type:'square' });
+        scr.innerHTML = '<b class="err">CARTE RETIRÉE TROP TÔT</b><small>REPRÉSENTEZ LA CARTE</small>';
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    const start = ()=>{ last = performance.now(); if(!raf) raf = requestAnimationFrame(tick); };
+    card.addEventListener('pointerdown', (e)=>{
+      if(p.step !== 0 || read) return;
+      e.preventDefault(); try { card.setPointerCapture(e.pointerId); } catch(err){}
+      drag = { x0:e.clientX - off.x, y0:e.clientY - off.y }; card.classList.add('drag'); start();
+    });
+    card.addEventListener('pointermove', (e)=>{
+      if(!drag || read || drag.auto) return;
+      const x = e.clientX - drag.x0, y = e.clientY - drag.y0;
+      place(x, y, Math.max(-8, Math.min(8, x * 0.04)));
+      setOver(zone());
+    });
+    const up = ()=>{ if(!drag || drag.auto) return; release(); };
+    card.addEventListener('pointerup', up); card.addEventListener('pointercancel', up);
+    function release(){
+      const was = over; drag = null; card.classList.remove('drag'); setOver(null);
+      if(read) return;
+      if(hold > 0){ hold = 0; setLeds(0); }
+      if(was === 'slot'){ insert(); return; }
+      card.style.transform = ''; off.x = off.y = 0; // la carte revient dans la main
+    }
+    function insert(){
+      p.step = 1;
+      const s = slot.getBoundingClientRect(), c = card.getBoundingClientRect();
+      const x = off.x + ((s.left + s.right) / 2 - (c.left + c.right) / 2), y = off.y + (s.top - c.top);
+      card.classList.add('drag'); card.style.transition = 'transform .22s ease-out'; place(x, y);
+      setTimeout(()=>{ zoneEl.classList.add('ins'); card.style.transition = 'transform .5s cubic-bezier(.5,0,.4,1)'; place(x, y - 74); tone({ f:520, dur:0.05, vol:0.04 }); }, 240);
+      setTimeout(()=>{ tone({ f:180, dur:0.06, vol:0.05, type:'square' }); scr.innerHTML = '<small>CARTE INSÉRÉE</small><b>…</b>'; }, 760);
+      setTimeout(()=>{ if(_pay === p) cardPin(); }, 1150);
+    }
+    function finish(){ p.step = 1; card.classList.remove('drag'); card.style.transition = 'transform .45s cubic-bezier(.3,1.3,.5,1), opacity .45s'; card.style.transform = ''; setTimeout(()=>{ if(_pay === p) cardProcess(); }, 420); }
+    // Entree : la carte est presentee / inseree toute seule
+    p.autoCard = ()=>{
+      if(p.step !== 0 || read) return;
+      const n = nfc.getBoundingClientRect(), s = slot.getBoundingClientRect(), c = card.getBoundingClientRect();
+      card.classList.add('drag'); card.style.transition = 'transform .45s ease-out';
+      if(p.nfcOk){
+        place(off.x + ((n.left + n.right) / 2 - (c.left + c.right) / 2), off.y + ((n.top + n.bottom) / 2 + 30 - (c.top + c.bottom) / 2), -4);
+        drag = { auto:true }; setTimeout(()=>{ if(_pay === p){ setOver('nfc'); start(); } }, 460);
+      } else {
+        place(off.x + ((s.left + s.right) / 2 - (c.left + c.right) / 2), off.y + (s.top - c.top));
+        setTimeout(()=>{ if(_pay === p) insert(); }, 460);
+      }
+    };
   }
+  function cardInsert(){ if(_pay && _pay.autoCard) _pay.autoCard(); }
   function cardPin(){
     const p = _pay;
     const dots = ()=>'<span class="pin-dots">' + [0, 1, 2, 3].map(i=>'<i class="' + (i < p.code.length ? 'on' : '') + '"></i>').join('') + '</span>';
     const keys = ['1','2','3','4','5','6','7','8','9','✕','0','✔'];
     const render = ()=>{
       els.pmStage.innerHTML = terminalHTML('<small>' + money(p.amount, p.currency) + '</small><b>CODE</b>' + dots(),
-        '<div class="tpe-keys">' + keys.map(k=>'<button data-k="' + k + '" class="' + (k === '✕' ? 'red' : k === '✔' ? 'green' : '') + '">' + k + '</button>').join('') + '</div>');
+        '<div class="tpe-keys">' + keys.map(k=>'<button data-k="' + k + '" class="' + (k === '✕' ? 'red' : k === '✔' ? 'green' : '') + '">' + k + '</button>').join('') + '</div>') +
+        '<div class="pm-bankcard inserted">' + CARD_FACE + '</div>';
       els.pmStage.querySelectorAll('[data-k]').forEach(b=>b.addEventListener('click', ()=>pinKey(b.dataset.k)));
     };
     p.renderPin = render; render();
@@ -799,16 +897,18 @@
   }
   function cardProcess(){
     const p = _pay;
-    els.pmStage.innerHTML = terminalHTML('<small>' + money(p.amount, p.currency) + '</small><b class="proc">PAIEMENT EN COURS<span class="dots"><i></i><i></i><i></i></span></b>');
+    els.pmStage.innerHTML = terminalHTML('<small>' + money(p.amount, p.currency) + '</small><b class="proc">' + (p.usedNfc ? 'SANS CONTACT' : 'AUTORISATION') + '<span class="dots"><i></i><i></i><i></i></span></b>', '', p.usedNfc ? 4 : 0) +
+      (p.usedNfc ? '' : '<div class="pm-bankcard inserted">' + CARD_FACE + '</div>');
     els.pmFoot.innerHTML = '';
     setTimeout(()=>{
       if(_pay !== p) return;
       tone({ f:1568, dur:0.12, vol:0.05 }); tone({ f:2093, dur:0.16, vol:0.05, delay:0.12 });
       const d = new Date();
-      els.pmStage.innerHTML = terminalHTML('<b class="ok">✔ PAIEMENT ACCEPTÉ</b><small>MERCI</small>') +
+      els.pmStage.innerHTML = terminalHTML('<b class="ok">✔ PAIEMENT ACCEPTÉ</b><small>' + (p.usedNfc ? 'MERCI' : 'RETIREZ VOTRE CARTE') + '</small>', '', p.usedNfc ? 4 : 0) +
+        (p.usedNfc ? '' : '<div class="pm-bankcard inserted eject">' + CARD_FACE + '</div>') +
         '<div class="receipt"><b>' + (p.merchant || 'REÇU') + '</b><span>' + d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }) + '</span>' +
         (p.lines || []).map(l=>'<span class="rl"><em>' + l[0] + '</em><em>' + l[1] + '</em></span>').join('') +
-        '<span class="rl tot"><em>TOTAL</em><em>' + money(p.amount, p.currency) + '</em></span><span>CARTE •••• 4821' + (p.pin ? ' · CODE OK' : ' · SANS CONTACT') + '</span></div>';
+        '<span class="rl tot"><em>TOTAL</em><em>' + money(p.amount, p.currency) + '</em></span><span>CARTE •••• 4821' + (p.usedNfc ? ' · SANS CONTACT' : ' · PUCE + CODE OK') + '</span></div>';
       setTimeout(()=>{ if(_pay === p) closePayment(true); }, 1700);
     }, 1300);
   }
@@ -871,20 +971,22 @@
   function openToll(info){
     _stopKind = info.kind; _stopInfo = info;
     if(info.kind === 'fuel'){ startPump(info); return; }
-    const police = info.kind === 'police';
-    els.tollPanel.dataset.kind = info.kind;
-    els.tollLogo.textContent = police ? '🚓' : (info.road || '🛑');
-    els.tollKicker.textContent = info.operator + (police ? ' · Amende' : ' · Péage');
+    renderLaneStrip(null);
+    const police = info.kind === 'police', assist = info.kind === 'assist';
+    els.tollPanel.dataset.kind = assist ? 'police' : info.kind;
+    els.tollLogo.textContent = police ? '🚓' : assist ? '🛻' : (info.road || '🛑');
+    els.tollKicker.textContent = info.operator + (police ? ' · Amende' : assist ? ' · Intervention' : ' · Péage');
     els.tollStation.textContent = info.station;
     els.tollTrip.textContent = police ? 'Excès de vitesse : ' + speedTxt(info.kmh, info.unitLabel) + ' au lieu de ' + speedTxt(info.limit, info.unitLabel)
+      : assist ? '10 L de carburant (' + money(info.fuelPrice, info.currency) + ') + déplacement (' + money(info.fee, info.currency) + ')'
       : info.from + ' → ' + info.station + ' · ' + info.km + ' km · voie ' + info.lane + ' · ' + (LANE_TXT[info.laneType] || '');
     els.tollFill.classList.add('hidden'); els.tollAfter.classList.add('hidden'); els.tollActions.classList.remove('hidden');
     els.tollPrice.textContent = money(info.price, info.currency); els.tollPrice.dataset.cur = info.currency;
-    const cbOnly = !police && info.laneType === 'cb';
+    const cbOnly = !police && !assist && info.laneType === 'cb';
     const canCash = !cbOnly && walletCash() + 1e-6 >= info.price;
     els.btnTollCash.disabled = !canCash;
     els.btnTollCash.querySelector('.tl-sub').textContent = cbOnly ? 'Pas d\'espèces dans cette voie' : 'Porte-monnaie : ' + money(walletCash(), info.currency);
-    els.btnTollCard.querySelector('.tl-sub').textContent = (police ? 'Carte + code' : 'Sans contact') + ' · −' + info.cardPoints + ' points';
+    els.btnTollCard.querySelector('.tl-sub').textContent = (police || assist ? 'Carte + code' : 'Sans contact ou code') + ' · −' + info.cardPoints + ' points';
     els.tollMsg.textContent = cbOnly || canCash ? '' : 'Pas assez d\'espèces : paie par carte.';
     els.ovToll.classList.remove('hidden');
     clickSound(true);
@@ -892,35 +994,110 @@
   function payToll(method){
     if(_pay || !_stopInfo) return;
     if(_stopKind === 'fuel'){ payCounter(method); return; }
-    const info = _stopInfo, police = info.kind === 'police';
+    const info = _stopInfo, police = info.kind === 'police', assist = info.kind === 'assist';
     if(method === 'cash' && els.btnTollCash.disabled) return;
     els.ovToll.classList.add('hidden');
-    openPayment({ method, amount:info.price, currency:info.currency, pin:police, label:police ? info.operator + ' · amende' : info.station,
-      merchant:police ? info.operator.toUpperCase() : info.station.toUpperCase(), lines:[[police ? 'Amende' : 'Péage', money(info.price, info.currency)]],
+    openPayment({ method, amount:info.price, currency:info.currency, pin:police || assist, label:police ? info.operator + ' · amende' : assist ? info.operator : info.station,
+      merchant:police || assist ? info.operator.toUpperCase() : info.station.toUpperCase(),
+      lines:assist ? [['Carburant 10 L', money(info.fuelPrice, info.currency)], ['Déplacement', money(info.fee, info.currency)]] : [[police ? 'Amende' : 'Péage', money(info.price, info.currency)]],
       onDone:(ok)=>{
         if(!ok){ els.ovToll.classList.remove('hidden'); return; }
         const res = engine.payToll(method, 0.2);
         if(!res.ok){ els.ovToll.classList.remove('hidden'); els.tollMsg.textContent = res.error || 'Paiement refusé'; return; }
         chimeSound(1);
-        popup(police ? '🚓 Amende payée — roule prudemment !' : '🛣 Barrière ouverte — bonne route !', '#4ee39a', true);
+        popup(police ? '🚓 Amende payée — roule prudemment !' : assist ? '🛻 10 L dans le réservoir — mets ton clignotant et accélère ▲' : '🛣 Barrière ouverte — accélère ▲, bonne route !', '#4ee39a', true);
       } });
   }
 
   // ======== Station : pompe -> caisse (panier) -> sortie ========
+  // Pompe : on choisit le carburant et la quantite (montant ou plein), puis on
+  // MAINTIENT le pistolet (clic maintenu / Espace) : le debit monte, le
+  // compteur tourne, et ca s'arrete tout seul (declic) au montant choisi ou
+  // reservoir plein. On paie ce qu'on a pompe. Raccrocher -> a pied a la caisse.
+  const PUMP_PRESETS = { '€':[10, 20, 40], 'CHF':[20, 50, 80], '$':[10, 20, 40], '¥':[2000, 4000, 6000] };
+  let _pump = null;
   function startPump(info){
+    _pump = { info, grade:info.grade || 0, preset:'full', liters:0, holding:false, done:false, full:false, last:0, flowT:0 };
     els.pumpPanel.classList.remove('hidden');
-    els.pumpHead.textContent = '⛽ Pompe ' + info.lane + ' · ' + info.fuelLabel + ' · ' + money(info.ppl, info.currency) + '/' + info.unit;
-    const FILL = 2.2, t0 = performance.now();
-    (function step(now){
-      const k = Math.min(1, (now - t0) / (FILL * 1000)), e = 1 - Math.pow(1 - k, 1.6);
-      els.pumpQty.textContent = (info.qty * e).toFixed(2).replace('.', ',');
-      els.pumpAmount.textContent = money(info.price * e, info.currency);
-      els.pumpBar.style.width = (info.fuelPct + (100 - info.fuelPct) * e) + '%';
-      if(k < 1){ requestAnimationFrame(step); return; }
-      tone({ f:1320, dur:0.12, vol:0.04 }); // "clic" du pistolet
-      els.pumpHead.textContent = '✔ Plein fait — 🚶 direction la caisse…';
-      setTimeout(()=>{ els.pumpPanel.classList.add('hidden'); openCounter(info); }, 700);
-    })(t0);
+    if(els.pumpUnitLbl) els.pumpUnitLbl.textContent = info.gal ? 'GALLONS' : 'LITRES';
+    renderPump();
+  }
+  function pumpTarget(){
+    const p = _pump, g = p.info.grades[p.grade], max = p.info.maxLiters;
+    if(p.preset === 'full') return max;
+    return Math.min(max, p.preset / g.ppu * (p.info.gal ? 3.785 : 1));
+  }
+  function renderPump(){
+    const p = _pump, info = p.info, cur = info.currency;
+    els.pumpHead.innerHTML = '⛽ Pompe ' + info.lane + ' · ' + (info.station || '') + ' <small>réservoir : ' + Math.round(info.fuelPct) + ' % · ' + (info.gal ? (info.maxLiters / 3.785).toFixed(1) + ' gal' : Math.round(info.maxLiters) + ' L') + ' libres</small>';
+    els.pumpGrades.innerHTML = info.grades.map((gr, k)=>'<button data-g="' + k + '" class="' + (k === p.grade ? 'on' : '') + '"' + (p.liters > 0 ? ' disabled' : '') + '><b>' + gr.label + '</b><small>' + money(gr.ppu, cur) + '/' + info.unit + '</small></button>').join('');
+    els.pumpPresets.innerHTML = '<span>Quantité</span>' + (PUMP_PRESETS[cur] || PUMP_PRESETS['€']).map(v=>'<button data-p="' + v + '" class="' + (p.preset === v ? 'on' : '') + '">' + money(v, cur).replace(/[,.]00/, '') + '</button>').join('') + '<button data-p="full" class="' + (p.preset === 'full' ? 'on' : '') + '">PLEIN</button>';
+    els.pumpGrades.querySelectorAll('[data-g]').forEach(b=>b.addEventListener('click', ()=>{ if(p.liters > 0) return; p.grade = +b.dataset.g; clickSound(); renderPump(); }));
+    els.pumpPresets.querySelectorAll('[data-p]').forEach(b=>b.addEventListener('click', ()=>{ p.preset = b.dataset.p === 'full' ? 'full' : +b.dataset.p; p.full = p.liters >= pumpTarget() - 1e-6; clickSound(); renderPump(); }));
+    pumpLcd();
+  }
+  function pumpLcd(){
+    const p = _pump; if(!p) return;
+    const info = p.info, g = info.grades[p.grade], q = info.gal ? p.liters / 3.785 : p.liters;
+    els.pumpQty.textContent = q.toFixed(2).replace('.', ',');
+    els.pumpAmount.textContent = money(q * g.ppu, info.currency);
+    els.pumpBar.style.width = Math.min(100, info.fuelPct + p.liters / 55 * 100) + '%';
+    els.pumpDone.disabled = p.liters < 1 || p.done;
+    els.pumpSkip.disabled = p.liters > 0 || p.done;
+    els.pumpNozzle.classList.toggle('on', p.holding);
+    els.pumpNozzle.classList.toggle('full', p.full);
+    els.pumpNozzle.querySelector('b').textContent = p.full ? (p.preset === 'full' ? '✔ RÉSERVOIR PLEIN (déclic)' : '✔ MONTANT ATTEINT') : p.holding ? '⛽ REMPLISSAGE…' : p.liters > 0 ? '⛽ MAINTIENS POUR CONTINUER' : '⛽ MAINTIENS LE PISTOLET';
+  }
+  function pumpHold(on){
+    const p = _pump; if(!p || p.done || els.pumpPanel.classList.contains('hidden')) return;
+    if(on && p.full) return;
+    if(on === p.holding) return;
+    p.holding = on; p.flowT = 0;
+    if(on){ p.last = performance.now(); tone({ f:220, dur:0.08, vol:0.03 }); requestAnimationFrame(pumpStep); }
+    pumpLcd();
+  }
+  function pumpStep(now){
+    const p = _pump; if(!p || !p.holding) return;
+    const dt = Math.min(0.1, Math.max(0, (now - p.last) / 1000)); p.last = now;
+    const target = pumpTarget();
+    p.flowT += dt;
+    const rate = 7.5 * Math.min(1, 0.25 + p.flowT * 0.8); // la gachette s'enfonce : le debit monte
+    p.liters = Math.min(target, p.liters + rate * dt);
+    p.sndT = (p.sndT || 0) - dt; if(p.sndT <= 0){ p.sndT = 0.1; tone({ f:120 + Math.random() * 25, dur:0.1, vol:0.016, type:'sawtooth' }); }
+    if(p.liters >= target - 1e-6){ p.holding = false; p.full = true; tone({ f:1320, dur:0.08, vol:0.05 }); tone({ f:700, dur:0.1, vol:0.04, delay:0.08 }); }
+    if(p.liters > 0 && els.pumpGrades.querySelector('button:not([disabled])')) els.pumpGrades.querySelectorAll('button').forEach(b=>b.disabled = true);
+    pumpLcd();
+    if(p.holding) requestAnimationFrame(pumpStep);
+  }
+  function pumpFinish(){
+    const p = _pump; if(!p || p.done || p.liters < 1) return;
+    p.done = true; p.holding = false;
+    const res = engine.setFuelFill(p.grade, p.liters);
+    if(!res){ pumpLcd(); return; }
+    Object.assign(_stopInfo, { price:res.price, qty:res.qty, fuelLabel:res.fuelLabel, ppl:res.ppl, cardPoints:res.cardPoints, coinsNeed:res.coinsNeed });
+    els.pumpHead.textContent = '✔ Pistolet raccroché — 🚶 direction la caisse…';
+    tone({ f:520, dur:0.07, vol:0.04 });
+    pumpLcd();
+    setTimeout(()=>{ els.pumpPanel.classList.add('hidden'); _pump = null; openCounter(_stopInfo); }, 650);
+  }
+  function pumpSkip(){
+    const p = _pump; if(!p || p.done || p.liters > 0) return;
+    if(engine.cancelFuel()){ els.pumpPanel.classList.add('hidden'); _pump = null; popup('🚗 Tu repars sans prendre d\'essence — accélère ▲', '#ffcc33'); }
+  }
+  // Bandeau des voies du peage (type de chaque voie, la notre en surbrillance)
+  const LANE_ICO = { cash:['💶', 'ESPÈCES + CB'], cb:['💳', 'CB UNIQUEMENT'], t:['Ⓣ', 'TÉLÉPÉAGE'] };
+  function renderLaneStrip(t){
+    const el = els.laneStrip; if(!el) return;
+    if(!t){ el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    el.innerHTML = '<div class="ls-head">🛑 PÉAGE à ' + Math.round(t.dist) + ' m · ' + (t.locked ? 'voie choisie 🔒' : 'choisis ta voie ◀ ▶') + (t.queue ? ' · <b>voiture à la cabine : attends ton tour</b>' : '') + '</div>' +
+      '<div class="ls-lanes">' + t.types.map((ty, k)=>'<span class="ls-l ' + ty + (k === t.lane ? ' me' : '') + '"><i>' + LANE_ICO[ty][0] + '</i><small>' + LANE_ICO[ty][1] + '</small>' + (k === t.lane ? '<em>▲ toi</em>' : '') + '</span>').join('') + '</div>';
+  }
+  // Bruits a pied : pas, portiere, portes automatiques (+ carillon de la boutique)
+  function walkSound(kind){
+    if(kind === 'step') tone({ f:85 + Math.random() * 35, dur:0.05, vol:0.028, type:'triangle' });
+    else if(kind === 'cardoor'){ tone({ f:90, dur:0.08, vol:0.06, type:'square' }); tone({ f:60, dur:0.12, vol:0.05, type:'square', delay:0.06 }); }
+    else if(kind === 'door'){ tone({ f:260, to:420, glide:0.45, dur:0.5, vol:0.018 }); tone({ f:1319, dur:0.35, vol:0.03, delay:0.25 }); tone({ f:988, dur:0.5, vol:0.03, delay:0.55 }); }
   }
   const EFFECT_TXT = { coffee:'Nitro plein + gains ×1,5 (10 s)', drink:'Nitro +50 %', food:'Aimant à pièces (8 s)' };
   let _shopItems = [], _fuelPaid = false, _basket = [];
@@ -928,13 +1105,14 @@
     const route = curRoute();
     _shopItems = DG.StopKit ? DG.StopKit.shopItems(route) : [];
     _fuelPaid = false; _basket = [];
-    engine.enterShop(true);
+    const walking = engine.enterShop(true, ()=>{ if(_stopInfo === info) { els.ovShop.classList.remove('hidden'); clickSound(true); } });
+    if(walking) popup('🚶 Tu sors de la voiture… (maintiens ▲ pour marcher plus vite)', '#ffffff');
     els.shopTitle.textContent = route.fuelStationName || 'Boutique';
     els.shopCounter.classList.remove('paid');
     els.btnShopLeave.disabled = true;
     renderShopItems(); renderBasket();
     els.shopMsg.textContent = 'Le caissier t\'attend : ajoute un encas si tu veux, puis paie.';
-    setTimeout(()=>{ if(engine._shopCam) els.ovShop.classList.remove('hidden'); }, 800); // le temps d'entrer
+    if(!walking) els.ovShop.classList.remove('hidden');
   }
   function renderShopItems(){
     const cur = curRoute().currency || '€';
@@ -971,7 +1149,7 @@
     if(method === 'cash' && els.btnCounterCash.disabled){ els.shopMsg.textContent = 'Pas assez d\'espèces : paie par carte.'; return; }
     const info = _stopInfo, cur = info.currency, route = curRoute();
     els.ovShop.classList.add('hidden');
-    openPayment({ method, amount:basketTotal(), currency:cur, pin:true, label:'Caisse · ' + (route.fuelStationName || 'Station'), merchant:(route.fuelStationName || 'STATION').toUpperCase(),
+    openPayment({ method, amount:basketTotal(), currency:cur, pin:false, label:'Caisse · ' + (route.fuelStationName || 'Station'), merchant:(route.fuelStationName || 'STATION').toUpperCase(),
       lines:[[info.qty + ' ' + info.unit + ' ' + info.fuelLabel, money(info.price, cur)]].concat(_basket.map(i=>[_shopItems[i].label, money(_shopItems[i].price, cur)])),
       onDone:(ok)=>{
         els.ovShop.classList.remove('hidden');
@@ -989,8 +1167,8 @@
   function leaveShop(){
     if(!_fuelPaid){ els.shopMsg.textContent = '⚠ Paie d\'abord à la caisse.'; return; }
     els.ovShop.classList.add('hidden');
-    engine.enterShop(false);
-    setTimeout(()=>{ engine.leaveStop(); popup('🚗 Bonne route !', '#4ee39a'); }, 1100);
+    popup('🚶 Retour à la voiture…', '#ffffff');
+    engine.enterShop(false, ()=>{ engine.leaveStop(); popup('🚗 Bonne route ! Accélère ▲', '#4ee39a'); });
   }
   function openShop(){ if(_stopInfo) openCounter(_stopInfo); }
   function buyShop(i){ toggleItem(i); } // raccourcis 1..5 : ajouter / retirer du panier
@@ -1024,7 +1202,9 @@
   function renderAlert(){
     const el = els.alertChip; if(!el) return;
     let html = '', cls = '';
-    if(alerts.police){ html = '<span class="ac-ico">🚓</span><span><b>POLICE</b> à ' + Math.round(alerts.police.gap) + ' m<br><small>nitro pour la semer !</small></span>'; cls = 'police'; }
+    if(alerts.rescue){ html = '<span class="ac-ico">🚨</span><span><b>PANNE SÈCHE</b> · dépanneuse dans ' + Math.ceil(alerts.rescue.eta) + ' s<br><small>feux de détresse · reste sur la bande d\'arrêt d\'urgence</small></span>'; cls = 'station low'; }
+    else if(alerts.police){ html = '<span class="ac-ico">🚓</span><span><b>POLICE</b> à ' + Math.round(alerts.police.gap) + ' m<br><small>nitro pour la semer !</small></span>'; cls = 'police'; }
+    else if(alerts.accident){ const a = alerts.accident; html = '<span class="ac-ico">🚧</span><span><b>ACCIDENT</b> à ' + Math.round(a.dist) + ' m · voie ' + a.lane + ' fermée<br><small>' + (a.same ? '⚠ TU ES DANS LA VOIE FERMÉE → change ' + (a.side > 0 ? '▶' : '◀') : 'ralentis · gyrophares') + '</small></span>'; cls = 'police'; }
     else if(alerts.radar){
       const r = alerts.radar, over = r.kmh > r.limit + 5, us = r.unitLabel === 'mph';
       const lim = us ? Math.round(r.limit / 1.609) : r.limit, cur = us ? Math.round(r.kmh / 1.609) : r.kmh;
@@ -1049,7 +1229,7 @@
     if(els.pumpPanel) els.pumpPanel.classList.add('hidden');
     if(els.radarTicket) els.radarTicket.classList.remove('show');
     if(els.ovShop) els.ovShop.classList.add('hidden');
-    alerts.police = alerts.radar = alerts.station = null; renderAlert();
+    alerts.police = alerts.radar = alerts.station = alerts.accident = alerts.rescue = null; renderAlert(); renderLaneStrip(null); _pump = null;
     const rt = DG.routeById(state.selectedRoute);
     if(rt && rt.journey && rt.journey.intro) setTimeout(()=>{ if(engine.playing) popup(rt.journey.intro, '#ffffff', true); }, 3600);
     if(els.journeyChip){ els.journeyChip.classList.add('hidden'); els.journeyChip.innerHTML = ''; }
@@ -1178,18 +1358,34 @@
       if(k==='ArrowLeft'||k==='a'||k==='A'||k==='q'||k==='Q'){ engine.move(-1); if(engine.playing) e.preventDefault(); }
       if(k==='ArrowRight'||k==='d'||k==='D'){ engine.move(1); if(engine.playing) e.preventDefault(); }
       if(k==='ArrowDown'||k==='s'||k==='S'){ engine.setBrake(true); if(engine.playing) e.preventDefault(); }
-      if(k===' '||k==='Shift'||k==='ArrowUp'||k==='w'||k==='W'){ engine.setBoostHeld(true); if(engine.playing) e.preventDefault(); }
+      if(k===' '||k==='Shift'){ engine.setBoostHeld(true); if(engine.playing) e.preventDefault(); }
+      if(k==='ArrowUp'||k==='w'||k==='W'||k==='z'||k==='Z'){ engine.setThrottle(true); if(engine.playing) e.preventDefault(); }
       if(k==='c'||k==='C'){ engine.cycleCam(); }
       if((k==='p'||k==='P') && engine.playing){ engine.paused ? engine.resume() : engine.pause(); }
       if(k==='Escape' && engine.playing && !engine.paused){ engine.pause(); }
     });
     window.addEventListener('keyup', (e)=>{
       const k = e.key;
-      if(k===' '||k==='Shift'||k==='ArrowUp'||k==='w'||k==='W'){ engine.setBoostHeld(false); }
+      if(k===' '||k==='Shift'){ engine.setBoostHeld(false); }
+      if(k==='ArrowUp'||k==='w'||k==='W'||k==='z'||k==='Z'){ engine.setThrottle(false); }
       if(k==='ArrowDown'||k==='s'||k==='S'){ engine.setBrake(false); }
     });
     // fenetre qui perd le focus : on relache tout (sinon la voiture braque seule)
-    window.addEventListener('blur', ()=>{ engine.setBrake(false); engine.setBoostHeld(false); });
+    window.addEventListener('blur', ()=>{ engine.setBrake(false); engine.setBoostHeld(false); engine.setThrottle(false); pumpHold(false); });
+    // pedales (ecran tactile / souris) : maintenir
+    const pedal = (el, fn)=>{ if(!el) return; el.addEventListener('pointerdown', (e)=>{ e.preventDefault(); fn(true); }); ['pointerup', 'pointerleave', 'pointercancel'].forEach(t=>el.addEventListener(t, ()=>fn(false))); };
+    pedal(document.getElementById('btnGas'), (v)=>engine.setThrottle(v));
+    pedal(document.getElementById('btnBrakeP'), (v)=>engine.setBrake(v));
+    // pompe : pistolet maintenu (souris / Espace), raccrocher, repartir sans essence
+    pedal(els.pumpNozzle, pumpHold);
+    els.pumpDone.addEventListener('click', pumpFinish);
+    els.pumpSkip.addEventListener('click', pumpSkip);
+    window.addEventListener('keydown', (e)=>{
+      if(!_pump || _pump.done || els.pumpPanel.classList.contains('hidden')) return;
+      if(e.key === ' '){ e.preventDefault(); e.stopImmediatePropagation(); if(!e.repeat) pumpHold(true); }
+      else if(e.key === 'Enter'){ e.preventDefault(); e.stopImmediatePropagation(); pumpFinish(); }
+    }, true);
+    window.addEventListener('keyup', (e)=>{ if(_pump && e.key === ' '){ e.stopImmediatePropagation(); pumpHold(false); } }, true);
 
     // Peage : touches 1 / 2 pour payer sans souris
     window.addEventListener('keydown', (e)=>{
