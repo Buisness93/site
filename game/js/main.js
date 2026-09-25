@@ -657,6 +657,10 @@
         }
         else if(kind==='nitro') popup('⚡ NITRO PLEIN !', '#3df0ff', true);
         else if(kind==='multiplier') popup('×2 GAINS !', '#ff5ad1', true);
+        else if(kind==='magnet') popup('🧲 AIMANT !', '#ff6a6a', true);
+        else if(kind==='shield') popup('🛡 BOUCLIER !', '#3dffb0', true);
+        else if(kind==='shield-hit') popup('🛡 BOUCLIER BRISÉ', '#3dffb0', true);
+        else if(kind==='jump') popup('🚀 SAUT ! +100', '#3df0ff', true);
       },
       onRecordBroken(){
         popup('★ NOUVEAU RECORD !', '#ffcc00');

@@ -67,6 +67,8 @@
       coin: new T.SpriteMaterial({ map:this._glowTex, color:0xffb300, transparent:true, opacity:.55, blending:T.AdditiveBlending, depthWrite:false }),
       nitro: new T.SpriteMaterial({ map:this._glowTex, color:0x2fd8ff, transparent:true, opacity:.6, blending:T.AdditiveBlending, depthWrite:false }),
       multiplier: new T.SpriteMaterial({ map:this._glowTex, color:0xff3fc8, transparent:true, opacity:.6, blending:T.AdditiveBlending, depthWrite:false }),
+      magnet: new T.SpriteMaterial({ map:this._glowTex, color:0xff4a4a, transparent:true, opacity:.6, blending:T.AdditiveBlending, depthWrite:false }),
+      shield: new T.SpriteMaterial({ map:this._glowTex, color:0x3dffb0, transparent:true, opacity:.6, blending:T.AdditiveBlending, depthWrite:false }),
     };
 
     // ---------- Neon sous la caisse + flammes de nitro (attaches au joueur) ----------
@@ -152,7 +154,7 @@
   };
 
   GameFX.prototype.pickup = function(kind, pos){
-    const col = kind === 'coin' ? 0xffc21a : kind === 'nitro' ? 0x39dcff : 0xff4fd0;
+    const col = kind === 'coin' ? 0xffc21a : kind === 'nitro' ? 0x39dcff : kind === 'magnet' ? 0xff4a4a : kind === 'shield' ? 0x3dffb0 : 0xff4fd0;
     this.emit(pos.x, pos.y, pos.z, kind === 'coin' ? 26 : 44, col, 7, 3, 0.7);
     this.ring(pos.x, pos.y, pos.z, col);
     this.shake = Math.max(this.shake, kind === 'coin' ? 0.04 : 0.12);

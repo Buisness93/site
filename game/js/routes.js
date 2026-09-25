@@ -1023,11 +1023,11 @@
         const fog = this.fog;
         // mer
         const seaW = 320, seaL = 400;
-        const sea = new T.Mesh(new T.PlaneGeometry(seaW, seaL), new T.MeshBasicMaterial({ map:seaTexture(T) }));
+        const sea = new T.Mesh(new T.PlaneGeometry(seaW, seaL, 16, 80), new T.MeshBasicMaterial({ map:seaTexture(T) }));
         sea.rotation.x = -Math.PI/2; sea.position.set(SHORE_X + seaW/2, 0.004, -150); ctx.add(sea);
         // scintillement general des vaguelettes (additif, tres leger)
         const glintTex = Sc.sparkleTex(T).clone(); glintTex.needsUpdate = true; glintTex.repeat.set(26, 30);
-        const glint = new T.Mesh(new T.PlaneGeometry(150, 300), new T.MeshBasicMaterial({ map:glintTex, color:0xffc8a0, transparent:true, opacity:0.14, blending:T.AdditiveBlending, depthWrite:false }));
+        const glint = new T.Mesh(new T.PlaneGeometry(150, 300, 8, 60), new T.MeshBasicMaterial({ map:glintTex, color:0xffc8a0, transparent:true, opacity:0.14, blending:T.AdditiveBlending, depthWrite:false }));
         glint.rotation.x = -Math.PI/2; glint.position.set(SHORE_X + 76, 0.012, -130); ctx.add(glint);
         ctx.scrollTex(glintTex, 30/300);
         // chemin de lumiere du soleil sur l'eau (enveloppe en couleurs de sommets)
@@ -1050,7 +1050,7 @@
         ctx.tick((dt, t)=>{ pathTex.offset.y = (pathTex.offset.y + dt*0.06) % 1; pathTex.offset.x = Math.sin(t*0.7)*0.05; path.material.opacity = 0.85 + Math.sin(t*3.1)*0.1; });
         // rivage : sable mouille + ecume (defile avec la route, va-et-vient de la maree)
         const foamTex = Sc.foamTex(T); foamTex.repeat.set(1, 24);
-        const foam = new T.Mesh(new T.PlaneGeometry(6, 300), new T.MeshBasicMaterial({ map:foamTex, transparent:true, depthWrite:false }));
+        const foam = new T.Mesh(new T.PlaneGeometry(6, 300, 1, 100), new T.MeshBasicMaterial({ map:foamTex, transparent:true, depthWrite:false }));
         foam.rotation.x = -Math.PI/2; foam.position.set(SHORE_X - 3.84 + 3, 0.016, -120); ctx.add(foam);
         ctx.scrollTex(foamTex, 24/300);
         ctx.tick((dt, t)=>{ foamTex.offset.x = Math.sin(t*0.9)*0.035 + Math.sin(t*2.3)*0.01; });
@@ -1191,6 +1191,7 @@
     },
     {
       id:'centre-neon', name:'Centre-Ville Néon', difficulty:'Intense', spacing:8,
+      bend:{ x:0.7, y:0.5 }, // rues de ville : virages plus doux qu'en campagne
       fog:0x12061d, fogNear:20, fogFar:112, ground:0x050309, exposure:1.1,
       road:0x0a0714, stripe:0xff5ad1, edge:0x2a1044, edgeEmissive:0xb43dff,
       sky:{ top:0x010003, mid:0x06020d, bottom:0x220a34, band:0.08 },
@@ -1296,7 +1297,7 @@
         const slab = Sc.slabTex(T); slab.repeat.set(3, 150);
         const walkMat = new T.MeshStandardMaterial({ map:slab, color:0x16121f, roughness:0.3, metalness:0.4, envMap:ctx.env, envMapIntensity:0.4 });
         [-1, 1].forEach(s=>{
-          const w = new T.Mesh(new T.PlaneGeometry(6, 300), walkMat);
+          const w = new T.Mesh(new T.PlaneGeometry(6, 300, 1, 100), walkMat);
           w.rotation.x = -Math.PI/2; w.position.set(s*8.62, 0.1, -120); ctx.add(w);
         });
         ctx.scrollTex(slab, 150/300);

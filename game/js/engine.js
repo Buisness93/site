@@ -3,6 +3,60 @@
 (function(){
   window.DG = window.DG || {};
   const LANES = [-3.3, -1.1, 1.1, 3.3];
+
+  // Virages et collines facon "monde courbe" : la route reste droite pour la
+  // logique du jeu (voies, collisions), mais au dessin chaque sommet est decale
+  // selon le carre de sa distance a la camera (lateralement = virage, en
+  // hauteur = bosse/creux). Tout le decor, le trafic et les bonus suivent la
+  // meme courbe, sans rien changer au gameplay ni aux collisions. Distance
+  // plafonnee : au loin, montagnes et skyline glissent d'un bloc (comme quand
+  // on tourne) au lieu de partir a l'infini.
+  const BEND = { value:null };
+  const BEND_GLSL = [
+    '{',
+    '  float bzd = max(-mvPosition.z, 0.0);',
+    '  float bdx = min(bzd, 120.0), bdy = min(bzd, 100.0);',
+    '  mvPosition.x += uBend.x * bdx * bdx;',
+    '  mvPosition.y += uBend.y * bdy * bdy;',
+    '  gl_Position = projectionMatrix * mvPosition;',
+    '}'
+  ].join('\n');
+  function bendMaterial(m){
+    if(!m || m.userData.dgBend || m.isShaderMaterial || m.isRawShaderMaterial) return;
+    m.userData.dgBend = true;
+    // Certains materiaux ont deja leur propre crochet (ex. extension glTF
+    // "specular-glossiness", qui y ajoute ses uniformes) : on l'enchaine au
+    // lieu de l'ecraser, sinon three.js plante en rafraichissant ces uniformes.
+    const prev = m.onBeforeCompile, prevKey = prev.toString();
+    m.customProgramCacheKey = function(){ return 'dgBend|' + prevKey; };
+    m.onBeforeCompile = function(sh, renderer){
+      prev.call(this, sh, renderer);
+      sh.uniforms.uBend = BEND;
+      let vs = sh.vertexShader;
+      if(vs.indexOf('#include <project_vertex>') !== -1) vs = vs.replace('#include <project_vertex>', '#include <project_vertex>\n' + BEND_GLSL);
+      else if(vs.indexOf('gl_Position = projectionMatrix * mvPosition;') !== -1) vs = vs.replace('gl_Position = projectionMatrix * mvPosition;', 'gl_Position = projectionMatrix * mvPosition;\n' + BEND_GLSL); // sprites
+      else return;
+      sh.vertexShader = 'uniform vec2 uBend;\n' + vs;
+    };
+    m.needsUpdate = true;
+  }
+  function bendScene(root){
+    root.traverse(n=>{
+      const m = n.material;
+      if(!m) return;
+      if(Array.isArray(m)) m.forEach(bendMaterial); else bendMaterial(m);
+    });
+  }
+  // Forme des virages le long de la distance parcourue : alternance de lignes
+  // droites (zone morte) et de courbes a gauche/droite plus ou moins serrees.
+  function curveAt(d){
+    const s = Math.sin(d*0.0042) * 0.62 + Math.sin(d*0.0019 + 1.7) * 0.38;
+    const a = Math.abs(s), k = a < 0.22 ? 0 : Math.min(1, (a - 0.22) / 0.6);
+    return Math.sign(s) * k * k * (3 - 2 * k);
+  }
+  function hillAt(d){ return Math.sin(d*0.0034 + 0.6) * 0.7 + Math.sin(d*0.0013 + 2.2) * 0.3; }
+  const CURVE_X = 0.0011, HILL_Y = 0.00032;
+  const JUMP_V = 9.5, GRAVITY = 24;
   const NEAR_MISS_GAP = 0.85;
   // Vraies voitures/camions de trafic (couleurs d'origine du modele, pas de teinte).
   // len = longueur cible (memes unites que les voitures jouables) : chaque type de
@@ -78,6 +132,8 @@
     this._decor = [];
     this._obstacles = [];
     this._pickups = [];
+    this._ramps = [];
+    this._jumpY = 0; this._jumpVy = 0;
     this._lane = 1;
     this._playerX = LANES[1];
     this._boostFuel = 1;
@@ -90,6 +146,8 @@
   GameEngine.prototype.init = function(){
     const T = window.THREE;
     const w = this.container.clientWidth, h = this.container.clientHeight;
+    BEND.value = new T.Vector2(0, 0);
+    this._bendD = 0;
     const renderer = new T.WebGLRenderer({ antialias:true, alpha:true, powerPreference:'high-performance' });
     renderer.setPixelRatio(Math.min((window.devicePixelRatio||1) < 1.5 ? (window.devicePixelRatio||1) * 1.25 : (window.devicePixelRatio||1), 2));
     renderer.setSize(w, h);
@@ -121,14 +179,16 @@
     this.hemiLight = new T.HemisphereLight(0x8899ff, 0x060608, 0.45); scene.add(this.hemiLight);
 
     this.groundMat = new T.MeshStandardMaterial({ color:0x050609, metalness:0.05, roughness:0.95 });
-    const ground = new T.Mesh(new T.PlaneGeometry(340, 320), this.groundMat);
+    // (longs plans subdivises dans la longueur : un plan en 1 seul morceau ne
+    // pourrait pas suivre la courbure des virages/collines)
+    const ground = new T.Mesh(new T.PlaneGeometry(340, 320, 12, 64), this.groundMat);
     ground.rotation.x = -Math.PI/2; ground.position.set(0, -0.03, -100); scene.add(ground);
 
     // Asphalte : grain procedural qui defile avec la vitesse (sinon la route
     // parait peinte et immobile sous les bandes qui, elles, bougent).
     this._roadTex = asphaltTexture(T);
     this.roadMat = new T.MeshStandardMaterial({ color:0x050609, metalness:0.35, roughness:0.7, map:this._roadTex, roughnessMap:this._roadTex });
-    const road = new T.Mesh(new T.PlaneGeometry(14, 260), this.roadMat);
+    const road = new T.Mesh(new T.PlaneGeometry(14, 260, 2, 104), this.roadMat);
     road.rotation.x = -Math.PI/2; road.position.z = -100; scene.add(road);
 
     // Ciel en degrade calcule au pixel (4 teintes + halo autour de l'astre +
@@ -177,7 +237,7 @@
     }
     this.edgeMat = new T.MeshStandardMaterial({ color:0x1b2129, emissive:0x0a1a3a, emissiveIntensity:0.8 });
     this._edges = [-5.5, 5.5].map(x=>{
-      const edge = new T.Mesh(new T.BoxGeometry(0.16,0.18,260), this.edgeMat);
+      const edge = new T.Mesh(new T.BoxGeometry(0.16,0.18,260, 1, 1, 104), this.edgeMat);
       edge.position.set(x, 0.12, -100); scene.add(edge);
       return edge;
     });
@@ -185,7 +245,7 @@
     // Lignes de rive continues (comme sur une vraie 2x4 voies)
     this.edgeLineMat = new T.MeshBasicMaterial({ color:0xd8dee6 });
     [-4.45, 4.45].forEach(x=>{
-      const l = new T.Mesh(new T.PlaneGeometry(0.14, 260), this.edgeLineMat);
+      const l = new T.Mesh(new T.PlaneGeometry(0.14, 260, 1, 104), this.edgeLineMat);
       l.rotation.x = -Math.PI/2; l.position.set(x, 0.021, -100); scene.add(l);
     });
 
@@ -422,12 +482,14 @@
     const T = window.THREE;
     if(!this.renderer || !this.scene) return;
     const tmp = [];
+    bendScene(this.scene);
     // Poses devant la camera : un rendu reel (hors ecran, dans une petite cible)
     // envoie aussi leurs textures au GPU — compile() seul ne le fait pas.
     const put = (o)=>{ if(!o) return; o.position.set((tmp.length % 9 - 4) * 1.6, 0.5, -14 - Math.floor(tmp.length / 9) * 4); this.scene.add(o); tmp.push(o); };
     if(this._coneModel) put(this._instance(this._coneModel, 1.0, 0, false));
     (this._trafficModels || []).forEach(t=>put(this._instance(t.model, t.len, Math.PI, true)));
-    ['coin', 'nitro', 'multiplier'].forEach(kind=>{
+    put(this._rampMesh());
+    ['coin', 'nitro', 'multiplier', 'magnet', 'shield'].forEach(kind=>{
       if(!this._pickupProto) this._pickupProto = {};
       if(!this._pickupProto[kind]){
         const proto = pickupMesh(T, kind);
@@ -437,6 +499,7 @@
       put(this._pickupProto[kind].clone(true));
     });
     tmp.forEach(o=>this._sharpenTextures(o));
+    bendScene(this.scene);
     try {
       this.renderer.compile(this.scene, this.camera);
       if(!this._warmRT){ this._warmRT = new T.WebGLRenderTarget(64, 64); this._warmRT.texture.encoding = T.sRGBEncoding; } // meme variante de shader que l'ecran
@@ -491,6 +554,7 @@
     if(this._player) this.scene.remove(this._player);
     this._obstacles.forEach(o=>{ this.scene.remove(o.mesh); this._release(o.mesh); }); this._obstacles = [];
     this._pickups.forEach(p=>this.scene.remove(p.mesh)); this._pickups = [];
+    this._ramps.forEach(r=>this.scene.remove(r.mesh)); this._ramps = [];
 
     const model = await DG.Loader.loadModel('../' + car.model);
     this._player = model ? DG.Loader.normalizeModel(T, model, 3.4, Math.PI - (car.rotY||0)) : DG.Loader.makeFallbackCar(T, { body:car.body, emissive:0x0a0e16 });
@@ -511,6 +575,14 @@
     this._dist = 0; this._time = 0; this._spawnT = 0.7; this._pickupT = 1.2;
     this._obstacleBonus = 0; this._coinCredits = 0; this._nearMissBonus = 0;
     this._multiplier = 1; this._multiplierT = 0;
+    this._jumpY = 0; this._jumpVy = 0; this._rampT = 6; this._magnetT = 0; this._shield = false;
+    // bulle du bouclier autour de la voiture (visible quand il est actif)
+    if(!this._shieldFx){
+      this._shieldFx = new T.Mesh(new T.SphereGeometry(2.3, 24, 16), new T.MeshBasicMaterial({ color:0x3dffb0, transparent:true, opacity:.16, blending:T.AdditiveBlending, depthWrite:false }));
+      this._shieldFx.scale.set(1, 1, 1);
+    }
+    this._shieldFx.visible = false; this._shieldFx.position.set(0, 0.7, 0);
+    this._player.add(this._shieldFx);
     this._personalBest = personalBest || 0;
     this._recordBroken = false;
     this._nearMissStreak = 0;
@@ -671,6 +743,8 @@
     this._interiorHolder = null;
     this._obstacles.forEach(o=>this.scene.remove(o.mesh)); this._obstacles = [];
     this._pickups.forEach(p=>this.scene.remove(p.mesh)); this._pickups = [];
+    this._ramps.forEach(r=>this.scene.remove(r.mesh)); this._ramps = [];
+    this._jumpY = 0; this._jumpVy = 0; this._shield = false; this._magnetT = 0;
   };
 
   GameEngine.prototype.move = function(d){
@@ -790,6 +864,7 @@
     // qui sautait donc le rendu de cette frame (et l'objet n'etait jamais ajoute
     // a la scene). Un cylindre a bouts arrondis (spheres) donne une forme de
     // bonbonne tres proche, compatible avec cette version.
+    if(kind === 'magnet' || kind === 'shield') return extraPickupMesh(T, kind);
     const m = new T.Group();
     const mat = new T.MeshStandardMaterial({ color:0x3df0ff, emissive:0x18c8ff, emissiveIntensity:0.9, metalness:0.5, roughness:0.2 });
     const body = new T.Mesh(new T.CylinderGeometry(0.32, 0.32, 0.6, 12), mat);
@@ -798,7 +873,20 @@
       const cap = new T.Mesh(new T.SphereGeometry(0.32, 12, 8), mat);
       cap.position.y = y; m.add(cap);
     });
-    m.rotation.z = Math.PI/2; return m;
+    if(kind === 'nitro'){ m.rotation.z = Math.PI/2; return m; }
+    return m;
+  }
+  // (nitro ci-dessus) ; aimant en U rouge a pointes argentees, bouclier = gemme verte
+  function extraPickupMesh(T, kind){
+    if(kind === 'magnet'){
+      const g = new T.Group();
+      const red = new T.MeshStandardMaterial({ color:0xff3b3b, emissive:0xc01818, emissiveIntensity:0.7, metalness:0.4, roughness:0.3 });
+      const arc = new T.Mesh(new T.TorusGeometry(0.36, 0.13, 10, 18, Math.PI), red); arc.rotation.z = Math.PI; g.add(arc);
+      const tipMat = new T.MeshStandardMaterial({ color:0xe8eef4, emissive:0x8090a0, emissiveIntensity:0.4, metalness:0.9, roughness:0.2 });
+      [-0.36, 0.36].forEach(x=>{ const t = new T.Mesh(new T.CylinderGeometry(0.13, 0.13, 0.26, 10), tipMat); t.position.set(x, 0.12, 0); g.add(t); });
+      return g;
+    }
+    return new T.Mesh(new T.IcosahedronGeometry(0.5, 1), new T.MeshStandardMaterial({ color:0x3dffb0, emissive:0x10c080, emissiveIntensity:0.9, metalness:0.3, roughness:0.15, flatShading:true }));
   }
 
   GameEngine.prototype._spawnPickup = function(){
@@ -816,7 +904,16 @@
     if(!freeLanes.length) return; // toutes les voies occupees : on saute ce cycle
     const li = freeLanes[Math.floor(Math.random()*freeLanes.length)];
     const roll = Math.random();
-    const kind = roll < 0.72 ? 'coin' : (roll < 0.88 ? 'nitro' : 'multiplier');
+    const kind = roll < 0.6 ? 'coin' : roll < 0.73 ? 'nitro' : roll < 0.84 ? 'multiplier' : roll < 0.92 ? 'magnet' : 'shield';
+    // Ligne de pieces (1 fois sur 3) : bien plus satisfaisant a "aspirer"
+    if(kind === 'coin' && Math.random() < 0.35){
+      for(let k = 0; k < 5; k++) this._addPickup('coin', LANES[li], 1.05, -130 - k*3.2);
+      return;
+    }
+    this._addPickup(kind, LANES[li], 1.05, -130);
+  };
+  GameEngine.prototype._addPickup = function(kind, x, y, z){
+    const T = window.THREE;
     // Geometrie/materiaux crees une seule fois par type puis partages (avant :
     // nouvelle geometrie a chaque bonus, jamais liberee -> fuite memoire GPU).
     this._pickupProto = this._pickupProto || {};
@@ -826,9 +923,61 @@
       this._pickupProto[kind] = proto;
     }
     const mesh = this._pickupProto[kind].clone(true);
-    mesh.position.set(LANES[li], 1.05, -130);
+    mesh.position.set(x, y, z);
     this.scene.add(mesh);
-    this._pickups.push({ mesh, kind, taken:false, phase:Math.random()*6.28 });
+    this._pickups.push({ mesh, kind, taken:false, phase:Math.random()*6.28, baseY:y });
+  };
+
+  // Tremplin jaune et noir a chevrons (prototype unique, clone a chaque fois)
+  GameEngine.prototype._rampMesh = function(){
+    const T = window.THREE;
+    if(!this._rampProto){
+      const L = 3.4, H = 0.8, W = 1.9;
+      const shape = new T.Shape(); shape.moveTo(0, 0); shape.lineTo(-L, 0); shape.lineTo(-L, H); shape.closePath();
+      const geo = new T.ExtrudeGeometry(shape, { depth:W, bevelEnabled:false });
+      geo.rotateY(-Math.PI/2); geo.translate(W/2, 0, L/2);
+      const g = new T.Group();
+      g.add(new T.Mesh(geo, new T.MeshStandardMaterial({ color:0x1a1a1e, roughness:0.6, metalness:0.3 })));
+      const c = document.createElement('canvas'); c.width = 64; c.height = 128;
+      const x = c.getContext('2d');
+      x.fillStyle = '#ffc21a'; x.fillRect(0, 0, 64, 128);
+      x.fillStyle = '#111'; for(let k = -1; k < 5; k++){ x.beginPath(); x.moveTo(0, k*32 + 40); x.lineTo(32, k*32 + 16); x.lineTo(64, k*32 + 40); x.lineTo(64, k*32 + 54); x.lineTo(32, k*32 + 30); x.lineTo(0, k*32 + 54); x.closePath(); x.fill(); }
+      const tex = new T.CanvasTexture(c); tex.encoding = T.sRGBEncoding;
+      const slope = new T.Mesh(new T.PlaneGeometry(W * 0.98, Math.hypot(L, H)), new T.MeshStandardMaterial({ map:tex, emissive:0x553300, emissiveMap:tex, emissiveIntensity:0.6, roughness:0.5 }));
+      slope.rotation.x = -Math.PI/2 + Math.atan2(H, L); slope.position.set(0, H/2 + 0.012, 0); g.add(slope);
+      const lip = new T.Mesh(new T.BoxGeometry(W, 0.06, 0.08), new T.MeshBasicMaterial({ color:0x3df0ff })); lip.position.set(0, H + 0.02, -L/2); g.add(lip);
+      const glowTex = glow(T);
+      const halo = new T.Sprite(new T.SpriteMaterial({ map:glowTex, color:0x3df0ff, transparent:true, opacity:.55, blending:T.AdditiveBlending, depthWrite:false }));
+      halo.scale.set(3.4, 1.4, 1); halo.position.set(0, H, -L/2); g.add(halo);
+      this._rampProto = g;
+    }
+    return this._rampProto.clone(true);
+  };
+
+  // Pose un tremplin dans une voie libre, un arc de pieces sur la trajectoire
+  // du saut, et parfois une voiture juste derriere a franchir en l'air.
+  GameEngine.prototype._spawnRamp = function(){
+    const Z = -134;
+    const busy = new Set();
+    for(const o of this._obstacles){ if(o.mesh.position.z < Z + 30 && o.mesh.position.z > Z - 30) busy.add(o.li); }
+    const free = [0,1,2,3].filter(l=>!busy.has(l));
+    if(!free.length) return;
+    const li = free[Math.floor(Math.random()*free.length)], x = LANES[li];
+    const mesh = this._rampMesh();
+    mesh.position.set(x, 0, Z);
+    this.scene.add(mesh);
+    this._ramps.push({ mesh, li, used:false });
+    // pieces le long de la parabole du saut (a la vitesse actuelle)
+    const v = this._speed || 30;
+    for(let k = 1; k <= 6; k++){
+      const t = k * 0.11, y = 1.05 + JUMP_V * t - GRAVITY/2 * t * t;
+      this._addPickup('coin', x, y, Z - 1.7 - v * t);
+    }
+    if(Math.random() < 0.55){
+      this._spawnObstacle(li);
+      const o = this._obstacles[this._obstacles.length - 1];
+      o.mesh.position.z = Z - 1.7 - v * 0.4; o.solo = false; o.v = Math.min(o.v, 3);
+    }
   };
 
   GameEngine.prototype._loop = function(now){
@@ -845,6 +994,7 @@
       for(let i=0;i<this._tickers.length;i++) this._tickers[i](dt, this._tNow);
       this._update(dt, now);
     }
+    if((this._bendScan = (this._bendScan || 0) + 1) % 20 === 0) bendScene(this.scene);
     this.renderer.render(this.scene, this.camera);
     if(active && !this.paused) this._adaptResolution(raw);
   };
@@ -905,7 +1055,9 @@
       this._look.x += (cp.look[0]-this._look.x)*ck;
       this._look.y += (cp.look[1]-this._look.y)*ck;
       this._look.z += (cp.look[2]-this._look.z)*ck;
+      this.camera.position.y += (this._jumpY || 0) * 0.45 * ck;
       this.camera.lookAt(this._look);
+      this.camera.rotateZ(-BEND.value.x * 55); // inclinaison dans les virages
       const sh = this.fx ? this.fx.shake : 0;
       if(sh){ this.camera.position.x += (Math.random()-.5)*sh; this.camera.position.y += (Math.random()-.5)*sh*0.7; }
       this.camera.fov += ((50 + this._fovKick()) - this.camera.fov) * Math.min(1, dt*6);
@@ -955,6 +1107,11 @@
     }
 
     this._scrollWorld(scroll);
+    this._bendD += scroll;
+    const bamp = (this.route && this.route.bend) || { x:1, y:1 };
+    const bk = Math.min(1, dt * 1.5);
+    BEND.value.x += (curveAt(this._bendD) * CURVE_X * bamp.x - BEND.value.x) * bk;
+    BEND.value.y += (hillAt(this._bendD) * HILL_Y * bamp.y - BEND.value.y) * bk;
     const speedK = this.playing && this.mult ? Math.max(0, Math.min(1, (this._speed - this.mult.baseSpeed*0.7) / (this.mult.maxSpeed - this.mult.baseSpeed*0.7))) : 0;
     this._speedK = speedK;
     if(this.fx) this.fx.update(dt, scroll, speedK, this.playing && this._boostActive, this.playing);
@@ -965,11 +1122,30 @@
     // leger braquage du nez dans le sens du changement de voie.
     const targetX = LANES[this._lane];
     this._playerX += (targetX - this._playerX) * Math.min(1, dt * this.mult.handlingRate);
+    // Saut (tremplin) : simple balistique ; atterrissage avec secousse + etincelles
+    if(this._jumpY > 0 || this._jumpVy > 0){
+      this._jumpVy -= GRAVITY * dt;
+      this._jumpY += this._jumpVy * dt;
+      if(this._jumpY <= 0){
+        this._jumpY = 0;
+        if(this._jumpVy < -4 && this.fx){
+          this.fx.emit(this._playerX, 0.15, 0.4, 36, 0xffd27a, 6, 1.2, 0.5);
+          this.fx.shake = Math.max(this.fx.shake, 0.28);
+        }
+        this._jumpVy = 0;
+      }
+    }
     if(this._player){
       this._player.position.x = this._playerX;
-      this._player.position.y = Math.sin(now*0.02)*0.02 + (this._boostActive ? Math.sin(now*0.09)*0.012 : 0);
+      this._player.position.y = this._jumpY + Math.sin(now*0.02)*0.02 + (this._boostActive ? Math.sin(now*0.09)*0.012 : 0);
       this._player.rotation.z = (targetX - this._playerX) * 0.14;
-      this._player.rotation.y = -(targetX - this._playerX) * 0.07;
+      // nez tourne vers l'interieur du virage + cabre pendant le saut
+      this._player.rotation.y = -(targetX - this._playerX) * 0.07 - BEND.value.x * 110;
+      this._player.rotation.x = this._jumpY > 0 ? Math.max(-0.22, Math.min(0.28, this._jumpVy * 0.03)) : 0;
+      if(this._shieldFx){
+        this._shieldFx.visible = !!this._shield;
+        if(this._shield){ const p = 1 + Math.sin(now*0.006) * 0.04; this._shieldFx.scale.set(p, p, p); }
+      }
     }
     this._headlight.intensity += (this._headlightI - this._headlight.intensity) * Math.min(1, dt*3);
     this._headlight.position.set(this._playerX, 1.1, -1.6);
@@ -1020,6 +1196,23 @@
     }
     this._pickupT -= dt;
     if(this._pickupT <= 0){ this._pickupT = 1.1 + Math.random()*1.0; this._spawnPickup(); }
+    this._rampT -= dt;
+    if(this._rampT <= 0){ this._rampT = 7 + Math.random()*6; this._spawnRamp(); }
+    if(this._magnetT > 0) this._magnetT -= dt;
+
+    // Tremplins : pris dans la bonne voie (et au sol) -> saut + bonus
+    for(let i=this._ramps.length-1; i>=0; i--){
+      const r = this._ramps[i];
+      r.mesh.position.z += scroll;
+      if(!r.used && this._jumpY === 0 && Math.abs(r.mesh.position.z) < 1.4 && Math.abs(r.mesh.position.x - this._playerX) < 1.0){
+        r.used = true;
+        this._jumpVy = JUMP_V;
+        this._obstacleBonus += 100 * this._multiplier;
+        if(this.fx){ this.fx.emit(this._playerX, 0.3, 0.2, 30, 0x3df0ff, 5, 2, 0.5); this.fx.shake = Math.max(this.fx.shake, 0.15); }
+        if(this.cb.onPickup) this.cb.onPickup('jump');
+      }
+      if(r.mesh.position.z > 12){ this.scene.remove(r.mesh); this._ramps.splice(i, 1); }
+    }
 
     const playerHalfW = this._playerHalfW || 0.55;
     let drafting = false;
@@ -1028,7 +1221,19 @@
       o.mesh.position.z += scroll - o.v * dt;
       this._trafficAI(o, dt, now);
       const gap = Math.abs(o.mesh.position.x - this._playerX) - ((o.mesh.userData.w||1.2) + playerHalfW);
-      if(!o.hit && Math.abs(o.mesh.position.z) < 1.5 && gap < 0){ o.hit = true; this._startCrash(o); return; }
+      const clearance = o.kind === 'car' ? 1.25 : 0.7; // hauteur a franchir en l'air
+      if(!o.hit && Math.abs(o.mesh.position.z) < 1.5 && gap < 0 && this._jumpY < clearance){
+        o.hit = true;
+        if(this._shield){
+          // Bouclier : le vehicule est ejecte, on continue
+          this._shield = false;
+          if(this.fx){ this.fx.crash(o.mesh.position); this.fx.shake = 0.45; }
+          if(this.cb.onPickup) this.cb.onPickup('shield-hit');
+          this.scene.remove(o.mesh); this._release(o.mesh); this._obstacles.splice(i, 1);
+          continue;
+        }
+        this._startCrash(o); return;
+      }
       // Aspiration : dans le sillage d'un vehicule (meme voie, juste derriere),
       // le nitro se recharge bien plus vite — moins de resistance de l'air,
       // comme en vrai. Recompense le fait de coller le trafic avant de deboiter.
@@ -1055,12 +1260,22 @@
       const p = this._pickups[i];
       p.mesh.position.z += scroll;
       p.mesh.rotation.y += dt*3;
-      p.mesh.position.y = 1.05 + Math.sin(now*0.004 + p.phase) * 0.16;
-      if(!p.taken && Math.abs(p.mesh.position.z) < 1.6 && Math.abs(p.mesh.position.x - this._playerX) < 1.1){
+      // Aimant : les pieces proches filent vers la voiture
+      if(this._magnetT > 0 && p.kind === 'coin' && p.mesh.position.z > -45){
+        const k = Math.min(1, dt * 7);
+        p.mesh.position.x += (this._playerX - p.mesh.position.x) * k;
+        p.baseY += ((this._jumpY || 0) + 1.05 - p.baseY) * k;
+        p.mesh.position.z += Math.min(18 * dt, Math.max(0, -p.mesh.position.z) * k);
+      }
+      p.mesh.position.y = p.baseY + Math.sin(now*0.004 + p.phase) * 0.16;
+      const dy = Math.abs(p.mesh.position.y - ((this._jumpY || 0) + 1.05));
+      if(!p.taken && Math.abs(p.mesh.position.z) < 1.6 && Math.abs(p.mesh.position.x - this._playerX) < 1.1 && dy < 1.2){
         p.taken = true;
         if(this.fx) this.fx.pickup(p.kind, p.mesh.position);
         if(p.kind === 'coin'){ this._coinCredits += 10 * this._multiplier; if(this.cb.onPickup) this.cb.onPickup('coin'); }
         else if(p.kind === 'nitro'){ this._boostFuel = 1; if(this.cb.onPickup) this.cb.onPickup('nitro'); }
+        else if(p.kind === 'magnet'){ this._magnetT = 8; if(this.cb.onPickup) this.cb.onPickup('magnet'); }
+        else if(p.kind === 'shield'){ this._shield = true; if(this.cb.onPickup) this.cb.onPickup('shield'); }
         else { this._multiplier = 2; this._multiplierT = 8; if(this.cb.onPickup) this.cb.onPickup('multiplier'); }
         this.scene.remove(p.mesh); this._pickups.splice(i,1); continue;
       }
