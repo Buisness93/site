@@ -15,6 +15,7 @@
     drawCard:$('drawCard'), drawDesc:$('drawDesc'), drawCta:$('drawCta'), drawNote:$('drawNote'), drawTimer:$('drawTimer'), drawStreak:$('drawStreak'),
     ovWheel:$('ovWheel'), wheelEl:$('wheelEl'), reelTrack:$('reelTrack'), wheelResult:$('wheelResult'), btnSpinWheel:$('btnSpinWheel'), btnCloseWheel:$('btnCloseWheel'),
     overDailyCard:$('overDailyCard'), overDailyDesc:$('overDailyDesc'), btnClaimDaily:$('btnClaimDaily'),
+    journeyChip:$('journeyChip'), ovToll:$('ovToll'), tollStation:$('tollStation'), tollTrip:$('tollTrip'), tollPrice:$('tollPrice'), tollMsg:$('tollMsg'), btnTollCash:$('btnTollCash'), btnTollCard:$('btnTollCard'),
     btnLeft:$('btnLeft'), btnRight:$('btnRight'), btnBoost:$('btnBoost'), btnCam:$('btnCam'), btnPause:$('btnPause'), btnFullscreen:$('btnFullscreen'), btnMusic:$('btnMusic'), bgAudio:$('bgAudio'),
     musicPanel:$('musicPanel'), musicTrackName:$('musicTrackName'), btnMusicPrev:$('btnMusicPrev'), btnMusicToggle:$('btnMusicToggle'), btnMusicNext:$('btnMusicNext'), musicVolume:$('musicVolume'), musicList:$('musicList'),
     musicSeek:$('musicSeek'), musicTimeCur:$('musicTimeCur'), musicTimeDur:$('musicTimeDur'),
@@ -239,8 +240,9 @@
     'centre-neon':    { ico:'🌆', grad:'linear-gradient(135deg,#b43dff,#140828)', glow:'#ff5ad1' },
     'japon-sakura':   { ico:'🌸', grad:'linear-gradient(135deg,#ff9cc0,#3a1f4a)', glow:'#ffb7d0' },
     'lac-neuchatel':  { ico:'⛵', grad:'linear-gradient(135deg,#5aa8d8,#1a3a5a)', glow:'#8fd0ff' },
-    'autostrada':     { ico:'🏛', grad:'linear-gradient(135deg,#f0c070,#2a5a3a)', glow:'#ffd890' },
+    'autostrada':     { ico:'🇮🇹', grad:'linear-gradient(135deg,#1f8a3a 0%,#f4f4f4 50%,#c8202a 100%)', glow:'#9fe0a0' },
     'provence':       { ico:'💜', grad:'linear-gradient(135deg,#a07ae0,#3a6a3a)', glow:'#c8a8ff' },
+    'route66':        { ico:'🌵', grad:'linear-gradient(135deg,#ff9a50,#6a2a14)', glow:'#ffb070' },
   };
   const DIFF_LVL = { 'Détente':1, 'Standard':2, 'Intense':3 };
   function renderRouteTabs(){
@@ -648,6 +650,16 @@
         if(navigator.vibrate) try { navigator.vibrate([60, 40, 120]); } catch(e){}
       },
       onPauseChange(paused){ show(paused ? 'ovPaused' : null); if(!paused){ els.hudTop.style.display='flex'; els.hudBottom.style.display='flex'; } },
+      onJourney(j){
+        if(!els.journeyChip) return;
+        els.journeyChip.classList.remove('hidden');
+        const pct = Math.min(100, j.kmDone / j.kmTotal * 100);
+        els.journeyChip.innerHTML = '<span class="jc-road">' + (j.road || '') + '</span><span class="jc-from">' + j.from + '</span>' +
+          '<span class="jc-bar"><i style="width:' + pct.toFixed(1) + '%"></i></span><span class="jc-to">' + j.to + '</span>' +
+          '<span class="jc-next">' + (j.toll ? '🛑 ' : '↗ ') + j.next + ' · <b>' + j.kmNext.toFixed(j.kmNext < 10 ? 1 : 0) + ' km</b></span>';
+      },
+      onTollApproach(stop){ popup('🛑 PÉAGE · ' + stop.name + ' — ralentis', '#ffcc00', true); },
+      onToll(info){ openToll(info); },
       onPickup(kind, payload){
         if(kind==='coin') popup('+10 🪙', '#ffcc00');
         else if(kind==='near-miss'){
@@ -664,6 +676,7 @@
         else if(kind==='shield') popup('🛡 BOUCLIER !', '#3dffb0', true);
         else if(kind==='shield-hit') popup('🛡 BOUCLIER BRISÉ', '#3dffb0', true);
         else if(kind==='jump') popup('🚀 SAUT ! +100', '#3df0ff', true);
+        else if(kind==='arrival'){ popup('🏁 ARRIVÉE À ' + ((payload && payload.city) || '').toUpperCase() + ' ! +500', '#4ee39a', true); confetti(innerWidth/2, innerHeight*0.35); chimeSound(4); }
       },
       onRecordBroken(){
         popup('★ NOUVEAU RECORD !', '#ffcc00');
@@ -690,7 +703,30 @@
   }
 
 
+  // Menu du peage : la voiture est arretee a la cabine, on choisit comment payer.
+  function openToll(info){
+    els.tollStation.textContent = info.station;
+    els.tollTrip.textContent = info.from + ' → ' + info.station + ' · ' + info.km + ' km · voie ' + info.lane;
+    els.tollPrice.textContent = info.price.toFixed(2).replace('.', ',') + ' €';
+    const canCash = info.coinsHave >= info.coinsNeed;
+    els.btnTollCash.disabled = !canCash;
+    els.btnTollCash.querySelector('.tl-sub').textContent = info.coinsNeed + ' pièces 🪙 (tu en as ' + info.coinsHave + ')';
+    els.btnTollCard.querySelector('.tl-sub').textContent = '−' + info.cardPoints + ' points au score';
+    els.tollMsg.textContent = canCash ? '' : 'Pas assez de pièces ramassées : paie par carte.';
+    els.ovToll.classList.remove('hidden');
+    clickSound(true);
+  }
+  function payToll(method){
+    const res = engine.payToll(method);
+    if(!res.ok){ els.tollMsg.textContent = res.error || 'Paiement refusé'; return; }
+    els.ovToll.classList.add('hidden');
+    chimeSound(1);
+    popup((method === 'cash' ? '💶 ' : '💳 ') + 'PAYÉ ' + res.price.toFixed(2).replace('.', ',') + ' € — Buon viaggio !', '#4ee39a', true);
+  }
+
   function startRun(){
+    if(els.ovToll) els.ovToll.classList.add('hidden');
+    if(els.journeyChip){ els.journeyChip.classList.add('hidden'); els.journeyChip.innerHTML = ''; }
     const car = DG.carById(state.selectedCar);
     els.hudTop.style.display = 'flex'; els.hudBottom.style.display = 'flex';
     show(null);
@@ -800,14 +836,8 @@
   els.btnBoardClose.addEventListener('click', ()=>show('ovChoosing'));
 
   function wireControls(){
-    // Direction maintenue (clavier et boutons tactiles) : gauche/droite se
-    // combinent, la voiture braque tant qu'on appuie.
-    const held = { l:false, r:false };
-    const applySteer = ()=>engine.setSteer((held.r ? 1 : 0) - (held.l ? 1 : 0));
-    [[els.btnLeft, 'l'], [els.btnRight, 'r']].forEach(([b, k])=>{
-      b.addEventListener('pointerdown', (e)=>{ held[k] = true; applySteer(); try { b.setPointerCapture(e.pointerId); } catch(_){} });
-      ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev=>b.addEventListener(ev, ()=>{ held[k] = false; applySteer(); }));
-    });
+    els.btnLeft.addEventListener('pointerdown', ()=>engine.move(-1));
+    els.btnRight.addEventListener('pointerdown', ()=>engine.move(1));
     els.btnBoost.addEventListener('pointerdown', ()=>engine.setBoostHeld(true));
     els.btnBoost.addEventListener('pointerup', ()=>engine.setBoostHeld(false));
     els.btnBoost.addEventListener('pointerleave', ()=>engine.setBoostHeld(false));
@@ -819,8 +849,8 @@
 
     window.addEventListener('keydown', (e)=>{
       const k = e.key;
-      if(k==='ArrowLeft'||k==='a'||k==='A'||k==='q'||k==='Q'){ held.l = true; applySteer(); if(engine.playing) e.preventDefault(); }
-      if(k==='ArrowRight'||k==='d'||k==='D'){ held.r = true; applySteer(); if(engine.playing) e.preventDefault(); }
+      if(k==='ArrowLeft'||k==='a'||k==='A'||k==='q'||k==='Q'){ engine.move(-1); if(engine.playing) e.preventDefault(); }
+      if(k==='ArrowRight'||k==='d'||k==='D'){ engine.move(1); if(engine.playing) e.preventDefault(); }
       if(k==='ArrowDown'||k==='s'||k==='S'){ engine.setBrake(true); if(engine.playing) e.preventDefault(); }
       if(k===' '||k==='Shift'||k==='ArrowUp'||k==='w'||k==='W'){ engine.setBoostHeld(true); if(engine.playing) e.preventDefault(); }
       if(k==='c'||k==='C'){ engine.cycleCam(); }
@@ -830,12 +860,19 @@
     window.addEventListener('keyup', (e)=>{
       const k = e.key;
       if(k===' '||k==='Shift'||k==='ArrowUp'||k==='w'||k==='W'){ engine.setBoostHeld(false); }
-      if(k==='ArrowLeft'||k==='a'||k==='A'||k==='q'||k==='Q'){ held.l = false; applySteer(); }
-      if(k==='ArrowRight'||k==='d'||k==='D'){ held.r = false; applySteer(); }
       if(k==='ArrowDown'||k==='s'||k==='S'){ engine.setBrake(false); }
     });
     // fenetre qui perd le focus : on relache tout (sinon la voiture braque seule)
-    window.addEventListener('blur', ()=>{ held.l = held.r = false; applySteer(); engine.setBrake(false); engine.setBoostHeld(false); });
+    window.addEventListener('blur', ()=>{ engine.setBrake(false); engine.setBoostHeld(false); });
+
+    // Peage : touches 1 / 2 pour payer sans souris
+    window.addEventListener('keydown', (e)=>{
+      if(els.ovToll.classList.contains('hidden')) return;
+      if(e.key === '1') payToll('cash');
+      if(e.key === '2' || e.key === 'Enter') payToll('card');
+    });
+    els.btnTollCash.addEventListener('click', ()=>payToll('cash'));
+    els.btnTollCard.addEventListener('click', ()=>payToll('card'));
 
     const fsSupported = document.fullscreenEnabled || document.webkitFullscreenEnabled;
     if(!fsSupported){ els.btnFullscreen.style.display = 'none'; }

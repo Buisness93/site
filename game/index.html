@@ -73,7 +73,7 @@
         <button class="btn-boost" id="btnBoost">⚡ Boost</button>
         <button class="btn-lane" id="btnRight">▶</button>
       </div>
-      <div class="kbd-hint">← → diriger (maintenir) · ↓ freiner · ESPACE boost · C caméra · P pause · contre-braque dans les virages</div>
+      <div class="kbd-hint">ESPACE boost · ← → changer de voie · ↓ freiner · C caméra · P pause · roule dans le sillage pour recharger le nitro</div>
     </div>
   </div>
 
@@ -168,6 +168,21 @@
           <button class="btn-go" id="btnStart" disabled><span class="go-glow"></span><span class="go-txt">Démarrer</span><span class="go-arrow">▶</span></button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="journey-chip hidden" id="journeyChip"></div>
+
+  <div class="overlay toll-overlay hidden" id="ovToll">
+    <div class="toll-panel">
+      <div class="toll-head"><span class="toll-logo">A1</span><div><div class="toll-kicker">Autostrade per l'Italia · Pedaggio</div><div class="toll-station" id="tollStation">—</div></div></div>
+      <div class="toll-trip" id="tollTrip">—</div>
+      <div class="toll-screen"><span>IMPORTO</span><b id="tollPrice">0,00 €</b></div>
+      <div class="toll-actions">
+        <button class="toll-btn" id="btnTollCash"><span class="tl-ico">💶</span><span class="tl-body"><span class="tl-title">Espèces <kbd>1</kbd></span><span class="tl-sub">—</span></span></button>
+        <button class="toll-btn card" id="btnTollCard"><span class="tl-ico">💳</span><span class="tl-body"><span class="tl-title">Carte bancaire <kbd>2</kbd></span><span class="tl-sub">—</span></span></button>
+      </div>
+      <div class="toll-msg" id="tollMsg"></div>
     </div>
   </div>
 

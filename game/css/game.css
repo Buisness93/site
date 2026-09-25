@@ -322,3 +322,38 @@ h1,h2,h3{font-family:'Saira Condensed',sans-serif;text-transform:uppercase;margi
 .icon-btn,.btn-lane{background:rgba(11,13,19,.86)}
 .btn-boost{background:linear-gradient(180deg,rgba(60,72,86,.92),rgba(24,30,38,.92))}
 .draft-badge{background:rgba(8,20,32,.9)!important}
+
+/* Trajet (routes avec peages) : bandeau fin en haut au centre */
+.journey-chip{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%);z-index:21;display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:12px;background:rgba(8,10,16,.72);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(6px);font-size:11.5px;color:#cfd6df;pointer-events:none;white-space:nowrap;max-width:min(560px,70vw)}
+.journey-chip.hidden{display:none}
+.journey-chip .jc-road{font-family:'Saira Condensed';font-weight:900;font-size:12px;color:#fff;background:#0a7a3a;border-radius:5px;padding:1px 6px}
+.journey-chip .jc-from,.journey-chip .jc-to{font-weight:700;color:#fff}
+.journey-chip .jc-bar{width:90px;height:5px;border-radius:9px;background:rgba(255,255,255,.12);overflow:hidden}
+.journey-chip .jc-bar i{display:block;height:100%;background:linear-gradient(90deg,#2fea6a,#ffcc00)}
+.journey-chip .jc-next{color:#8a8f98;overflow:hidden;text-overflow:ellipsis}
+.journey-chip .jc-next b{color:#ffcc00}
+@media (max-width:640px){ .journey-chip .jc-bar,.journey-chip .jc-from{display:none} .journey-chip{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 92px)} }
+
+/* Menu du peage : ecran de borne automatique */
+.toll-overlay{background:rgba(4,6,10,.45);backdrop-filter:blur(3px)}
+.toll-panel{width:min(440px,92vw);text-align:left;border-radius:20px;padding:20px;background:linear-gradient(180deg,#1b2230,#0d1118);border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 80px -30px rgba(0,0,0,.9);animation:tollIn .35s cubic-bezier(.2,1.3,.4,1)}
+@keyframes tollIn{from{transform:translateY(24px) scale(.96);opacity:0}}
+.toll-head{display:flex;align-items:center;gap:12px}
+.toll-logo{font-family:'Saira Condensed';font-weight:900;font-size:22px;color:#fff;background:#0a7a3a;border-radius:8px;padding:4px 10px}
+.toll-kicker{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#8a8f98}
+.toll-station{font-family:'Saira Condensed';font-weight:900;font-size:24px;line-height:1.05;color:#fff}
+.toll-trip{margin:12px 0;font-size:12.5px;color:#cfd6df}
+.toll-screen{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-radius:12px;background:#07140c;border:1px solid rgba(47,234,106,.35);font-family:'Courier New',monospace;color:#6dff9e;letter-spacing:.1em;font-size:12px;box-shadow:inset 0 0 24px rgba(47,234,106,.12)}
+.toll-screen b{font-size:28px;text-shadow:0 0 12px rgba(109,255,158,.6)}
+.toll-actions{display:grid;gap:10px;margin-top:14px}
+.toll-btn{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;cursor:pointer;text-align:left;font-family:inherit;color:#fff;background:linear-gradient(180deg,rgba(255,204,0,.2),rgba(255,204,0,.06));border:1px solid rgba(255,204,0,.45);transition:transform .15s,border-color .15s}
+.toll-btn:hover:not(:disabled){transform:translateY(-1px);border-color:#ffcc00}
+.toll-btn.card{background:linear-gradient(180deg,rgba(61,139,255,.22),rgba(61,139,255,.06));border-color:rgba(61,139,255,.5)}
+.toll-btn.card:hover{border-color:#3d8bff}
+.toll-btn:disabled{opacity:.45;cursor:not-allowed}
+.tl-ico{font-size:26px}
+.tl-body{display:flex;flex-direction:column;gap:2px}
+.tl-title{font-family:'Saira Condensed';font-weight:900;font-size:17px;letter-spacing:.04em;text-transform:uppercase}
+.tl-title kbd{font-family:inherit;font-size:10px;padding:1px 6px;border-radius:5px;border:1px solid rgba(255,255,255,.3);margin-left:6px;vertical-align:middle}
+.tl-sub{font-size:12px;color:#cfd6df}
+.toll-msg{min-height:16px;margin-top:10px;font-size:12px;color:#ff9090}

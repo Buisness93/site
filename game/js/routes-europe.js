@@ -142,6 +142,151 @@
     }
   }
 
+  // ---------- A1 : plaine du Po ----------
+  // Peuplier d'Italie : tronc fin et houppier etroit tres haut (rideaux d'arbres)
+  function poplarGeo(T){
+    return M('geo:poplar', ()=>S().merge(T, [
+      { geo:new T.CylinderGeometry(0.12, 0.18, 2.4, 6), pos:[0, 1.2, 0], color:0x4a4034 },
+      { geo:new T.IcosahedronGeometry(1, 1), pos:[0, 5.6, 0], scale:[1.05, 3.6, 1.05], color:0x1f3814 },
+      { geo:new T.IcosahedronGeometry(0.8, 1), pos:[0.2, 8.4, 0.1], scale:[1, 2.2, 1], color:0x284818 },
+    ]));
+  }
+  // Pylone a haute tension en treillis (4 montants inclines + consoles)
+  function pylonGeo(T){
+    return M('geo:pylon', ()=>{
+      const c = 0x5a5e62, parts = [];
+      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz])=>parts.push({ geo:new T.BoxGeometry(0.16, 22.5, 0.16), pos:[sx*1.1, 11, sz*1.1], rot:[sz*0.07, 0, -sx*0.07], color:c }));
+      for(let y = 3; y < 21; y += 3.2){ const w = 2.4 - y*0.07; parts.push({ geo:new T.BoxGeometry(w*2, 0.1, 0.1), pos:[0, y, 1.2 - y*0.05], color:c }); parts.push({ geo:new T.BoxGeometry(w*2, 0.1, 0.1), pos:[0, y, -1.2 + y*0.05], color:c }); }
+      parts.push({ geo:new T.BoxGeometry(6.2, 0.24, 0.24), pos:[0, 21.4, 0], color:c });
+      parts.push({ geo:new T.BoxGeometry(4.2, 0.2, 0.2), pos:[0, 17.6, 0], color:c });
+      parts.push({ geo:new T.ConeGeometry(0.5, 2.2, 4), pos:[0, 23.4, 0], color:c });
+      return S().merge(T, parts);
+    });
+  }
+  // Barriere de peage : grand auvent avec le nom de la gare, ilots et cabines
+  // entre les voies, barrieres a bras rayes rouge/blanc (une par voie, nommees
+  // arm0..arm3 : le moteur leve celle de la voie du joueur apres paiement).
+  function tollPlaza(T, stop){
+    const g = new T.Group();
+    const concrete = M('std:tollConcrete', ()=>new T.MeshStandardMaterial({ color:0xb0aaa0, roughness:0.9 }));
+    const white = M('std:tollWhite', ()=>new T.MeshStandardMaterial({ color:0xe8eaec, roughness:0.5, metalness:0.2 }));
+    const apron = new T.Mesh(new T.PlaneGeometry(28, 44, 4, 16), M('std:tollApron', ()=>new T.MeshStandardMaterial({ color:0x3a3a3e, roughness:0.85 })));
+    apron.rotation.x = -Math.PI/2; apron.position.set(0, 0.012, 0); apron.receiveShadow = true; g.add(apron);
+    const stopLine = new T.Mesh(new T.PlaneGeometry(9.6, 0.4), M('bas:line', ()=>new T.MeshBasicMaterial({ color:0xe8e6de })));
+    stopLine.rotation.x = -Math.PI/2; stopLine.position.set(0, 0.03, 5.6); g.add(stopLine);
+    // auvent + bandeau avec le nom
+    const roof = new T.Mesh(new T.BoxGeometry(26, 0.9, 13), white); roof.position.set(0, 6.6, 0); g.add(roof);
+    [-12.6, 12.6].forEach(x=>{ const p = new T.Mesh(new T.BoxGeometry(0.8, 6.2, 0.8), concrete); p.position.set(x, 3.1, 0); g.add(p); });
+    const band = new T.Mesh(new T.PlaneGeometry(24, 1.5), new T.MeshBasicMaterial({ map:(()=>{
+      const c = document.createElement('canvas'); c.width = 1024; c.height = 64; const x = c.getContext('2d');
+      x.fillStyle = '#0a3a7a'; x.fillRect(0, 0, 1024, 64);
+      x.fillStyle = '#fff'; x.font = '900 40px Arial'; x.textBaseline = 'middle'; x.textAlign = 'center';
+      x.fillText(stop.name.toUpperCase(), 512, 34);
+      x.fillStyle = '#ffcc00'; x.fillRect(16, 12, 40, 40); x.fillStyle = '#0a3a7a'; x.font = '900 32px Arial'; x.fillText('T', 36, 34);
+      x.fillStyle = '#ffcc00'; x.fillRect(968, 12, 40, 40); x.fillStyle = '#0a3a7a'; x.fillText('€', 988, 34);
+      const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = 4; return t; })() }));
+    band.position.set(0, 6.6, 6.52); g.add(band);
+    // eclairage sous l'auvent
+    for(let k = -2; k <= 2; k++){ const l = new T.Mesh(new T.BoxGeometry(3, 0.05, 0.3), M('bas:tollLight', ()=>new T.MeshBasicMaterial({ color:0xfff6e0 }))); l.position.set(k*4.4, 6.12, 0); g.add(l); }
+    // ilots + cabines entre les voies ; bras de barriere par voie
+    const stripeTex = M('tex:barrierStripe', ()=>{ const c = document.createElement('canvas'); c.width = 64; c.height = 8; const x = c.getContext('2d'); for(let i = 0; i < 8; i++){ x.fillStyle = i % 2 ? '#fff' : '#d0141e'; x.fillRect(i*8, 0, 8, 8); } const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return t; });
+    [-4.4, -2.2, 0, 2.2, 4.4].forEach((x, k)=>{
+      const island = new T.Mesh(new T.BoxGeometry(0.9, 0.3, 11), concrete); island.position.set(x, 0.15, 0); g.add(island);
+      const booth = new T.Mesh(new T.BoxGeometry(0.8, 2.3, 2.0), M('std:booth', ()=>new T.MeshStandardMaterial({ color:0x9ac0d0, roughness:0.1, metalness:0.5, emissive:0x1a2a30 }))); booth.position.set(x, 1.45, -1); g.add(booth);
+      const cap = new T.Mesh(new T.BoxGeometry(1.0, 0.2, 2.3), white); cap.position.set(x, 2.7, -1); g.add(cap);
+      const bollard = new T.Mesh(new T.CylinderGeometry(0.2, 0.2, 1.0, 10), M('std:bollard', ()=>new T.MeshStandardMaterial({ color:0xffc21a, roughness:0.5 }))); bollard.position.set(x, 0.8, 5.2); g.add(bollard);
+      // feu de voie (vert) au-dessus de chaque voie
+      if(k < 4){
+        const lane = (x + 1.1);
+        const sig = new T.Mesh(new T.BoxGeometry(0.6, 0.6, 0.1), M('bas:tollGreen', ()=>new T.MeshBasicMaterial({ color:0x2fea6a }))); sig.position.set(lane, 5.6, 6.2); g.add(sig);
+        const pivot = new T.Group(); pivot.name = 'arm' + k; pivot.position.set(lane - 1.0, 1.0, 4.4);
+        const arm = new T.Mesh(new T.BoxGeometry(1.95, 0.12, 0.12), new T.MeshLambertMaterial({ map:stripeTex }));
+        arm.position.x = 0.98; pivot.add(arm); g.add(pivot);
+      }
+    });
+    return g;
+  }
+
+  // ---------- Route 66 ----------
+  function saguaroGeo(T){
+    return M('geo:saguaro', ()=>{
+      const c = 0x1c3612, c2 = 0x244418;
+      return S().merge(T, [
+        { geo:new T.CylinderGeometry(0.32, 0.36, 5.2, 8), pos:[0, 2.6, 0], color:c },
+        { geo:new T.SphereGeometry(0.32, 8, 6), pos:[0, 5.2, 0], color:c2 },
+        { geo:new T.CylinderGeometry(0.2, 0.22, 1.2, 7), pos:[0.62, 2.2, 0], rot:[0, 0, Math.PI/2], color:c },
+        { geo:new T.CylinderGeometry(0.2, 0.2, 1.8, 7), pos:[1.2, 3.0, 0], color:c2 },
+        { geo:new T.SphereGeometry(0.2, 7, 5), pos:[1.2, 3.9, 0], color:c2 },
+        { geo:new T.CylinderGeometry(0.18, 0.2, 1.0, 7), pos:[-0.55, 3.1, 0], rot:[0, 0, Math.PI/2], color:c },
+        { geo:new T.CylinderGeometry(0.18, 0.18, 1.3, 7), pos:[-1.0, 3.7, 0], color:c2 },
+        { geo:new T.SphereGeometry(0.18, 7, 5), pos:[-1.0, 4.35, 0], color:c2 },
+      ]);
+    });
+  }
+  // Blason "Route 66" : peint sur la route (blanc) ou panneau (blanc a bord noir)
+  function shield66Tex(T, painted){
+    return M('tex:shield66:' + painted, ()=>{
+      const c = document.createElement('canvas'); c.width = 128; c.height = 150; const x = c.getContext('2d');
+      x.beginPath(); x.moveTo(8, 10); x.lineTo(120, 10); x.lineTo(118, 70); x.quadraticCurveTo(110, 125, 64, 145); x.quadraticCurveTo(18, 125, 10, 70); x.closePath();
+      x.fillStyle = painted ? 'rgba(240,238,228,.9)' : '#f4f2ea'; x.fill();
+      if(!painted){ x.lineWidth = 6; x.strokeStyle = '#111'; x.stroke(); }
+      x.fillStyle = painted ? 'rgba(20,20,20,.85)' : '#111'; x.textAlign = 'center';
+      x.font = '900 18px Arial'; x.fillText('ROUTE', 64, 36); x.fillText('US', 64, 56);
+      x.font = '900 60px Arial'; x.fillText('66', 64, 112);
+      const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = 4; return t;
+    });
+  }
+  function neonText(T, text, color, w, h){
+    const c = document.createElement('canvas'); c.width = 512; c.height = Math.round(512 * h / w); const x = c.getContext('2d');
+    x.fillStyle = '#1a1210'; x.fillRect(0, 0, c.width, c.height);
+    x.font = '900 ' + Math.round(c.height * 0.62) + 'px "Saira Condensed", Arial Narrow, Arial'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.shadowColor = color; x.shadowBlur = 24; x.fillStyle = color; x.fillText(text, 256, c.height/2 + 4);
+    x.shadowBlur = 0; x.fillStyle = 'rgba(255,255,255,.85)'; x.fillText(text, 256, c.height/2 + 4);
+    const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return t;
+  }
+  function motel(T){
+    const g = new T.Group();
+    const body = new T.Mesh(houseGeo(T, 'motel', { w:22, d:7, h:3.2, wall:0xc88a5a, roof:0x6a3a24, shutter:0x2a5a6a, chimney:false, glass:0x3a2a1a, pitch:0.22 }), vc('house'));
+    g.add(body);
+    const pole = new T.Mesh(new T.BoxGeometry(0.4, 9, 0.4), M('std:signMetal', ()=>new T.MeshStandardMaterial({ color:0x7a7e84, metalness:0.7, roughness:0.4 }))); pole.position.set(6, 4.5, 11); g.add(pole);
+    const sign = new T.Mesh(new T.PlaneGeometry(5.5, 2.2), new T.MeshBasicMaterial({ map:neonText(T, 'MOTEL', '#ff3a3a', 5.5, 2.2), toneMapped:false })); sign.position.set(6, 8.4, 11.25); sign.rotation.y = 0.5; g.add(sign);
+    const vac = new T.Mesh(new T.PlaneGeometry(3.6, 0.9), new T.MeshBasicMaterial({ map:neonText(T, 'VACANCY', '#3dffb0', 3.6, 0.9), toneMapped:false })); vac.position.set(6, 6.7, 11.25); vac.rotation.y = 0.5; g.add(vac);
+    const halo = new T.Sprite(new T.SpriteMaterial({ map:S().glow(T), color:0xff4a3a, transparent:true, opacity:.35, blending:T.AdditiveBlending, depthWrite:false })); halo.scale.set(9, 5, 1); halo.position.set(6, 8.2, 11.6); g.add(halo);
+    g.userData.tick = (t)=>{ vac.material.color.setScalar((t % 2.2) < 0.25 ? 0.25 : 1); };
+    return g;
+  }
+  function diner(T){
+    const g = new T.Group();
+    const chrome = M('std:dinerChrome', ()=>new T.MeshStandardMaterial({ color:0xd8dde2, metalness:0.95, roughness:0.18 }));
+    const body = new T.Mesh(new T.CylinderGeometry(3.2, 3.2, 16, 20, 1, false, 0, Math.PI), chrome); body.rotation.z = Math.PI/2; body.rotation.y = Math.PI/2; body.position.set(0, 0.4, 0); g.add(body);
+    const stripe = new T.Mesh(new T.BoxGeometry(6.5, 0.5, 16.1), M('std:dinerRed', ()=>new T.MeshStandardMaterial({ color:0xb01818, roughness:0.4 }))); stripe.position.set(0, 1.2, 0); g.add(stripe);
+    const win = new T.Mesh(new T.BoxGeometry(6.52, 1.1, 14), M('std:dinerWin', ()=>new T.MeshStandardMaterial({ color:0x2a1e14, emissive:0xffb060, emissiveIntensity:0.5 }))); win.position.set(0, 2.2, 0); g.add(win);
+    const sign = new T.Mesh(new T.PlaneGeometry(6, 1.8), new T.MeshBasicMaterial({ map:neonText(T, 'DINER', '#3dd6ff', 6, 1.8), toneMapped:false })); sign.position.set(-3.3, 4.6, 0); sign.rotation.y = -Math.PI/2; g.add(sign);
+    return g;
+  }
+  function oldGasStation(T){
+    const g = new T.Group();
+    const shop = new T.Mesh(houseGeo(T, 'gas66', { w:8, d:6, h:3.6, wall:0xe8e0cc, roof:0xb01818, shutter:null, chimney:false, pitch:0.3 }), vc('house')); shop.position.x = -3; g.add(shop);
+    const canopy = new T.Mesh(new T.BoxGeometry(6, 0.4, 9), M('std:gasCanopy', ()=>new T.MeshStandardMaterial({ color:0xe8e4d8, roughness:0.6 }))); canopy.position.set(4, 4.2, 0); g.add(canopy);
+    [[2, -3.5], [6, -3.5], [2, 3.5], [6, 3.5]].forEach(([x, z])=>{ const p = new T.Mesh(new T.BoxGeometry(0.25, 4.2, 0.25), M('std:gasPost', ()=>new T.MeshStandardMaterial({ color:0xb01818 }))); p.position.set(x, 2.1, z); g.add(p); });
+    [-1.5, 1.5].forEach(z=>{ const pump = new T.Mesh(M('geo:pump66', ()=>S().merge(T, [ { geo:new T.BoxGeometry(0.6, 1.7, 0.5), pos:[0, 0.85, 0], color:0xb01818 }, { geo:new T.SphereGeometry(0.3, 10, 8), pos:[0, 1.95, 0], color:0xf4f2ea } ])), vc('pump')); pump.position.set(4, 0, z); g.add(pump); });
+    const sign = new T.Mesh(new T.PlaneGeometry(4.5, 1.4), new T.MeshBasicMaterial({ map:neonText(T, 'GAS · EAT', '#ffcc33', 4.5, 1.4), toneMapped:false })); sign.position.set(4, 5.3, 4.6); g.add(sign);
+    return g;
+  }
+  function billboard66(T){
+    const g = new T.Group();
+    const wood = M('lam:wood', ()=>new T.MeshLambertMaterial({ color:0x4a3322 }));
+    [-3, 3].forEach(x=>{ const p = new T.Mesh(new T.BoxGeometry(0.3, 7, 0.3), wood); p.position.set(x, 3.5, 0); g.add(p); });
+    const board = new T.Mesh(new T.PlaneGeometry(9, 3.6), new T.MeshLambertMaterial({ map:(()=>{
+      const c = document.createElement('canvas'); c.width = 512; c.height = 205; const x = c.getContext('2d');
+      x.fillStyle = '#f2e6c8'; x.fillRect(0, 0, 512, 205); x.fillStyle = '#b01818'; x.fillRect(0, 0, 512, 60);
+      x.fillStyle = '#fff'; x.font = '900 40px Arial'; x.textAlign = 'center'; x.fillText('ROUTE 66 GIFT SHOP', 256, 44);
+      x.fillStyle = '#2a1a10'; x.font = '900 34px Arial'; x.fillText('SOUVENIRS · COLD DRINKS', 256, 112); x.font = '700 28px Arial'; x.fillText('NEXT EXIT  →  2 MILES', 256, 168);
+      const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return t; })() }));
+    board.position.set(0, 5.4, 0.2); board.rotation.y = -0.35; g.add(board);
+    return g;
+  }
+
   // ======================================================================
   const ROUTES = [
     // ------------------------------------------------------------------
@@ -260,68 +405,97 @@
     },
 
     // ------------------------------------------------------------------
-    // AUTOSTRADA DEL SOLE : autoroute toscane en fin d'apres-midi dore. Terre-
-    // plein central en beton, chaussee opposee avec trafic qui croise, collines
-    // de Toscane, cypres, pins parasols, fermes en pierre, bottes de foin,
-    // portiques verts et le pont-restaurant Autogrill au-dessus des voies.
+    // A1 BOLOGNA -> MILANO : autoroute de la plaine du Po, plate, en fin
+    // d'apres-midi. Terre-plein beton et trafic en sens inverse, rangees de
+    // peupliers, cascine en brique, champs de mais, entrepots, pylones a haute
+    // tension, ligne a grande vitesse sur viaduc (Frecciarossa), Apennins au
+    // sud et Alpes enneigees au loin au nord. Portiques verts avec les vraies
+    // distances, et 3 barrieres de peage ou il faut s'arreter et payer.
     {
-      id:'autostrada', name:'Autostrada del Sole', difficulty:'Intense', spacing:9,
-      fog:0xe6d2b0, fogNear:40, fogFar:185, ground:0x8a8a3e, exposure:0.9,
+      id:'autostrada', name:'A1 Bologna → Milano', difficulty:'Intense', spacing:9,
+      fog:0xdcd2bc, fogNear:40, fogFar:185, ground:0x5a6a2e, exposure:0.9,
       road:0x2a2a2e, stripe:0xf4f2ea, edge:0x6a6a6e, edgeEmissive:0x000000,
-      sky:{ top:0x123e8a, mid:0x5a8ac8, bottom:0xf2d6a8, glow:0xffc880, glowI:0.6, band:0.08 },
-      light:{ key:0xffdcb0, keyI:1.55, hemiSky:0xcfdcff, hemiGround:0x5a4a2a, hemiI:0.5, ambient:0xfff0dc, ambientI:0.2 },
-      headlights:0,
-      celestial:{ color:0xfff2d0, halo:0xffc070, size:26, x:70, y:30, haloOp:.4 },
-      horizonGlow:{ color:0xffd8a0, op:.2, y:5, w:340, h:36 },
+      sky:{ top:0x123e8a, mid:0x5a8ac8, bottom:0xe8dcc0, glow:0xffd090, glowI:0.55, band:0.08 },
+      light:{ key:0xffe2bc, keyI:1.55, hemiSky:0xcfdcff, hemiGround:0x4a4a2a, hemiI:0.5, ambient:0xfff0dc, ambientI:0.2 },
+      headlights:0, bend:{ x:0.6, y:0.25 }, // plaine du Po : longues courbes, quasi pas de relief
+      celestial:{ color:0xfff2d0, halo:0xffc878, size:24, x:-70, y:34, haloOp:.38 },
+      horizonGlow:{ color:0xffe0b0, op:.2, y:5, w:340, h:36 },
       groundTex(T){ return { tex:S().grassTex(T), rx:34, ry:32 }; },
+      journey:{
+        road:'A1', from:'Bologna', to:'Milano', unitsPerKm:22, pricePerKm:0.078,
+        stops:[
+          { name:'Modena Nord', km:39 },
+          { name:'Casello di Parma', km:92, toll:true },
+          { name:'Fiorenzuola', km:125 },
+          { name:'Piacenza Sud', km:150, toll:true },
+          { name:'Lodi', km:180 },
+          { name:'Barriera di Milano Sud', km:205, toll:true }
+        ]
+      },
+      tollPlaza(T, stop){ return tollPlaza(T, stop); },
       extras(T, ctx){
-        const Sc = S(), fog = this.fog, hills = Sc.fbm(8), far = Sc.fbm(2);
-        // collines toscanes douces + ville perchee a tours (San Gimignano)
+        const Sc = S(), fog = this.fog, ap = Sc.fbm(8), alps = Sc.ridged(5);
+        // Apennins bas et bleutes a gauche (sud), Alpes lointaines a droite (nord)
         ctx.add(Sc.silhouette(T, {
-          radius:226, height:90, yBase:-6, peak:26, top:0x8a9a78, bottom:fog, rim:0xffe0b0, rimA:.3,
-          profile:(a)=> 6 + far(a*3 + 2)*16,
-          decorate(g, o){
-            const x0 = Math.floor(o.W*0.62);
-            for(let k = 0; k < 9; k++){ const x = x0 + k*5 + (k%2), h = 10 + (k*37 % 13); const y = o.toPx(o.profile[x]); g.fillStyle = '#b8a07a'; g.fillRect(x, y - h, 4, h + 2); }
-            for(let x = x0 - 12; x < x0 + 58; x++){ const y = o.toPx(o.profile[x]); g.fillStyle = '#c4ab84'; g.fillRect(x, y - 4, 1, 5); }
-          }
+          radius:226, height:90, yBase:-6, peak:30, top:0x8a98b0, bottom:fog, rim:0xffffff, rimA:.25,
+          profile:(a)=> a > 0.05 ? 4 + ap(a*4 + 2)*12 : a < -0.1 ? 2 + Math.max(0, alps(a*6 + 1) - 0.25) * 36 : 1.5,
+          decorate(g, o){ snowCaps(g, o, 17, 'rgba(244,246,250,.8)'); }
         }));
         ctx.add(Sc.silhouette(T, {
-          radius:186, height:60, yBase:-6, peak:20, top:0x6f8a4a, bottom:fog, rim:0xfff0c0, rimA:.3,
-          profile:(a)=> 3 + hills(a*6 + 5)*15,
+          radius:186, height:50, yBase:-6, peak:12, top:0x4a5a30, bottom:fog, rim:0xfff0c8, rimA:.2,
+          profile:(a)=> 1.6 + Math.sin(a*40)*0.3,
           decorate(g, o){
-            // cypres en file le long des chemins + pins parasols + fermes
-            for(let i = 0; i < 40; i++){
-              const x = Math.floor(Math.random()*o.W), y = o.toPx(o.profile[x]) + 2 + Math.random()*8;
-              if(i % 3 === 0){ g.fillStyle = '#e2d0a8'; g.fillRect(x, y - 3, 5, 3); g.fillStyle = '#a0502a'; g.fillRect(x - 1, y - 4, 7, 1); }
-              else { g.fillStyle = '#243a1c'; for(let k = 0; k < 4; k++) g.fillRect(x + k*3, y - 7, 1.5, 7); }
+            // horizon de plaine : rideaux de peupliers, clochers, fermes, silos
+            for(let i = 0; i < 70; i++){
+              const x = Math.floor(Math.random()*o.W), y = o.toPx(o.profile[x]) + 1;
+              if(i % 7 === 0){ g.fillStyle = '#8a4a34'; g.fillRect(x, y - 12, 2, 12); g.fillRect(x - 1, y - 14, 4, 2); }
+              else if(i % 5 === 0){ g.fillStyle = '#9aa0a4'; g.fillRect(x, y - 8, 3, 8); g.fillRect(x + 4, y - 6, 3, 6); }
+              else { g.fillStyle = '#2e4420'; for(let k = 0; k < 6; k++) g.fillRect(x + k*2, y - 8 - (k%2)*2, 1.5, 9 + (k%2)*2); }
             }
           }
         }));
-        dayClouds(T, ctx, [[-100, 52, 80, .6], [-20, 66, 70, .5], [60, 50, 90, .55], [130, 60, 70, .5]], 0xfff4e4);
-        // Terre-plein central (beton "New Jersey") + chaussee opposee et ses lignes
+        dayClouds(T, ctx, [[-100, 52, 80, .55], [-20, 64, 70, .45], [60, 48, 90, .5], [130, 58, 70, .45]], 0xfff6ea);
+        // terre-plein beton + chaussee opposee + trafic en sens inverse
         const jersey = M('geo:jersey', ()=>{
           const sh = new T.Shape(); sh.moveTo(-0.32, 0); sh.lineTo(0.32, 0); sh.lineTo(0.1, 0.35); sh.lineTo(0.09, 0.85); sh.lineTo(-0.09, 0.85); sh.lineTo(-0.1, 0.35); sh.closePath();
           const g = new T.ExtrudeGeometry(sh, { depth:300, steps:120, bevelEnabled:false }); g.translate(0, 0, -280); return g;
         });
-        const jm = ctx.add(new T.Mesh(jersey, M('std:jersey', ()=>new T.MeshStandardMaterial({ color:0xc9c4b8, roughness:0.9 }))));
+        const jm = ctx.add(new T.Mesh(jersey, M('std:jersey', ()=>new T.MeshStandardMaterial({ color:0x9a968c, roughness:0.9 }))));
         jm.position.set(-5.0, 0, 0);
         ctx.add(longStrip(T, 9, 0.02, 300, 0x2a2a2e, -10.3, 0.005, M('std:oppRoad', ()=>new T.MeshStandardMaterial({ color:0x2e2e32, roughness:0.8 }))));
         [-6.4, -14.2].forEach(x=>ctx.add(longStrip(T, 0.14, 0.02, 300, 0xf4f2ea, x, 0.02, M('bas:line', ()=>new T.MeshBasicMaterial({ color:0xe8e6de })))));
-        // trafic en sens inverse (voitures simplifiees, vues de loin)
-        const cols = [0xc81e1e, 0xf2f2f2, 0x1e3a8a, 0x2a2a2a, 0x9aa0a6, 0xd8b030];
+        const cols = [0xa01414, 0xe8e8e8, 0x14286a, 0x1e1e1e, 0x707880, 0xb08a20, 0x2a4a2a];
         const opp = [];
-        for(let k = 0; k < 7; k++){
+        for(let k = 0; k < 8; k++){
           const car = ctx.add(new T.Mesh(simpleCarGeo(T, 'c' + (k % cols.length), cols[k % cols.length]), vcStd('opp', 0.35)));
-          car.rotation.y = Math.PI; car.position.set(k % 2 ? -8.4 : -12.2, 0, -30 - k*28);
+          car.rotation.y = Math.PI; car.position.set(k % 2 ? -8.4 : -12.2, 0, -30 - k*26);
+          car.castShadow = true;
           opp.push({ car, v:30 + Math.random()*14 });
         }
+        // Ligne a grande vitesse sur viaduc, a droite, avec un Frecciarossa qui passe
+        const VX = 34;
+        const deck = ctx.add(longStrip(T, 7, 1.0, 300, 0xbab4a8, VX, 7.2));
+        deck.castShadow = false;
+        const fr = new T.Group();
+        const frGeo = M('geo:frecciarossa', ()=>S().merge(T, [
+          { geo:new T.BoxGeometry(2.9, 3.2, 26), pos:[0, 1.6, 0], color:0xd8d8dc },
+          { geo:new T.BoxGeometry(2.95, 0.9, 26), pos:[0, 0.5, 0], color:0xb01018 },
+          { geo:new T.BoxGeometry(2.96, 0.7, 24), pos:[0, 2.2, 0], color:0x1a1e26 },
+          { geo:new T.BoxGeometry(2.97, 0.12, 26), pos:[0, 1.1, 0], color:0x505458 },
+        ]));
+        for(let k = 0; k < 5; k++){ const w = new T.Mesh(frGeo, vcStd('fr', 0.3)); w.position.z = k * 26.4; fr.add(w); }
+        fr.position.set(VX, 7.7, -420); ctx.add(fr);
+        const trn = { wait:6 };
+        // lignes haute tension (fixes, subdivisees) tenues par les pylones du decor
+        [-42.4, -37.6].forEach(x=>ctx.add(longStrip(T, 0.05, 0.05, 300, 0x303236, x, 21.4)));
         ctx.tick((dt)=>{
           const sc = ctx.scroll();
           for(const o of opp){
             o.car.position.z += sc + o.v * dt;
             if(o.car.position.z > 30){ o.car.position.z = -190 - Math.random()*40; o.v = 30 + Math.random()*14; }
           }
+          if(trn.wait > 0){ trn.wait -= dt; if(trn.wait <= 0) fr.position.z = -300; }
+          else { fr.position.z += sc + 70 * dt; if(fr.position.z > 60){ trn.wait = 12 + Math.random()*10; fr.position.z = -420; } }
         });
       },
       buildDecor(T, scene, N){
@@ -330,8 +504,21 @@
         for(let i = 0; i < N; i++){
           const z = -12 - i*9;
           add(Kt.guardrail(T, 4.35, z, 1));
-          if(i % 3 === 0){ const f = new T.Mesh(houseGeo(T, 'toscana' + (i % 2), i % 2 ? { w:9, d:7, h:6, wall:0xb89e72, roof:0x6a2410, shutter:0x4a2e16, chimney:true } : { w:7, d:6, h:5.2, wall:0xae956c, roof:0x7a2c14, shutter:0x243a24 }), vc('house')); f.position.set(20 + Math.random()*10, 0, z); add(f); }
-          // panneau de limitation 130 sur le bas-cote
+          if(i % 3 === 0){
+            const brick = i % 2 ? { w:12, d:7, h:7, wall:0x5a2414, roof:0x4a1a0c, shutter:0x2a3a24, chimney:true, glass:0x1a1e24 } : { w:8, d:6.5, h:5.5, wall:0x7a4a2a, roof:0x4a1a0c, shutter:0x3a2a1a };
+            const f = new T.Mesh(houseGeo(T, 'cascina' + (i % 2), brick), vc('house')); f.position.set(22 + Math.random()*10, 0, z); add(f);
+          }
+          // entrepots (capannoni) de zone industrielle, en retrait
+          if(i % 5 === 1){
+            const g = new T.Mesh(M('geo:capannone', ()=>S().merge(T, [
+              { geo:new T.BoxGeometry(14, 7, 22), pos:[0, 3.5, 0], color:0x70767c },
+              { geo:new T.BoxGeometry(14.2, 1.1, 22.2), pos:[0, 6.2, 0], color:0x1a4a8a },
+              { geo:new T.BoxGeometry(14.4, 0.4, 22.4), pos:[0, 7.2, 0], color:0x4a5056 },
+              { geo:new T.BoxGeometry(0.1, 4.5, 6), pos:[-7.05, 2.25, -4], color:0x3a3e44 },
+              { geo:new T.BoxGeometry(0.1, 4.5, 6), pos:[-7.05, 2.25, 5], color:0x3a3e44 },
+            ])), vcStd('capannone', 0.7));
+            g.position.set(34 + Math.random()*8, 0, z); add(g);
+          }
           if(i % 4 === 2){
             const g = new T.Group();
             const post = new T.Mesh(M('geo:signPost', ()=>new T.CylinderGeometry(0.05, 0.05, 2.6, 6)), M('std:signPost', ()=>new T.MeshStandardMaterial({ color:0x9aa0a6, metalness:0.6, roughness:0.4 })));
@@ -340,44 +527,141 @@
             disc.position.set(0, 2.5, 0.04); g.add(disc);
             g.position.set(5.6, 0, z); add(g);
           }
-          // portique vert (signalisation autoroute italienne)
+          // portiques verts : prochaine sortie + distance de Milano, mis a jour
+          // a chaque passage (le decor boucle) avec la position reelle du trajet
           if(i === 3 || i === 11){
             const g = new T.Group();
             const steel = M('std:gantryIt', ()=>new T.MeshStandardMaterial({ color:0x8a9098, metalness:0.7, roughness:0.4 }));
             [-5.4, 5.4].forEach(x=>{ const p = new T.Mesh(new T.BoxGeometry(0.3, 7.2, 0.3), steel); p.position.set(x, 3.6, 0); g.add(p); });
             const beam = new T.Mesh(new T.BoxGeometry(11.2, 0.4, 0.4), steel); beam.position.set(0, 7.0, 0); g.add(beam);
-            [[-2.7, ['FIRENZE', '45 km'], '↑'], [2.7, ['ROMA', 'Uscita 1 km'], '↗']].forEach(([x, lines, arrow])=>{
-              const s = new T.Mesh(new T.PlaneGeometry(5, 2.5), new T.MeshLambertMaterial({ map:Kt.signTexture(T, '#0a7a3a', lines, arrow) }));
-              s.position.set(x, 5.8, 0.25); g.add(s);
-            });
+            const signs = [-2.7, 2.7].map(x=>{ const s = new T.Mesh(new T.PlaneGeometry(5, 2.5), new T.MeshLambertMaterial({ map:Kt.signTexture(T, '#0a7a3a', ['MILANO', '—'], '↑') })); s.position.set(x, 5.8, 0.25); g.add(s); return s; });
+            const paint = ()=>{
+              const j = DG._journey;
+              if(!j) return;
+              const lines = [[j.to.toUpperCase(), Math.round(j.kmTotal - j.kmDone) + ' km', '↑'], [j.next.replace(/^(Casello di |Barriera di )/, '').toUpperCase(), (j.toll ? 'Pedaggio ' : 'Uscita ') + Math.max(0, Math.round(j.kmNext)) + ' km', '↗']];
+              signs.forEach((s, k)=>{ if(s.material.map) s.material.map.dispose(); s.material.map = Kt.signTexture(T, '#0a7a3a', [lines[k][0], lines[k][1]], lines[k][2]); s.material.needsUpdate = true; });
+            };
+            let lastZ = 0;
+            g.userData.tick = ()=>{ if(g.position.z < lastZ - 20 || !g.userData._painted){ g.userData._painted = true; paint(); } lastZ = g.position.z; };
             g.position.set(0, 0, z); g.userData.wrapDist = wrap * N * 2; add(g);
           }
-          // pont-restaurant Autogrill au-dessus des 2 chaussees (repere rare)
+          // pont-restaurant Autogrill (celui de Fiorenzuola enjambe l'A1)
           if(i === 7){
             const g = new T.Group();
-            const concrete = M('std:bridge', ()=>new T.MeshStandardMaterial({ color:0xcfc8ba, roughness:0.9 }));
+            const concrete = M('std:bridge', ()=>new T.MeshStandardMaterial({ color:0xa8a296, roughness:0.9 }));
             [-17, -3.8, 5.4].forEach(x=>{ const p = new T.Mesh(new T.BoxGeometry(0.9, 6.4, 3), concrete); p.position.set(x, 3.2, 0); g.add(p); });
             const deck = new T.Mesh(new T.BoxGeometry(26, 0.8, 9), concrete); deck.position.set(-5.8, 6.8, 0); g.add(deck);
-            const glass = new T.Mesh(new T.BoxGeometry(24, 2.6, 8), new T.MeshStandardMaterial({ color:0x9ab8cc, metalness:0.6, roughness:0.15, emissive:0x3a2a10, emissiveIntensity:0.4 })); glass.position.set(-5.8, 8.5, 0); g.add(glass);
+            const glass = new T.Mesh(new T.BoxGeometry(24, 2.6, 8), new T.MeshStandardMaterial({ color:0x5a7a90, metalness:0.6, roughness:0.15, emissive:0x3a2a10, emissiveIntensity:0.4 })); glass.position.set(-5.8, 8.5, 0); g.add(glass);
             const roof = new T.Mesh(new T.BoxGeometry(26, 0.5, 9.4), concrete); roof.position.set(-5.8, 10.0, 0); g.add(roof);
             const sign = new T.Mesh(new T.PlaneGeometry(9, 1.3), new T.MeshBasicMaterial({ map:M('tex:autogrill', ()=>{ const c = document.createElement('canvas'); c.width = 512; c.height = 74; const x = c.getContext('2d'); x.fillStyle = '#c8102e'; x.fillRect(0, 0, 512, 74); x.fillStyle = '#fff'; x.font = 'italic 900 54px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('AUTOGRILL', 256, 40); const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return t; }) }));
             sign.position.set(-2, 10.9, 4.75); g.add(sign);
             g.position.set(0, 0, z); g.userData.wrapDist = wrap * N * 3; add(g);
           }
         }
-        // cypres en alignement le long de chemins de ferme, a droite
-        add(Sc.strip(T, cypressGeo(T), vc('cypress'), 36, 9, (d, c, i)=>{ d.position.set(11 + (i < 5 ? 0 : 25), 0, -i*3.8 % 36); d.scale.setScalar(0.9 + Math.random()*0.3); }));
-        // oliviers et pins parasols epars, des deux cotes
-        add(Sc.strip(T, oliveGeo(T), vc('olive'), 40, 12, (d, c, i)=>placeRow(d, c, 1, 14, 40, 40)));
-        add(Sc.strip(T, stonePineGeo(T), vc('stonepine'), 60, 6, (d, c, i)=>placeRow(d, c, i % 2 ? 1 : -1, 20, 44, 60)));
-        add(Sc.strip(T, oliveGeo(T), vc('olive'), 40, 8, (d, c, i)=>placeRow(d, c, -1, 18, 40, 40)));
-        // bottes de foin rondes dans les champs moissonnes
-        const baleGeo = new T.CylinderGeometry(0.75, 0.75, 1.2, 14); baleGeo.rotateZ(Math.PI/2); baleGeo.translate(0, 0.75, 0);
-        add(Sc.strip(T, baleGeo, M('lam:bale', ()=>new T.MeshLambertMaterial({ color:0xd4b060 })), 30, 7, (d, c, i)=>{ d.position.set((i % 2 ? 1 : -1)*(16 + Math.random()*22), 0, -Math.random()*30); d.rotation.y = Math.random()*3; }));
+        // rangees de peupliers le long des champs (des deux cotes)
+        add(Sc.strip(T, poplarGeo(T), vc('poplar'), 40, 16, (d, c, i)=>{ const s = i < 8 ? 1 : -1; d.position.set(s > 0 ? (i % 8 < 4 ? 14 : 48) : -(i % 8 < 4 ? 19 : 48), 0, -(i % 4)*10 - 2); d.scale.setScalar(0.9 + Math.random()*0.25); }));
+        add(Sc.strip(T, poplarGeo(T), vc('poplar'), 30, 12, (d, c, i)=>{ const s = i % 2 ? 1 : -1; d.position.set(s*(19 + (i >> 1)*5), 0, -2); }));
+        // champs de mais : rangs perpendiculaires, hauts et verts
+        const maize = Sc.merge(T, [{ geo:new T.BoxGeometry(16, 1.7, 0.55), pos:[0, 0.85, 0], color:0x2e4a16 }, { geo:new T.BoxGeometry(16, 0.35, 0.4), pos:[0, 1.85, 0], color:0x8a8a3a }]);
+        add(Sc.strip(T, maize, vc('maize'), 12, 8, (d, c, i)=>{ const s = i < 4 ? 1 : -1; d.position.set(s*(i % 2 ? 58 : 24) - (s < 0 ? 0 : 0), 0, -(i % 4 < 2 ? 0 : 6) - 1); }));
+        // pylones a haute tension (a gauche, en retrait) + piles du viaduc TAV (a droite)
+        add(Sc.strip(T, pylonGeo(T), vc('pylon'), 60, 1, (d)=>{ d.position.set(-40, 0, -30); }));
+        add(Sc.strip(T, new T.BoxGeometry(2.2, 7.2, 2.2), M('std:pier', ()=>new T.MeshStandardMaterial({ color:0xaaa498, roughness:0.9 })), 24, 1, (d)=>{ d.position.set(34, 3.3, -12); }));
         return items;
       }
     },
 
+    // ------------------------------------------------------------------
+    // ROUTE 66 : desert de l'Arizona au soleil couchant. Mesas et buttes
+    // rouges, saguaros, lignes telephoniques en bois, motel et diner retro a
+    // enseigne neon, station-service d'epoque, panneaux "Historic Route 66",
+    // blasons 66 peints sur la chaussee, epaves rouillees et virevoltants.
+    {
+      id:'route66', name:'Route 66', difficulty:'Détente', spacing:9,
+      fog:0xe0a878, fogNear:45, fogFar:200, ground:0x8a4a22, exposure:0.95,
+      road:0x2e2a28, stripe:0xf0c030, edge:0x6a5040, edgeEmissive:0x000000,
+      sky:{ top:0x1a3a8a, mid:0x6a8ac8, bottom:0xffb070, glow:0xffa050, glowI:0.7, band:0.08 },
+      light:{ key:0xffc890, keyI:1.6, hemiSky:0xffd0a8, hemiGround:0x5a2a14, hemiI:0.5, ambient:0xffe0c0, ambientI:0.22 },
+      headlights:0.3, bend:{ x:0.5, y:0.9 }, // longues lignes droites, bosses du desert
+      celestial:{ color:0xfff0c8, halo:0xff9a40, size:32, x:60, y:14, haloOp:.5 },
+      horizonGlow:{ color:0xff9a50, op:.3, y:4, w:360, h:40 },
+      groundTex(T){ return { tex:S().sandTex(T), rx:40, ry:36 }; },
+      journey:{
+        road:'US 66', from:'Albuquerque', to:'Santa Monica', unitsPerKm:1.8, pricePerKm:0,
+        stops:[ { name:'Gallup', km:225 }, { name:'Winslow', km:430 }, { name:'Flagstaff', km:520 }, { name:'Kingman', km:760 }, { name:'Barstow', km:1020 }, { name:'Santa Monica', km:1210 } ]
+      },
+      extras(T, ctx){
+        const Sc = S(), fog = this.fog, mesa = Sc.fbm(17), range = Sc.fbm(29);
+        // mesas et buttes a sommet plat (strates claires), chaine violette au loin
+        ctx.add(Sc.silhouette(T, {
+          radius:226, height:100, yBase:-6, peak:34, top:0x7a5a8a, bottom:fog, rim:0xffc890, rimA:.3,
+          profile:(a)=> 6 + range(a*5 + 4)*20
+        }));
+        ctx.add(Sc.silhouette(T, {
+          radius:186, height:70, yBase:-6, peak:30, top:0x8a3a1a, bottom:fog, rim:0xffb070, rimA:.45,
+          profile:(a)=>{
+            const n = mesa(a*7 + 2);
+            const butte = n > 0.62 ? 26 : n > 0.55 ? 26 * (n - 0.55) / 0.07 : 0; // parois verticales, sommet plat
+            return Math.max(2, butte + (n > 0.55 ? 0 : n * 3));
+          },
+          decorate(g, o){
+            // strates horizontales sur les parois
+            for(let x = 0; x < o.W; x++){
+              const h = o.profile[x]; if(h < 8) continue;
+              for(let s = 6; s < h; s += 4.5){ const y = o.toPx(s); g.fillStyle = s % 9 < 4.5 ? 'rgba(255,170,110,.35)' : 'rgba(90,30,10,.3)'; g.fillRect(x, y, 1, 1.5); }
+            }
+          }
+        }));
+        dayClouds(T, ctx, [[-120, 50, 80, .5], [-30, 62, 60, .4], [90, 46, 90, .45]], 0xffd8b0);
+        // virevoltants (tumbleweeds) qui traversent la route de temps en temps
+        const twGeo = M('geo:tumble', ()=>new T.IcosahedronGeometry(0.55, 1));
+        const twMat = M('mat:tumble', ()=>new T.MeshLambertMaterial({ color:0x8a6a3a, wireframe:true }));
+        const tws = [0, 1, 2].map(k=>{ const m = ctx.add(new T.Mesh(twGeo, twMat)); m.position.set(-30, 0.55, -60 - k*30); return { m, v:3 + Math.random()*3, dir:k % 2 ? 1 : -1 }; });
+        ctx.tick((dt)=>{
+          const sc = ctx.scroll();
+          for(const w of tws){
+            w.m.position.z += sc; w.m.position.x += w.dir * w.v * dt;
+            w.m.rotation.z -= w.dir * w.v * dt / 0.55;
+            w.m.position.y = 0.55 + Math.abs(Math.sin(performance.now()*0.004 + w.v)) * 0.35;
+            if(w.m.position.z > 20 || Math.abs(w.m.position.x) > 34){ w.dir = Math.random() < 0.5 ? 1 : -1; w.m.position.set(-w.dir * 30, 0.55, -80 - Math.random()*60); w.v = 3 + Math.random()*3; }
+          }
+        });
+      },
+      buildDecor(T, scene, N){
+        const items = [], add = (o)=>{ scene.add(o); items.push(o); return o; };
+        const Sc = S(), Kt = K(), wrap = 9;
+        for(let i = 0; i < N; i++){
+          const z = -12 - i*9;
+          // blason "66" peint sur la chaussee (voie de droite)
+          if(i % 4 === 0){
+            const d = new T.Mesh(M('geo:unitPlane66', ()=>new T.PlaneGeometry(1, 1)), M('mat:shield66', ()=>new T.MeshBasicMaterial({ map:shield66Tex(T, true), transparent:true, opacity:0.85, depthWrite:false })));
+            d.rotation.x = -Math.PI/2; d.scale.set(2.2, 2.6, 1); d.position.set(i % 8 ? 1.1 : -1.1, 0.025, z); add(d);
+          }
+          // panneau "Historic Route 66" sur le bas-cote
+          if(i % 5 === 3){
+            const g = new T.Group();
+            const post = new T.Mesh(M('geo:woodPost', ()=>new T.BoxGeometry(0.12, 2.6, 0.12)), M('lam:wood', ()=>new T.MeshLambertMaterial({ color:0x4a3322 }))); post.position.y = 1.3; g.add(post);
+            const sign = new T.Mesh(M('geo:shieldSign', ()=>new T.PlaneGeometry(1.1, 1.3)), M('mat:shield66sign', ()=>new T.MeshLambertMaterial({ map:shield66Tex(T, false), transparent:true })));
+            sign.position.set(0, 2.5, 0.08); g.add(sign);
+            g.position.set(5.8, 0, z); add(g);
+          }
+          // reperes rares : motel, diner, station-service d'epoque, panneau publicitaire, epave
+          if(i === 2) { const m = motel(T); m.position.set(-17, 0, z); m.userData.wrapDist = wrap * N * 2; add(m); }
+          if(i === 9) { const d = diner(T); d.position.set(15, 0, z); d.userData.wrapDist = wrap * N * 2; add(d); }
+          if(i === 13){ const s = oldGasStation(T); s.position.set(-15, 0, z); s.userData.wrapDist = wrap * N * 3; add(s); }
+          if(i === 6) { const b = billboard66(T); b.position.set(18, 0, z); b.userData.wrapDist = wrap * N * 2; add(b); }
+          if(i % 7 === 4){ const w = new T.Mesh(M('geo:wreck', ()=>S().merge(T, [ { geo:new T.BoxGeometry(1.9, 0.7, 4.6), pos:[0, 0.5, 0], color:0x6a3218 }, { geo:new T.BoxGeometry(1.6, 0.6, 2.0), pos:[0, 1.15, 0.2], color:0x5a2a14 }, { geo:new T.BoxGeometry(1.7, 0.3, 1.2), pos:[0, 0.95, -1.8], color:0x7a3a1c } ])), vc('wreck')); w.position.set((i % 2 ? 1 : -1)*(11 + Math.random()*4), 0, z); w.rotation.y = 0.6; w.rotation.z = 0.08; add(w); }
+        }
+        // poteaux telephoniques en bois (a gauche) et leurs fils
+        const pole = Sc.merge(T, [{ geo:new T.CylinderGeometry(0.12, 0.16, 8, 6), pos:[0, 4, 0], color:0x4a3322 }, { geo:new T.BoxGeometry(2.2, 0.14, 0.14), pos:[0, 7.4, 0], color:0x4a3322 }, { geo:new T.BoxGeometry(1.6, 0.12, 0.12), pos:[0, 6.8, 0], color:0x4a3322 }]);
+        add(Sc.strip(T, pole, vc('telpole'), 24, 1, (d)=>{ d.position.set(-8.5, 0, -12); }));
+        // saguaros, buissons et rochers dans le desert
+        add(Sc.strip(T, saguaroGeo(T), vc('saguaro'), 30, 12, (d, c, i)=>placeRow(d, c, i % 2 ? 1 : -1, 9, 38, 30)));
+        add(Sc.strip(T, Kt.rockGeo(T), vc('rock66'), 20, 10, (d, c, i)=>{ placeRow(d, c, i % 2 ? 1 : -1, 7, 40, 20); d.scale.multiplyScalar(0.7 + Math.random()); }));
+        add(Sc.strip(T, Kt.grassTuftGeo(T), vc('tuft66'), 12, 14, (d, c, i)=>placeRow(d, c, i % 2 ? 1 : -1, 6.5, 30, 12)));
+        return items;
+      }
+    },
     // ------------------------------------------------------------------
     // ROUTE DE PROVENCE : route de campagne bordee de platanes (bande blanche
     // peinte, ombre qui tachete la chaussee), champs de lavande en rangs,
