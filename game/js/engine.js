@@ -803,7 +803,9 @@
     this._ramps.forEach(r=>this.scene.remove(r.mesh)); this._ramps = [];
     this._jumpY = 0; this._jumpVy = 0; this._shield = false; this._magnetT = 0;
     if(this._toll){ this.scene.remove(this._toll.mesh); this._toll = null; }
-    this._tollHold = false; this._tollLock = false; this._jr = null;
+    if(this._radar){ this.scene.remove(this._radar.mesh); this._radar = null; }
+    if(this._police){ this.scene.remove(this._police.mesh); this._police = null; }
+    this._tollHold = false; this._tollLock = false; this._jr = null; this._ghost = false;
   };
 
   GameEngine.prototype.setBrake = function(v){ this._brake = !!v; };
@@ -826,7 +828,10 @@
     const j = this.route && this.route.journey;
     this._jr = j ? { stops:j.stops.slice(), from:j.from, to:j.to, idx:0, base:0, lap:1, lastTollKm:0 } : null;
     this._toll = null; this._tollHold = false; this._tollLock = false;
-    this._fuel = 1; this._fuelOut = false; this._fuelWarned = false; this._fuelNext = 1300;
+    this._fuel = 1; this._fuelOut = false; this._fuelWarned = false; this._fuelNext = 1300; this._ghost = false;
+    if(this._radar){ this.scene.remove(this._radar.mesh); this._radar = null; }
+    if(this._police){ this.scene.remove(this._police.mesh); this._police = null; }
+    this._radarNext = 1000;
     this._endReason = null;
   };
   GameEngine.prototype._journeyInfo = function(){
@@ -843,11 +848,24 @@
     mesh.position.set(0, 0, -unitsAhead - 6);
     this.scene.add(mesh);
     bendScene(mesh);
+    // une poursuite en cours s'arrete (on ne peut pas etre controle au peage)
+    if(this._police){ this.scene.remove(this._police.mesh); this._police = null; if(this.cb.onPolice) this.cb.onPolice(null); }
     this._toll = { mesh, stop, kind, state:kind === 'toll' ? 'approach' : 'offer', t:0 };
     this._ramps.forEach(r=>this.scene.remove(r.mesh)); this._ramps = [];
     if(kind === 'toll'){
       for(let i = this._obstacles.length - 1; i >= 0; i--){ const o = this._obstacles[i]; if(o.mesh.position.z < -25){ this.scene.remove(o.mesh); this._release(o.mesh); this._obstacles.splice(i, 1); } }
       if(this.cb.onTollApproach) this.cb.onTollApproach(stop);
+      // file d'attente : 2 vraies voitures par voie de cabines supplementaire
+      const lanes = mesh.userData.queueLanes || [], models = (this._trafficModels || []).filter(t=>t.len <= 5.2);
+      this._toll.queue = [];
+      if(models.length) lanes.forEach((ln, k)=>{
+        for(let q = 0; q < 2; q++){
+          const t = models[(k * 2 + q) % models.length];
+          const car = this._instance(t.model, t.len, Math.PI, true);
+          car.position.set(ln.x, 0, 9 + q * 7.5); mesh.add(car); this._carLook(car);
+          this._toll.queue.push({ car, lane:ln, slot:q, wait:1.5 + Math.random() * 3 + q * 2, v:0, state:'wait' });
+        }
+      });
     } else if(this.cb.onPickup) this.cb.onPickup('fuel-station', { fuel:this._fuel });
   };
   GameEngine.prototype._journeyUpdate = function(dt, scroll){
@@ -875,25 +893,42 @@
       }
     }
     // station-service periodique (decalee si un peage arrive bientot)
-    if(!this.route.noFuel && !this._toll && this._dist > this._fuelNext - 150){
+    if(!this.route.noFuel && !this._toll && this._dist > this._fuelNext - 320){
       if(unitsToToll < 420) this._fuelNext = this._dist + unitsToToll + 500;
       else this._spawnStop('fuel', this._fuelNext - this._dist, null);
     }
     const tl = this._toll;
+    if(tl && tl.queue) this._queueUpdate(tl, dt);
+    this._roadsideVisibility(tl);
     // plus de trafic ni de nitro a l'approche d'un arret (le verrou est
     // recalcule a chaque image : il se libere des qu'on est reparti)
-    this._tollLock = tollNear || !!(tl && tl.state !== 'offer' && !(tl.state === 'open' && !this._tollHold));
-    if(!tl) return;
+    this._tollLock = tollNear || !!(tl && (tl.wantStop || tl.state !== 'offer') && !(tl.state === 'open' && !this._tollHold));
+    if(!tl){ if(this._stShown && this.cb.onStation){ this._stShown = false; this.cb.onStation(null); } return; }
+    this._stShown = true;
     tl.t += dt;
     const d = -(tl.mesh.position.z + 6) - 2.2;
+    if(this.cb.onStation){
+      this._stHudT = (this._stHudT || 0) - dt;
+      if(this._stHudT <= 0){ this._stHudT = 0.15; this.cb.onStation(tl.kind === 'fuel' && tl.state === 'offer' ? { dist:Math.max(0, d), requested:!!tl.wantStop, fuel:this._fuel } : null); }
+    }
     if(tl.state === 'offer'){
-      // station : on s'y arrete seulement si on est dans la voie de droite
-      if(this._lane === 3 && d < 70 && d > 14){
-        tl.state = 'approach';
-        for(let i = this._obstacles.length - 1; i >= 0; i--){ const o = this._obstacles[i]; if(o.li === 3 && o.mesh.position.z < 0){ this.scene.remove(o.mesh); this._release(o.mesh); this._obstacles.splice(i, 1); } }
+      // Station : on s'y arrete si on l'a demande (touche E / bouton), ou
+      // automatiquement si on est deja dans la voie de droite avec moins de la
+      // moitie du reservoir. Une fois demande, la voiture se rabat seule vers
+      // la droite (sans risque de collision pendant la manoeuvre) et freine
+      // en douceur quelle que soit sa vitesse.
+      if(tl.wantStop){
+        this._ghost = true;
+        tl.steerT = (tl.steerT || 0) - dt;
+        if(this._lane < 3 && tl.steerT <= 0){ tl.steerT = 0.3; this._lane++; }
+      }
+      const enter = (tl.wantStop || this._fuel < 0.5) && this._lane === 3 && Math.abs(this._playerX - LANES[3]) < 0.6;
+      if(enter && d > 10){
+        tl.state = 'approach'; this._ghost = true;
+        for(let i = this._obstacles.length - 1; i >= 0; i--){ const o = this._obstacles[i]; if(o.li >= 2 && o.mesh.position.z < 2){ this.scene.remove(o.mesh); this._release(o.mesh); this._obstacles.splice(i, 1); } }
         if(this.cb.onPickup) this.cb.onPickup('fuel-enter');
       } else if(tl.mesh.position.z > 20){
-        this.scene.remove(tl.mesh); this._toll = null; this._fuelNext = this._dist + FUEL_GAP * 0.55;
+        this.scene.remove(tl.mesh); this._toll = null; this._ghost = false; this._fuelNext = this._dist + FUEL_GAP * 0.55;
       }
     } else if(tl.state === 'approach'){
       // freinage progressif : vitesse maxi = racine(2 * decel * distance restante)
@@ -901,24 +936,30 @@
       if(this._speed > vmax) this._speed = vmax;
       if(d <= 0.05){
         this._speed = 0; tl.state = 'stopped'; this._tollHold = true;
-        const cur = this.route.currency || (j && j.currency) || '€';
+        const r = this.route, cur = r.currency || (j && j.currency) || '€';
+        const coinV = r.coinValue || 1; // valeur d'une piece dans la monnaie locale
         const coinsHave = Math.floor(this._coinCredits / 10);
+        const cost = (p)=>{ tl.coins = Math.max(1, Math.ceil(p / coinV)); tl.card = Math.round(p / coinV * 3); };
         if(tl.kind === 'toll'){
           const km = tl.stop.km - jr.lastTollKm;
-          tl.price = Math.max(1.2, Math.round(km * j.pricePerKm * 10) / 10);
-          if(this.cb.onToll) this.cb.onToll({ kind:'toll', operator:j.operator || 'Péage', road:j.road || '', currency:cur, station:tl.stop.name, from:jr.lastTollName || jr.from, km:Math.round(km), price:tl.price, coinsNeed:Math.ceil(tl.price), coinsHave, cardPoints:Math.round(tl.price * 3), lane:this._lane + 1 });
+          tl.price = tl.stop.price != null ? tl.stop.price : Math.max(1.2, Math.round(km * j.pricePerKm * 10) / 10);
+          cost(tl.price);
+          if(this.cb.onToll) this.cb.onToll({ kind:'toll', operator:j.operator || 'Péage', road:j.road || '', currency:cur, station:tl.stop.name, from:jr.lastTollName || jr.from, km:Math.round(km), price:tl.price, coinsNeed:tl.coins, coinsHave, cardPoints:tl.card, lane:this._lane + 1 });
         } else {
-          const ppl = this.route.fuelPrice || 1.89;
+          const prices = r.fuelPrices || [r.fuelPrice || 1.89], fi = r.fuelDefault || 0;
+          const ppu = prices[fi], gal = r.fuelUnit === 'gal';
           const liters = Math.max(5, Math.round((1 - this._fuel) * 55));
-          tl.price = Math.round(liters * ppl * 10) / 10; tl.liters = liters;
-          if(this.cb.onToll) this.cb.onToll({ kind:'fuel', operator:this.route.fuelBrand || 'Station-service', currency:cur, station:this.route.fuelStationName || 'Aire de service', fuelPct:Math.round(this._fuel * 100), liters, ppl, price:tl.price, coinsNeed:Math.ceil(tl.price), coinsHave, cardPoints:Math.round(tl.price * 3), lane:this._lane + 1 });
+          const qty = gal ? Math.round(liters / 3.785 * 10) / 10 : liters;
+          tl.price = Math.round(qty * ppu * 100) / 100; tl.liters = liters; tl.qty = qty; tl.unit = gal ? 'gal' : 'L';
+          cost(tl.price);
+          if(this.cb.onToll) this.cb.onToll({ kind:'fuel', operator:r.fuelBrand || 'Station-service', currency:cur, station:r.fuelStationName || 'Aire de service', fuelPct:Math.round(this._fuel * 100), qty, unit:tl.unit, fuelLabel:(r.fuelLabels || [])[fi] || '', ppl:ppu, price:tl.price, coinsNeed:tl.coins, coinsHave, cardPoints:tl.card, lane:this._lane + 1 });
         }
       }
     } else if(tl.state === 'open'){
       // barriere qui se leve (peage) puis on repart
       const arm = tl.mesh.getObjectByName('arm' + this._lane);
       if(arm) arm.rotation.z = Math.min(Math.PI/2 * 0.95, arm.rotation.z + dt * 3.2);
-      if(tl.t > 0.55 && this._tollHold){ this._tollHold = false; }
+      if(tl.t > 0.55 && this._tollHold){ this._tollHold = false; this._ghost = false; }
       if(tl.mesh.position.z > 30){
         this.scene.remove(tl.mesh); this._toll = null;
         if(tl.kind === 'toll') this._journeyNext();
@@ -946,22 +987,180 @@
   };
   // Paiement (peage ou plein) : especes = pieces ramassees pendant la course
   // (1 piece = 1 unite de monnaie), carte = points du score.
-  GameEngine.prototype.payToll = function(method){
+  // ---------- Radars et police (routes avec route.radars) ----------
+  // Un panneau annonce le radar, puis le radar (camera sur poteau) : si on
+  // passe au-dessus de la limite (+5 km/h de tolerance), flash et amende au
+  // bareme reel du pays, retiree du score. Tres au-dessus de la limite, une
+  // voiture de police prend la poursuite : si elle nous rattrape, controle
+  // (menu de l'amende) ; au nitro on peut la semer (bonus).
+  GameEngine.prototype._radarUpdate = function(dt, scroll){
+    const R = this.route.radars;
+    if(!R) return;
+    const T = window.THREE, SK = DG.StopKit;
+    const kmh = Math.round(this._speed * 5);
+    // radar suivant
+    if(!this._radar && !this._toll && this._dist > this._radarNext - 300 && SK){
+      const mesh = SK.speedCamera(T, R, this.route);
+      mesh.position.z = -300; this.scene.add(mesh); bendScene(mesh);
+      this._radar = { mesh, done:false };
+    }
+    const rd = this._radar;
+    if(rd){
+      rd.mesh.position.z += scroll;
+      const dist = -rd.mesh.position.z;
+      if(this.cb.onRadar){ rd.hudT = (rd.hudT || 0) - dt; if(rd.hudT <= 0){ rd.hudT = 0.15; this.cb.onRadar(!rd.done && dist < 300 ? { dist:Math.max(0, dist), limit:R.limit, kmh, unitLabel:R.unitLabel } : null); } }
+      if(!rd.done && dist <= 1){
+        rd.done = true;
+        const over = kmh - R.limit;
+        if(over > 5){
+          const fine = R.fine(over);
+          const pts = Math.round(fine / (this.route.coinValue || 1) * 0.6); // amende en points : dissuasive sans ruiner la partie
+          this._obstacleBonus -= pts;
+          if(this.fx){ this.fx.emit(5.4, 3.6, -1, 30, 0xffffff, 6, 1, 0.3); }
+          if(this.cb.onPickup) this.cb.onPickup('radar-flash', { kmh, limit:R.limit, fine, pts, currency:this.route.currency || '€', unitLabel:R.unitLabel });
+          if(over >= R.chaseOver && !this._police && !this._toll) this._startPolice(kmh);
+        } else if(this.cb.onPickup) this.cb.onPickup('radar-ok', { kmh, limit:R.limit });
+      }
+      if(rd.mesh.position.z > 20){ this.scene.remove(rd.mesh); this._radar = null; this._radarNext = this._dist + (R.every || 1500) * (0.8 + Math.random()*0.4); }
+    }
+    // poursuite
+    const pc = this._police;
+    if(pc && pc.state === 'chase'){
+      pc.t += dt;
+      const rel = this._boostActive ? -9 : (this._brake ? 8 : 2.2);
+      pc.z -= rel * dt;
+      pc.mesh.position.set(pc.mesh.position.x + (this._playerX - pc.mesh.position.x) * Math.min(1, dt * 2.5), 0, pc.z);
+      pc.blink += dt;
+      const on = Math.floor(pc.blink * 6) % 2 === 0;
+      if(pc.redL) pc.redL.material.opacity = on ? 1 : 0.15;
+      if(pc.blueL) pc.blueL.material.opacity = on ? 0.15 : 1;
+      if(this.cb.onPolice){ pc.hudT -= dt; if(pc.hudT <= 0){ pc.hudT = 0.15; this.cb.onPolice({ gap:Math.max(0, pc.z - 3.5), state:'chase' }); } }
+      if(pc.z > 30){
+        // semee !
+        this.scene.remove(pc.mesh); this._police = null;
+        this._obstacleBonus += 200 * this._multiplier;
+        if(this.cb.onPickup) this.cb.onPickup('police-lost');
+        if(this.cb.onPolice) this.cb.onPolice(null);
+      } else if(pc.z < 3.6 && !this._toll){
+        // rattrape : on se range sur le bas-cote, controle
+        pc.state = 'pullover';
+        this._ghost = true;
+      }
+    } else if(pc && pc.state === 'pullover'){
+      this._speed = Math.max(0, this._speed - dt * 22);
+      pc.z = Math.max(4.2, pc.z - dt * 2);
+      pc.mesh.position.z = pc.z;
+      if(this._lane < 3){ pc.steerT = (pc.steerT || 0) - dt; if(pc.steerT <= 0){ pc.steerT = 0.35; this._lane++; } }
+      if(this._speed <= 0.5){
+        this._speed = 0; this._tollHold = true;
+        const fine = R.fine(pc.over + 10) + (R.policeExtra || 0);
+        const coinV = this.route.coinValue || 1;
+        this._toll = { mesh:pc.mesh, kind:'police', state:'stopped', t:0, price:fine, coins:Math.ceil(fine / coinV), card:Math.round(fine / coinV * 0.6) };
+        this._police = null;
+        if(this.cb.onPolice) this.cb.onPolice(null);
+        if(this.cb.onToll) this.cb.onToll({ kind:'police', operator:R.police || 'Police', currency:this.route.currency || '€', station:'Contrôle de vitesse', kmh:pc.kmh, limit:R.limit, unitLabel:R.unitLabel, price:fine, coinsNeed:this._toll.coins, coinsHave:Math.floor(this._coinCredits / 10), cardPoints:this._toll.card, lane:this._lane + 1 });
+      }
+    }
+  };
+  GameEngine.prototype._startPolice = function(kmh){
+    const T = window.THREE, SK = DG.StopKit;
+    const mesh = SK ? SK.policeCar(T, this.route.radars.policeStyle || 'fr') : new T.Group();
+    mesh.position.set(this._playerX, 0, 10.5); // juste devant la camera : on la voit arriver derriere nous
+    this.scene.add(mesh); bendScene(mesh); this._carLook(mesh);
+    this._police = { mesh, z:10.5, t:0, blink:0, hudT:0, state:'chase', kmh, over:kmh - this.route.radars.limit, redL:mesh.getObjectByName('sirenRed'), blueL:mesh.getObjectByName('sirenBlue') };
+    if(this.cb.onPickup) this.cb.onPickup('police-chase');
+  };
+
+  // File d'attente au peage : la voiture en tete paie (quelques secondes), la
+  // barriere de sa voie se leve, elle repart en accelerant ; celle de derriere
+  // avance a la cabine ; la partie reprend sa place au bout de la file.
+  GameEngine.prototype._queueUpdate = function(tl, dt){
+    const FRONT = 9, BACK = 16.5;
+    for(const c of tl.queue){
+      const arm = tl.mesh.getObjectByName(c.lane.arm);
+      if(c.state === 'wait'){
+        const target = c.slot === 0 ? FRONT : BACK;
+        c.car.position.z += (target - c.car.position.z) * Math.min(1, dt * 1.5);
+        if(c.slot === 0){ c.wait -= dt; if(c.wait <= 0){ c.state = 'go'; c.v = 0; } }
+        if(arm && c.slot === 0) arm.rotation.z = Math.max(0, arm.rotation.z - dt * 2);
+      } else if(c.state === 'go'){
+        if(arm) arm.rotation.z = Math.min(Math.PI/2 * 0.95, arm.rotation.z + dt * 3);
+        c.v = Math.min(22, c.v + dt * 9);
+        c.car.position.z -= c.v * dt;
+        if(c.car.position.z < -40){
+          // au bout de la file ; l'autre voiture de la voie passe en tete
+          c.state = 'wait'; c.slot = 1; c.car.position.z = BACK + 10; c.wait = 3 + Math.random() * 3;
+          tl.queue.forEach(o=>{ if(o !== c && o.lane === c.lane){ o.slot = 0; o.wait = 1.5 + Math.random() * 2.5; } });
+        }
+      }
+    }
+  };
+  // Glissieres du bas-cote masquees la ou la route s'elargit (peage) ou
+  // devant la station-service, pour ne pas traverser les cabines / pompes.
+  GameEngine.prototype._roadsideVisibility = function(tl){
+    const z0 = tl ? tl.mesh.position.z : null;
+    for(const d of this._decor){
+      if(d.userData._roadside === undefined || d.userData._rsMc !== d.userData._mc){ d.userData._rsMc = d.userData._mc; const list = []; d.traverse(n=>{ if(n.isMesh && n.material && n.material.name === 'dg-roadside') list.push(n); }); d.userData._roadside = list; }
+      const list = d.userData._roadside; if(!list.length) continue;
+      const hide = z0 != null && d.position.z > z0 - 40 && d.position.z < z0 + 70;
+      for(const n of list) n.visible = !hide;
+    }
+  };
+
+  // Demande d'arret a la station annoncee (touche E / bouton du HUD)
+  GameEngine.prototype.requestFuelStop = function(){
+    const tl = this._toll;
+    if(!this.playing || !tl || tl.kind !== 'fuel' || tl.state !== 'offer') return false;
+    tl.wantStop = true; return true;
+  };
+  // delay : secondes d'attente avant de repartir (animation du plein cote interface)
+  GameEngine.prototype.payToll = function(method, delay){
     const tl = this._toll;
     if(!tl || tl.state !== 'stopped') return { ok:false };
     if(method === 'cash'){
-      const need = Math.ceil(tl.price) * 10;
+      const need = (tl.coins || Math.ceil(tl.price)) * 10;
       if(this._coinCredits < need) return { ok:false, error:'Pas assez de pièces' };
       this._coinCredits -= need;
     } else {
-      this._obstacleBonus -= Math.round(tl.price * 3);
+      this._obstacleBonus -= tl.card != null ? tl.card : Math.round(tl.price * 3);
     }
     if(tl.kind === 'fuel'){ this._fuel = 1; this._fuelOut = false; this._fuelWarned = false; }
-    tl.state = 'open'; tl.t = 0;
+    if(delay === 'hold') tl.state = 'paid';
+    else { tl.state = 'open'; tl.t = -(delay || 0); }
     if(this.fx) this.fx.emit(this._playerX, 1.2, -4, 18, tl.kind === 'fuel' ? 0xffcc33 : 0x4ee39a, 3, 1.5, 0.5);
-    return { ok:true, price:tl.price, method, kind:tl.kind, liters:tl.liters };
+    return { ok:true, price:tl.price, method, kind:tl.kind, liters:tl.liters, qty:tl.qty, unit:tl.unit };
   };
 
+
+  // ---------- Boutique de la station ----------
+  // Apres le plein on peut entrer dans la boutique : la camera quitte la
+  // voiture et entre dans le magasin (interieur 3D construit avec la station),
+  // on achete a manger / a boire, chaque article donne un petit bonus.
+  GameEngine.prototype.enterShop = function(on){
+    const tl = this._toll;
+    this._shopCam = !!(on && tl && tl.kind === 'fuel' && tl.state === 'paid');
+    return this._shopCam;
+  };
+  GameEngine.prototype.leaveStop = function(){
+    const tl = this._toll;
+    this._shopCam = false;
+    if(tl && tl.state === 'paid'){ tl.state = 'open'; tl.t = 0; }
+  };
+  // item : { price, effect:'coffee'|'food'|'drink', pts }
+  GameEngine.prototype.buyItem = function(item, method){
+    const tl = this._toll;
+    if(!tl || tl.state !== 'paid') return { ok:false };
+    const coinV = this.route.coinValue || 1;
+    const coins = Math.max(1, Math.ceil(item.price / coinV)), card = Math.max(1, Math.round(item.price / coinV * 3));
+    if(method === 'cash'){
+      if(this._coinCredits < coins * 10) return { ok:false, error:'Pas assez de pièces' };
+      this._coinCredits -= coins * 10;
+    } else this._obstacleBonus -= card;
+    if(item.effect === 'coffee'){ this._boostFuel = 1; this._multiplier = 2; this._multiplierT = 15; }
+    else if(item.effect === 'drink') this._boostFuel = Math.min(1, this._boostFuel + 0.5);
+    else this._obstacleBonus += (item.pts || 100) * this._multiplier;
+    return { ok:true, coins, card, method };
+  };
 
   // Reflets du ciel sur la carrosserie + ombre portee (une seule fois par materiau)
   GameEngine.prototype._carLook = function(root){
@@ -1272,6 +1471,7 @@
       if(this._camLight) this._camLight.intensity += (3.4 - this._camLight.intensity) * Math.min(1, dt*6);
       this.ambientLight.intensity += ((this._routeAmbientI + 0.4) - this.ambientLight.intensity) * Math.min(1, dt*6);
     } else {
+      if(this._camSaved) this.camera.position.copy(this._camSaved);
       const bz = (this.playing && this._boostActive) ? -1.0 : 0;
       const shake = (this.playing && this._boostActive) ? Math.sin(now*0.05)*0.07 : 0;
       const ck = 1 - Math.pow(0.93, dt * 60);
@@ -1284,6 +1484,17 @@
       this.camera.position.y += (this._jumpY || 0) * 0.45 * ck;
       this.camera.lookAt(this._look);
       this.camera.rotateZ(-BEND.value.x * 55); // inclinaison dans les virages
+      this._shopBlend = Math.max(0, Math.min(1, (this._shopBlend || 0) + (this._shopCam ? dt : -dt) * 0.9));
+      if(this._shopBlend > 0 && this._toll && this._toll.mesh){
+        const m = this._toll.mesh; m.updateMatrixWorld(true);
+        this._camSaved = (this._camSaved || new T.Vector3()).copy(this.camera.position);
+        const b = this._shopBlend * this._shopBlend * (3 - 2 * this._shopBlend);
+        const sp = m.localToWorld((this._shopP || (this._shopP = new T.Vector3())).set(13.2, 1.7, 10.4));
+        const sl = m.localToWorld((this._shopL || (this._shopL = new T.Vector3())).set(17.6, 1.25, 5.2));
+        const lk = (this._shopLk || (this._shopLk = new T.Vector3())).copy(this._look).lerp(sl, b);
+        this.camera.position.lerp(sp, b);
+        this.camera.lookAt(lk);
+      } else this._camSaved = null;
       const sh = this.fx ? this.fx.shake : 0;
       if(sh){ this.camera.position.x += (Math.random()-.5)*sh; this.camera.position.y += (Math.random()-.5)*sh*0.7; }
       this.camera.fov += ((50 + this._fovKick()) - this.camera.fov) * Math.min(1, dt*6);
@@ -1341,7 +1552,8 @@
     const dip = this.route && this.route.dips;
     if(dip){ const k = Math.PI * 2 / dip.len; DIP.value.set(DIP.value.x + (dip.amp - DIP.value.x) * bk, k, (this._bendD % dip.len) * k); }
     else DIP.value.x += (0 - DIP.value.x) * bk;
-    BEND.value.y += (hillAt(this._bendD * (bamp.yf || 1)) * HILL_Y * (bamp.y != null ? bamp.y : 1) - BEND.value.y) * bk;
+    const hilly = !!(this.route && this.route.dips); // bosses et creux : uniquement la Route 66
+    BEND.value.y += ((hilly ? hillAt(this._bendD * (bamp.yf || 1)) * HILL_Y * (bamp.y != null ? bamp.y : 1) : 0) - BEND.value.y) * bk;
     const speedK = this.playing && this.mult ? Math.max(0, Math.min(1, (this._speed - this.mult.baseSpeed*0.7) / (this.mult.maxSpeed - this.mult.baseSpeed*0.7))) : 0;
     this._speedK = speedK;
     if(this.fx) this.fx.update(dt, scroll, speedK, this.playing && this._boostActive, this.playing);
@@ -1393,18 +1605,20 @@
     if(counting) return;
 
     this._journeyUpdate(dt, scroll);
+    this._radarUpdate(dt, scroll);
     if(this._fuelOut && !this._tollHold){
       // panne seche : la voiture ralentit jusqu'a l'arret, fin de partie
       this._speed = Math.max(0, this._speed - dt * 12);
       if(this._speed < 1.5){ this._endReason = 'fuel'; this.playing = false; this._gameOver(); return; }
     }
     if(this._toll) this._toll.mesh.position.z += scroll;
+    if(this._toll && this._toll.kind === 'police' && this._toll.state === 'open' && !this._tollHold && this._toll.mesh.position.z > 14){ this.scene.remove(this._toll.mesh); this._toll = null; }
     if(this._tollHold){
       if(this.cb.onHud) this.cb.onHud({ time:this._time, score:this.currentScore(), speed:0, boostPct:this._boostFuel*100, multiplierActive:this._multiplier > 1, multiplierT:this._multiplierT, personalBest:this._personalBest, recordBroken:this._recordBroken, scoreToRecord:0, speedK:0, boosting:false, drafting:false, fuel:this._fuel });
       return;
     }
     this._time += dt;
-    if(this._fuelOut){}
+    if(this._fuelOut || (this._police && this._police.state === 'pullover')){} // panne / controle de police : pas d'acceleration
     else if(this._brake) this._speed = Math.max(this.mult.baseSpeed * 0.65, this._speed - dt * 13);
     else this._speed += (this.mult.maxSpeed - this._speed) * Math.min(1, dt * this.mult.accelRamp * (this._speed < this.mult.baseSpeed ? 0.9 : 0.4));
     this._dist += scroll;
@@ -1477,7 +1691,7 @@
       this._trafficAI(o, dt, now);
       const gap = Math.abs(o.mesh.position.x - this._playerX) - ((o.mesh.userData.w||1.2) + playerHalfW);
       const clearance = o.kind === 'car' ? 1.25 : 0.7; // hauteur a franchir en l'air
-      if(!o.hit && Math.abs(o.mesh.position.z) < 1.5 && gap < 0 && this._jumpY < clearance){
+      if(!o.hit && !this._ghost && Math.abs(o.mesh.position.z) < 1.5 && gap < 0 && this._jumpY < clearance){
         o.hit = true;
         if(this._shield){
           // Bouclier : le vehicule est ejecte, on continue

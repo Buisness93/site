@@ -114,10 +114,10 @@
 
   function guardrail(T, x, z, side){
     const g = new T.Group();
-    const railMat = M('std:rail', ()=>new T.MeshStandardMaterial({ color:0x9aa4ad, metalness:0.75, roughness:0.35 }));
+    const railMat = M('std:rail', ()=>{ const m = new T.MeshStandardMaterial({ color:0x9aa4ad, metalness:0.75, roughness:0.35 }); m.name = 'dg-roadside'; return m; });
     const rail = new T.Mesh(M('geo:rail', ()=>new T.BoxGeometry(0.09, 0.32, 6.6)), railMat);
     rail.position.y = 0.62; g.add(rail);
-    const postMat = M('std:railPost', ()=>new T.MeshStandardMaterial({ color:0x2a2e35, metalness:0.5, roughness:0.6 }));
+    const postMat = M('std:railPost', ()=>{ const m = new T.MeshStandardMaterial({ color:0x2a2e35, metalness:0.5, roughness:0.6 }); m.name = 'dg-roadside'; return m; });
     const postGeo = M('geo:railPost', ()=>new T.BoxGeometry(0.08,0.7,0.08));
     for(let k=-1;k<=1;k++){
       const post = new T.Mesh(postGeo, postMat);
@@ -818,6 +818,8 @@
   const ROUTES = [
     {
       id:'autoroute-nuit', name:'Autoroute Nocturne', difficulty:'Standard', spacing:9,
+      fuelPrices:[1.86, 1.96, 2.06], fuelLabels:['GAZOLE', 'SP95-E10', 'SP98'], fuelDefault:1, fuelColor:0x1a4fa8, fuelColor2:0xff7a00, fuelStationName:'Aire de service',
+      radars:{ limit:130, style:'fr', police:'Gendarmerie nationale', policeStyle:'fr', chaseOver:50, every:1600, fine:(o)=> o < 20 ? 68 : o < 50 ? 135 : 1500 },
       fog:0x0c1322, fogNear:30, fogFar:140, ground:0x06090a, exposure:1.08,
       road:0x0b0d12, stripe:0xd8dee6, edge:0x1b2129, edgeEmissive:0x1a2a3a,
       sky:{ top:0x000103, mid:0x01040c, bottom:0x071022, glow:0x8fa8ff, glowI:0.14 },
@@ -1007,6 +1009,8 @@
     },
     {
       id:'cote-sunset', name:'Côte au Coucher du Soleil', difficulty:'Détente', spacing:8,
+      fuelPrices:[1.79, 1.89, 1.99], fuelLabels:['GAZOLE', 'SP95-E10', 'SP98'], fuelDefault:1, fuelColor:0x1a4fa8, fuelColor2:0xff7a00, fuelStationName:'Station de la corniche',
+      radars:{ limit:90, style:'fr', police:'Police nationale', policeStyle:'fr', chaseOver:50, every:1600, fine:(o)=> o < 20 ? 68 : o < 50 ? 135 : 1500 },
       fog:0x8a4446, fogNear:34, fogFar:175, ground:0x9c6d44, exposure:1.02,
       road:0x1d1715, stripe:0xf2c78a, edge:0x5a3b2c, edgeEmissive:0xff9a4d,
       sky:{ top:0x05031a, mid:0x2c0c3a, bottom:0xd0502a, glow:0xff9a50, glowI:0.75, band:0.07 },
@@ -1191,6 +1195,7 @@
     },
     {
       id:'centre-neon', name:'Centre-Ville Néon', difficulty:'Intense', spacing:8,
+      currency:'¥', coinValue:160, fuelPrices:[175, 186, 155], fuelLabels:['レギュラー', 'ハイオク', '軽油'], fuelColor:0xd8102a, fuelColor2:0xffe23d, fuelBrand:'ガソリンスタンド', fuelStationName:'Station 24H',
       bend:{ x:0.7, y:0.5 }, // rues de ville : virages plus doux qu'en campagne
       fog:0x12061d, fogNear:20, fogFar:112, ground:0x050309, exposure:1.1,
       road:0x0a0714, stripe:0xff5ad1, edge:0x2a1044, edgeEmissive:0xb43dff,
@@ -1351,6 +1356,7 @@
     },
     {
       id:'japon-sakura', name:'Japon · Sakura', difficulty:'Standard', spacing:9,
+      currency:'¥', coinValue:160, fuelPrices:[174, 185, 154], fuelLabels:['レギュラー', 'ハイオク', '軽油'], fuelColor:0x1a7a3a, fuelColor2:0xffffff, fuelBrand:'ガソリンスタンド', fuelStationName:'Station de Kyoto',
       fog:0xc98aa2, fogNear:28, fogFar:160, ground:0x2a3a1e, exposure:1.0,
       road:0x1b1a20, stripe:0xf4ece6, edge:0x4a4048, edgeEmissive:0x5a2038,
       sky:{ top:0x0e0c2a, mid:0x4a2a64, bottom:0xffa0b8, glow:0xffb0c8, glowI:0.6, band:0.08 },

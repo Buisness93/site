@@ -173,18 +173,32 @@
   </div>
 
   <div class="journey-chip hidden" id="journeyChip"></div>
+  <div class="alert-chip hidden" id="alertChip"></div>
+  <div class="radar-flash" id="radarFlash"></div>
 
   <div class="overlay toll-overlay hidden" id="ovToll">
     <div class="toll-panel">
       <div class="toll-head"><span class="toll-logo" id="tollLogo">A1</span><div><div class="toll-kicker" id="tollKicker">Péage</div><div class="toll-station" id="tollStation">—</div></div></div>
       <div class="toll-trip" id="tollTrip">—</div>
       <div class="toll-screen"><span>IMPORTO</span><b id="tollPrice">0,00 €</b></div>
-      <div class="toll-actions">
+      <div class="toll-fill hidden" id="tollFill"><div class="tf-label">⛽ Remplissage en cours…</div><div class="tf-bar"><i id="tollFillBar"></i></div><div class="tf-txt" id="tollFillTxt">0</div></div>
+      <div class="toll-after hidden" id="tollAfter">
+        <button class="toll-btn shop" id="btnShopEnter"><span class="tl-ico">🏪</span><span class="tl-body"><span class="tl-title">Entrer dans la boutique <kbd>B</kbd></span><span class="tl-sub">Café, sandwichs, boissons… petits bonus</span></span></button>
+        <button class="toll-btn card" id="btnShopSkip"><span class="tl-ico">🚗</span><span class="tl-body"><span class="tl-title">Repartir <kbd>Entrée</kbd></span><span class="tl-sub">Reprendre la route</span></span></button>
+      </div>
+      <div class="toll-actions" id="tollActions">
         <button class="toll-btn" id="btnTollCash"><span class="tl-ico">💶</span><span class="tl-body"><span class="tl-title">Espèces <kbd>1</kbd></span><span class="tl-sub">—</span></span></button>
         <button class="toll-btn card" id="btnTollCard"><span class="tl-ico">💳</span><span class="tl-body"><span class="tl-title">Carte bancaire <kbd>2</kbd></span><span class="tl-sub">—</span></span></button>
       </div>
       <div class="toll-msg" id="tollMsg"></div>
     </div>
+  </div>
+
+  <div class="shop-panel hidden" id="ovShop">
+    <div class="shop-head"><div class="shop-kicker">🏪 Boutique</div><div class="shop-title" id="shopTitle">—</div><div class="shop-wallet" id="shopWallet">—</div></div>
+    <div class="shop-list" id="shopList"></div>
+    <div class="shop-msg" id="shopMsg"></div>
+    <button class="toll-btn card" id="btnShopLeave"><span class="tl-ico">🚪</span><span class="tl-body"><span class="tl-title">Sortir et repartir <kbd>Échap</kbd></span></span></button>
   </div>
 
   <div class="overlay hidden" id="ovPaused">

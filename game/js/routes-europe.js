@@ -163,51 +163,70 @@
       return S().merge(T, parts);
     });
   }
-  // Barriere de peage : grand auvent avec le nom de la gare, ilots et cabines
-  // entre les voies, barrieres a bras rayes rouge/blanc (une par voie, nommees
-  // arm0..arm3 : le moteur leve celle de la voie du joueur apres paiement).
+  // Barriere de peage : la chaussee s'elargit vers la droite (8 voies de
+  // cabines), grand auvent au nom de la gare, ilots et cabines, panneau par
+  // voie (telepeage / carte / especes), barrieres a bras rayes. Les voies du
+  // joueur (x = -3.3 .. 3.3) ont les bras "arm0..arm3" ; les voies en plus
+  // (userData.queueLanes) recoivent des voitures qui font la queue (moteur).
   function tollPlaza(T, stop, style){
     const st = Object.assign({ bg:'#0a3a7a', fg:'#ffffff', accent:'#ffcc00', left:'T', right:'€', title:null }, style || {});
     const g = new T.Group();
     const concrete = M('std:tollConcrete', ()=>new T.MeshStandardMaterial({ color:0xb0aaa0, roughness:0.9 }));
     const white = M('std:tollWhite', ()=>new T.MeshStandardMaterial({ color:0xe8eaec, roughness:0.5, metalness:0.2 }));
-    const apron = new T.Mesh(new T.PlaneGeometry(28, 44, 4, 16), M('std:tollApron', ()=>new T.MeshStandardMaterial({ color:0x3a3a3e, roughness:0.85 })));
-    apron.rotation.x = -Math.PI/2; apron.position.set(0, 0.012, 0); apron.receiveShadow = true; g.add(apron);
-    const stopLine = new T.Mesh(new T.PlaneGeometry(9.6, 0.4), M('bas:line', ()=>new T.MeshBasicMaterial({ color:0xe8e6de })));
-    stopLine.rotation.x = -Math.PI/2; stopLine.position.set(0, 0.03, 5.6); g.add(stopLine);
-    // auvent + bandeau avec le nom
-    const roof = new T.Mesh(new T.BoxGeometry(26, 0.9, 13), white); roof.position.set(0, 6.6, 0); g.add(roof);
-    [-12.6, 12.6].forEach(x=>{ const p = new T.Mesh(new T.BoxGeometry(0.8, 6.2, 0.8), concrete); p.position.set(x, 3.1, 0); g.add(p); });
-    const band = new T.Mesh(new T.PlaneGeometry(24, 1.5), new T.MeshBasicMaterial({ map:(()=>{
-      const c = document.createElement('canvas'); c.width = 1024; c.height = 64; const x = c.getContext('2d');
-      x.fillStyle = st.bg; x.fillRect(0, 0, 1024, 64);
-      x.fillStyle = st.fg; x.font = '900 40px Arial'; x.textBaseline = 'middle'; x.textAlign = 'center';
+    const asph = M('std:tollApron', ()=>new T.MeshStandardMaterial({ color:0x333336, roughness:0.85 }));
+    const LN = [-3.3, -1.1, 1.1, 3.3, 5.5, 7.7, 9.9, 12.1];
+    // elargissement : trapeze d'asphalte (4.6 -> 13.4) puis zone des cabines
+    const sh = new T.Shape();
+    sh.moveTo(-4.6, -60); sh.lineTo(4.6, -60); sh.lineTo(13.4, -26); sh.lineTo(13.4, 20); sh.lineTo(4.6, 60); sh.lineTo(-4.6, 60); sh.closePath();
+    const apron = new T.Mesh(new T.ShapeGeometry(sh), asph);
+    apron.rotation.x = -Math.PI/2; apron.position.y = 0.012; apron.receiveShadow = true; g.add(apron);
+    const lineMat = M('bas:line', ()=>new T.MeshBasicMaterial({ color:0xe8e6de }));
+    // marquages des voies de cabines + ligne d'arret
+    for(let k = 0; k < LN.length - 1; k++){ const x = (LN[k] + LN[k + 1]) / 2; for(let z = 8; z < 30; z += 4){ const m = new T.Mesh(M('geo:dash', ()=>new T.PlaneGeometry(0.12, 2)), lineMat); m.rotation.x = -Math.PI/2; m.position.set(x, 0.03, z); g.add(m); } }
+    const stopLine = new T.Mesh(new T.PlaneGeometry(17.6, 0.4), lineMat); stopLine.rotation.x = -Math.PI/2; stopLine.position.set(4.4, 0.03, 5.6); g.add(stopLine);
+    // auvent + bandeau au nom de la gare
+    const roof = new T.Mesh(new T.BoxGeometry(20.5, 0.9, 13), white); roof.position.set(4.4, 6.6, 0); g.add(roof);
+    const roofEdge = new T.Mesh(new T.BoxGeometry(20.6, 0.3, 13.1), M('std:tollEdge' + st.bg, ()=>new T.MeshStandardMaterial({ color:new T.Color(st.bg), roughness:0.5 }))); roofEdge.position.set(4.4, 6.05, 0); g.add(roofEdge);
+    [-5.6, 14.4].forEach(x=>{ const p = new T.Mesh(new T.BoxGeometry(0.8, 6.2, 0.8), concrete); p.position.set(x, 3.1, 0); g.add(p); });
+    const band = new T.Mesh(new T.PlaneGeometry(19.6, 1.5), new T.MeshBasicMaterial({ map:(()=>{
+      const c = document.createElement('canvas'); c.width = 1024; c.height = 78; const x = c.getContext('2d');
+      x.fillStyle = st.bg; x.fillRect(0, 0, 1024, 78);
+      x.fillStyle = st.fg; x.font = '900 46px Arial'; x.textBaseline = 'middle'; x.textAlign = 'center';
       const nm = stop.name.toUpperCase();
-      x.fillText((st.title && nm.indexOf(st.title) !== 0 ? st.title + '  ' : '') + nm, 512, 34);
-      x.fillStyle = st.accent; x.fillRect(16, 12, 40, 40); x.fillStyle = st.bg; x.font = '900 28px Arial'; x.fillText(st.left, 36, 34);
-      x.fillStyle = st.accent; x.fillRect(968, 12, 40, 40); x.fillStyle = st.bg; x.fillText(st.right, 988, 34);
+      x.fillText((st.title && nm.indexOf(st.title) !== 0 ? st.title + '  ' : '') + nm, 512, 41);
+      x.fillStyle = st.accent; x.fillRect(16, 14, 50, 50); x.fillStyle = st.bg; x.font = '900 30px Arial'; x.fillText(st.left, 41, 41);
+      x.fillStyle = st.accent; x.fillRect(958, 14, 50, 50); x.fillStyle = st.bg; x.fillText(st.right, 983, 41);
       const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = 4; return t; })() }));
-    band.position.set(0, 6.6, 6.52); g.add(band);
-    // eclairage sous l'auvent
-    for(let k = -2; k <= 2; k++){ const l = new T.Mesh(new T.BoxGeometry(3, 0.05, 0.3), M('bas:tollLight', ()=>new T.MeshBasicMaterial({ color:0xfff6e0 }))); l.position.set(k*4.4, 6.12, 0); g.add(l); }
-    // ilots + cabines entre les voies ; bras de barriere par voie
-    const stripeTex = M('tex:barrierStripe', ()=>{ const c = document.createElement('canvas'); c.width = 64; c.height = 8; const x = c.getContext('2d'); for(let i = 0; i < 8; i++){ x.fillStyle = i % 2 ? '#fff' : '#d0141e'; x.fillRect(i*8, 0, 8, 8); } const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return t; });
-    [-4.4, -2.2, 0, 2.2, 4.4].forEach((x, k)=>{
-      const island = new T.Mesh(new T.BoxGeometry(0.9, 0.3, 11), concrete); island.position.set(x, 0.15, 0); g.add(island);
-      const booth = new T.Mesh(new T.BoxGeometry(0.8, 2.3, 2.0), M('std:booth', ()=>new T.MeshStandardMaterial({ color:0x9ac0d0, roughness:0.1, metalness:0.5, emissive:0x1a2a30 }))); booth.position.set(x, 1.45, -1); g.add(booth);
-      const cap = new T.Mesh(new T.BoxGeometry(1.0, 0.2, 2.3), white); cap.position.set(x, 2.7, -1); g.add(cap);
-      const bollard = new T.Mesh(new T.CylinderGeometry(0.2, 0.2, 1.0, 10), M('std:bollard', ()=>new T.MeshStandardMaterial({ color:0xffc21a, roughness:0.5 }))); bollard.position.set(x, 0.8, 5.2); g.add(bollard);
-      // feu de voie (vert) au-dessus de chaque voie
-      if(k < 4){
-        const lane = (x + 1.1);
-        const sig = new T.Mesh(new T.BoxGeometry(0.6, 0.6, 0.1), M('bas:tollGreen', ()=>new T.MeshBasicMaterial({ color:0x2fea6a }))); sig.position.set(lane, 5.6, 6.2); g.add(sig);
-        const pivot = new T.Group(); pivot.name = 'arm' + k; pivot.position.set(lane - 1.0, 1.0, 4.4);
-        const arm = new T.Mesh(new T.BoxGeometry(1.95, 0.12, 0.12), new T.MeshLambertMaterial({ map:stripeTex }));
-        arm.position.x = 0.98; pivot.add(arm); g.add(pivot);
-      }
+    band.position.set(4.4, 6.6, 6.52); g.add(band);
+    for(let k = 0; k < 4; k++){ const l = new T.Mesh(new T.BoxGeometry(18, 0.05, 0.3), M('bas:tollLight', ()=>new T.MeshBasicMaterial({ color:0xfff6e0 }))); l.position.set(4.4, 6.12, -4.5 + k*3); g.add(l); }
+    // panneau au-dessus de chaque voie : type de paiement
+    const laneSign = (kind)=>M('mat:laneSign:' + kind + st.accent, ()=>{
+      const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
+      const col = kind === 't' ? st.accent : kind === 'cb' ? '#1f6ad8' : '#1a9a4a';
+      x.fillStyle = '#111'; x.fillRect(0, 0, 64, 64); x.fillStyle = col; x.fillRect(4, 4, 56, 56);
+      x.fillStyle = kind === 't' ? st.bg : '#fff'; x.font = '900 ' + (kind === 'cb' ? 24 : 34) + 'px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillText(kind === 't' ? st.left : kind === 'cb' ? 'CB' : st.right, 32, 34);
+      const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return new T.MeshBasicMaterial({ map:t });
     });
+    const stripeTex = M('tex:barrierStripe', ()=>{ const c = document.createElement('canvas'); c.width = 64; c.height = 8; const x = c.getContext('2d'); for(let i = 0; i < 8; i++){ x.fillStyle = i % 2 ? '#fff' : '#d0141e'; x.fillRect(i*8, 0, 8, 8); } const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return t; });
+    const boothMat = M('std:booth', ()=>new T.MeshStandardMaterial({ color:0x9ac0d0, roughness:0.1, metalness:0.5, emissive:0x1a2a30 }));
+    const bollardMat = M('std:bollard', ()=>new T.MeshStandardMaterial({ color:0xffc21a, roughness:0.5 }));
+    LN.forEach((lane, k)=>{
+      const ix = lane - 1.1; // ilot a gauche de la voie
+      const island = new T.Mesh(M('geo:island', ()=>new T.BoxGeometry(0.9, 0.3, 11)), concrete); island.position.set(ix, 0.15, 0); g.add(island);
+      const booth = new T.Mesh(M('geo:booth', ()=>new T.BoxGeometry(0.8, 2.3, 2.0)), boothMat); booth.position.set(ix, 1.45, -1); g.add(booth);
+      const cap = new T.Mesh(M('geo:boothCap', ()=>new T.BoxGeometry(1.0, 0.2, 2.3)), white); cap.position.set(ix, 2.7, -1); g.add(cap);
+      const bollard = new T.Mesh(M('geo:bollard', ()=>new T.CylinderGeometry(0.2, 0.2, 1.0, 10)), bollardMat); bollard.position.set(ix, 0.8, 5.2); g.add(bollard);
+      const sign = new T.Mesh(M('geo:laneSign', ()=>new T.PlaneGeometry(0.9, 0.9)), laneSign(k % 3 === 0 ? 't' : k % 3 === 1 ? 'cb' : 'cash')); sign.position.set(lane, 5.4, 6.25); g.add(sign);
+      const pivot = new T.Group(); pivot.name = k < 4 ? 'arm' + k : 'armq' + k; pivot.position.set(lane - 1.0, 1.0, 4.4);
+      const arm = new T.Mesh(M('geo:arm', ()=>new T.BoxGeometry(1.95, 0.12, 0.12)), M('mat:arm', ()=>new T.MeshLambertMaterial({ map:stripeTex })));
+      arm.position.x = 0.98; pivot.add(arm); g.add(pivot);
+    });
+    const lastIsland = new T.Mesh(M('geo:island', ()=>new T.BoxGeometry(0.9, 0.3, 11)), concrete); lastIsland.position.set(13.2, 0.15, 0); g.add(lastIsland);
+    g.userData.queueLanes = [{ x:5.5, arm:'armq4' }, { x:7.7, arm:'armq5' }, { x:9.9, arm:'armq6' }, { x:12.1, arm:'armq7' }];
     return g;
   }
+
 
   // Station-service sur le bas-cote droit : auvent aux couleurs de la route,
   // pompes a cote de la voie de droite (la voiture s'arrete juste a cote),
@@ -239,6 +258,7 @@
       { geo:new T.BoxGeometry(7.4, 0.5, 12.4), pos:[0, 3.8, 0], color:0x4a4e54 },
     ])), vc('fuelshop'));
     shop.position.set(15.5, 0, 7); g.add(shop);
+    const inside = shopInterior(T, route); inside.position.set(15.5, 0, 7); g.add(inside);
     const shopBand = new T.Mesh(new T.BoxGeometry(0.2, 0.6, 12), brand); shopBand.position.set(11.95, 3.3, 7); g.add(shopBand);
     // totem des prix, visible de loin
     const totem = new T.Group();
@@ -248,14 +268,152 @@
       x.fillStyle = '#111'; x.fillRect(0, 0, 96, 204);
       x.fillStyle = '#' + col2.toString(16).padStart(6, '0'); x.fillRect(0, 0, 96, 44);
       x.fillStyle = '#111'; x.font = '900 30px Arial'; x.textAlign = 'center'; x.fillText('⛽', 48, 34);
-      const p = route.fuelPrice || 1.89, rows = route.fuelLabels || ['GAZOLE', 'SP95', 'SP98'];
-      rows.forEach((r, k)=>{ x.fillStyle = '#ccc'; x.font = '700 14px Arial'; x.fillText(r, 48, 70 + k*46); x.fillStyle = '#ff5a3a'; x.font = '900 22px Courier New'; x.fillText((p + k*0.08).toFixed(2) + (cur === '$' ? '' : ''), 48, 94 + k*46); });
+      const prices = route.fuelPrices || [1.79, 1.86, 1.95], rows = route.fuelLabels || ['GAZOLE', 'SP95', 'SP98'];
+      const fmt = (v)=> cur === '¥' ? Math.round(v) + '' : cur === '$' ? '$' + v.toFixed(2) : v.toFixed(3).replace('.', ',');
+      rows.forEach((r, k)=>{ x.fillStyle = '#ccc'; x.font = '700 13px Arial'; x.fillText(r, 48, 70 + k*46); x.fillStyle = '#ff5a3a'; x.font = '900 21px Courier New'; x.fillText(fmt(prices[k] || prices[0]), 48, 94 + k*46); });
+      if(route.fuelUnit === 'gal'){ x.fillStyle = '#888'; x.font = '700 11px Arial'; x.fillText('PER GALLON', 48, 200); }
       const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return t; })(), toneMapped:false }));
     board.position.set(0, 5.2, 0.26); totem.add(board);
     totem.position.set(9, 0, -10); totem.rotation.y = -0.35; g.add(totem);
     return g;
   }
-  DG.StopKit = { tollPlaza, fuelStation };
+  // ---------- Radars et police ----------
+  function limitSignTex(T, limit, us){
+    return M('tex:limit:' + limit + ':' + (us ? 1 : 0), ()=>{
+      const c = document.createElement('canvas'); c.width = 128; c.height = us ? 160 : 128; const x = c.getContext('2d');
+      if(us){
+        x.fillStyle = '#f4f4f0'; x.fillRect(0, 0, 128, 160); x.strokeStyle = '#111'; x.lineWidth = 6; x.strokeRect(6, 6, 116, 148);
+        x.fillStyle = '#111'; x.textAlign = 'center'; x.font = '900 22px Arial'; x.fillText('SPEED', 64, 42); x.fillText('LIMIT', 64, 66);
+        x.font = '900 64px Arial'; x.fillText(String(Math.round(limit / 1.609)), 64, 132);
+      } else {
+        x.fillStyle = '#d0141e'; x.beginPath(); x.arc(64, 64, 62, 0, Math.PI*2); x.fill();
+        x.fillStyle = '#fff'; x.beginPath(); x.arc(64, 64, 48, 0, Math.PI*2); x.fill();
+        x.fillStyle = '#111'; x.font = '900 ' + (limit >= 100 ? 46 : 58) + 'px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(String(limit), 64, 68);
+      }
+      const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return new T.MeshLambertMaterial({ map:t, transparent:true });
+    });
+  }
+  function warnSignTex(T, text, sub, bg, fg){
+    const c = document.createElement('canvas'); c.width = 256; c.height = 160; const x = c.getContext('2d');
+    x.fillStyle = bg; x.fillRect(0, 0, 256, 160); x.strokeStyle = fg; x.lineWidth = 6; x.strokeRect(8, 8, 240, 144);
+    // pictogramme camera
+    x.fillStyle = fg; x.fillRect(96, 30, 64, 40); x.beginPath(); x.arc(128, 50, 13, 0, Math.PI*2); x.fillStyle = bg; x.fill(); x.fillStyle = fg; x.fillRect(118, 70, 20, 16);
+    x.fillStyle = fg; x.textAlign = 'center'; x.font = '900 24px Arial'; x.fillText(text, 128, 114); x.font = '700 17px Arial'; x.fillText(sub, 128, 140);
+    const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return new T.MeshLambertMaterial({ map:t });
+  }
+  // Radar fixe sur le bas-cote droit + panneaux d'annonce 150 unites avant
+  function speedCamera(T, R, route){
+    const g = new T.Group(), us = R.style === 'us';
+    const grey = M('std:radarPole', ()=>new T.MeshStandardMaterial({ color:0x8a9098, metalness:0.6, roughness:0.4 }));
+    const pole = new T.Mesh(new T.CylinderGeometry(0.12, 0.14, 3.6, 8), grey); pole.position.set(5.6, 1.8, 0); g.add(pole);
+    const boxCol = R.style === 'it' ? 0xe86a10 : R.style === 'ch' ? 0x5a5e64 : 0x9aa0a6;
+    const cam = new T.Mesh(new T.BoxGeometry(0.7, 1.0, 0.6), M('std:radarBox' + boxCol, ()=>new T.MeshStandardMaterial({ color:boxCol, metalness:0.4, roughness:0.4 }))); cam.position.set(5.6, 4.0, 0); g.add(cam);
+    const lens = new T.Mesh(new T.CircleGeometry(0.16, 16), M('bas:lens', ()=>new T.MeshBasicMaterial({ color:0x111820 }))); lens.position.set(5.6, 4.1, 0.31); g.add(lens);
+    const flash = new T.Mesh(new T.PlaneGeometry(0.4, 0.2), M('bas:radarFlash', ()=>new T.MeshBasicMaterial({ color:0xfff4e0 }))); flash.position.set(5.6, 3.7, 0.31); g.add(flash);
+    // annonce : panneau "controle radar" + limitation
+    const w = new T.Group();
+    const post = new T.Mesh(new T.CylinderGeometry(0.06, 0.06, 3, 6), grey); post.position.y = 1.5; w.add(post);
+    const texts = { fr:['CONTRÔLES', 'AUTOMATIQUES'], it:['CONTROLLO', 'ELETTRONICO'], ch:['RADAR', 'CONTRÔLE'], us:['RADAR', 'ENFORCED'] }[R.style || 'fr'];
+    const warn = new T.Mesh(new T.PlaneGeometry(1.6, 1.0), warnSignTex(T, texts[0], texts[1], us ? '#f4f4f0' : '#1f4fa8', us ? '#111' : '#ffffff')); warn.position.set(0, 2.6, 0.05); w.add(warn);
+    const lim = new T.Mesh(new T.PlaneGeometry(us ? 0.9 : 1.0, us ? 1.12 : 1.0), limitSignTex(T, R.limit, us)); lim.position.set(0, 1.5, 0.06); w.add(lim);
+    w.position.set(5.8, 0, 150); g.add(w);
+    const lim2 = w.clone(); lim2.position.set(-5.8 + (route.id === 'autostrada' || route.id === 'a7-france' || route.id === 'a2-suisse' ? 1.2 : 0), 0, 150); g.add(lim2);
+    return g;
+  }
+  // Voiture de police : caisse aux couleurs du pays + rampe de gyrophares
+  // (sprites rouge/bleu nommes pour clignoter)
+  function policeCar(T, style){
+    const liv = { fr:[0xf2f2f2, 0x1a3a8a], it:[0x1a3a8a, 0xf2f2f2], ch:[0xf2f2f2, 0xff8a1a], us:[0x151515, 0xf2f2f2] }[style] || [0xf2f2f2, 0x1a3a8a];
+    const g = new T.Group();
+    const body = new T.Mesh(M('geo:police:' + style, ()=>S().merge(T, [
+      { geo:new T.BoxGeometry(1.9, 0.66, 4.5), pos:[0, 0.66, 0], color:liv[0] },
+      { geo:new T.BoxGeometry(1.94, 0.22, 4.52), pos:[0, 0.72, 0], color:liv[1] },
+      { geo:new T.BoxGeometry(1.7, 0.6, 2.3), pos:[0, 1.26, 0.2], color:0x1e2630 },
+      { geo:new T.BoxGeometry(1.3, 0.14, 0.4), pos:[0, 1.62, 0.2], color:0x222222 },
+      ...[[-0.9, -1.45], [0.9, -1.45], [-0.9, 1.45], [0.9, 1.45]].map(([x, z])=>({ geo:new T.CylinderGeometry(0.36, 0.36, 0.28, 12), pos:[x, 0.36, z], rot:[0, 0, Math.PI/2], color:0x111111 })),
+    ])), vcStd('police', 0.3));
+    g.add(body);
+    const red = new T.Sprite(new T.SpriteMaterial({ map:S().glow(T), color:0xff2020, transparent:true, blending:T.AdditiveBlending, depthWrite:false })); red.name = 'sirenRed'; red.scale.set(1.8, 1.8, 1); red.position.set(-0.4, 1.75, 0.2); g.add(red);
+    const blue = new T.Sprite(new T.SpriteMaterial({ map:S().glow(T), color:0x2a6aff, transparent:true, blending:T.AdditiveBlending, depthWrite:false })); blue.name = 'sirenBlue'; blue.scale.set(1.8, 1.8, 1); blue.position.set(0.4, 1.75, 0.2); g.add(blue);
+    const head = new T.Sprite(new T.SpriteMaterial({ map:S().glow(T), color:0xfff4e0, transparent:true, opacity:.7, blending:T.AdditiveBlending, depthWrite:false })); head.scale.set(2.4, 1.2, 1); head.position.set(0, 0.7, -2.3); g.add(head);
+    g.rotation.y = 0; // meme sens que le joueur (on la voit dans le retro / derriere)
+    return g;
+  }
+
+  // ---------- Boutique de la station (interieur 3D) ----------
+  // Piece a l'interieur du batiment de la boutique (murs vus de l'interieur),
+  // carrelage, plafonniers, gondoles remplies de produits, frigos a boissons
+  // eclaires, comptoir avec caisse et machine a cafe, affiches.
+  function shopInterior(T, route){
+    const g = new T.Group();
+    const W = 6.4, H = 3.3, D = 11.4;
+    const floorTex = M('tex:shopFloor', ()=>{ const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); for(let i = 0; i < 4; i++) for(let j = 0; j < 4; j++){ x.fillStyle = (i + j) % 2 ? '#d8d4cc' : '#b8b2a8'; x.fillRect(i*16, j*16, 16, 16); } const t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(6, 10); t.encoding = T.sRGBEncoding; return t; });
+    const room = new T.Mesh(new T.BoxGeometry(W, H, D), [
+      M('std:shopWall', ()=>new T.MeshStandardMaterial({ color:0xe4e0d8, roughness:0.8, side:T.BackSide, emissive:0x2a2824 })),
+      M('std:shopWall', ()=>null), M('std:shopCeil', ()=>new T.MeshStandardMaterial({ color:0xf0f0ee, roughness:0.9, side:T.BackSide, emissive:0x3a3a38 })),
+      M('std:shopFloor', ()=>new T.MeshStandardMaterial({ map:floorTex, roughness:0.35, metalness:0.1, side:T.BackSide, emissive:0x1a1a18 })),
+      M('std:shopWall', ()=>null), M('std:shopWall', ()=>null)
+    ]);
+    room.position.set(0, H/2 + 0.05, 0); g.add(room);
+    // plafonniers
+    for(let k = -1; k <= 1; k++){ const l = new T.Mesh(new T.BoxGeometry(1.4, 0.05, 0.4), M('bas:shopLight', ()=>new T.MeshBasicMaterial({ color:0xfffcf0 }))); l.position.set(0, H - 0.02, k * 3.4); g.add(l); }
+    // gondoles avec produits de toutes les couleurs (1 geometrie fusionnee par gondole)
+    const prodCols = [0xd8202a, 0xffc21a, 0x1f6ad8, 0x2fae4a, 0xff7a1a, 0x8a3ad8, 0xf2f2f2, 0x6a3a1a];
+    const gondola = M('geo:gondola', ()=>{
+      const parts = [{ geo:new T.BoxGeometry(0.8, 1.6, 3.4), pos:[0, 0.8, 0], color:0x5a5e64 }];
+      for(let lv = 0; lv < 3; lv++) for(let k = 0; k < 9; k++) [-1, 1].forEach(s=>{
+        const w = 0.18 + (k % 3) * 0.05, h = 0.22 + ((k + lv) % 4) * 0.06;
+        parts.push({ geo:new T.BoxGeometry(0.2, h, w), pos:[s * 0.5, 0.3 + lv * 0.5 + h/2, -1.5 + k * 0.37], color:prodCols[(k * 3 + lv + (s > 0 ? 2 : 0)) % prodCols.length] });
+      });
+      return S().merge(T, parts);
+    });
+    [[-0.2, -3.4], [1.6, -3.4], [0.5, 0.2]].forEach(([x, z])=>{ const m = new T.Mesh(gondola, vc('gondola')); m.position.set(x, 0.05, z); g.add(m); });
+    // frigos a boissons au fond (portes vitrees eclairees)
+    const fridge = M('geo:fridge', ()=>{
+      const parts = [{ geo:new T.BoxGeometry(0.8, 2.3, 4.8), pos:[0, 1.15, 0], color:0x2a2e34 }];
+      for(let lv = 0; lv < 5; lv++) for(let k = 0; k < 14; k++) parts.push({ geo:new T.CylinderGeometry(0.07, 0.07, 0.3, 6), pos:[-0.1, 0.35 + lv * 0.42, -2.2 + k * 0.33], color:prodCols[(k + lv * 2) % prodCols.length] });
+      return S().merge(T, parts);
+    });
+    const fr = new T.Mesh(fridge, vc('fridge')); fr.position.set(W/2 - 0.5, 0.05, -2.2); g.add(fr);
+    const glass = new T.Mesh(new T.PlaneGeometry(4.6, 2.1), M('mat:fridgeGlass', ()=>new T.MeshBasicMaterial({ color:0xcfe8ff, transparent:true, opacity:.22, blending:T.AdditiveBlending, depthWrite:false })));
+    glass.rotation.y = -Math.PI/2; glass.position.set(W/2 - 0.92, 1.2, -2.2); g.add(glass);
+    // comptoir, caisse, machine a cafe, vitrine chaude
+    const counter = new T.Mesh(M('geo:shopCounter', ()=>S().merge(T, [
+      { geo:new T.BoxGeometry(1.0, 1.05, 3.4), pos:[0, 0.52, 0], color:0x6a4a2e },
+      { geo:new T.BoxGeometry(1.1, 0.06, 3.5), pos:[0, 1.08, 0], color:0xd8d4cc },
+      { geo:new T.BoxGeometry(0.45, 0.35, 0.4), pos:[0, 1.28, -1.1], color:0x1a1a1e },
+      { geo:new T.BoxGeometry(0.5, 0.7, 0.5), pos:[0, 1.45, 1.1], color:0x9aa0a6 },
+      { geo:new T.BoxGeometry(0.9, 0.45, 1.0), pos:[0, 1.33, 0.1], color:0xffcf8a },
+    ])), vc('counter'));
+    counter.position.set(1.8, 0.05, 3.6); g.add(counter);
+    // affiches
+    const poster = (txt, col, x, z, ry)=>{ const c = document.createElement('canvas'); c.width = 256; c.height = 96; const k = c.getContext('2d'); k.fillStyle = col; k.fillRect(0, 0, 256, 96); k.fillStyle = '#fff'; k.font = '900 44px Arial'; k.textAlign = 'center'; k.textBaseline = 'middle'; k.fillText(txt, 128, 50); const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; const m = new T.Mesh(new T.PlaneGeometry(1.8, 0.68), new T.MeshBasicMaterial({ map:t })); m.position.set(x, 2.55, z); m.rotation.y = ry; g.add(m); };
+    const items = shopItems(route);
+    poster(items[0].label.split(' ')[0].toUpperCase(), '#b01818', W/2 - 0.06, 3.6, -Math.PI/2);
+    poster('SNACK', '#1f6ad8', 0, -D/2 + 0.06, 0);
+    return g;
+  }
+  // Articles de la boutique, prix reels par pays (monnaie de la route)
+  function shopItems(route){
+    const id = route.id, cur = route.currency || '€';
+    if(id === 'autostrada') return [
+      { ico:'☕', label:'Caffè espresso', price:1.40, effect:'coffee' }, { ico:'🥪', label:'Panino Camogli', price:6.90, effect:'food', pts:220 },
+      { ico:'🍕', label:'Trancio di pizza', price:4.50, effect:'food', pts:150 }, { ico:'💧', label:'Acqua minerale', price:1.50, effect:'drink' }, { ico:'🍦', label:'Gelato', price:3.00, effect:'food', pts:100 } ];
+    if(cur === 'CHF') return [
+      { ico:'☕', label:'Kaffee', price:4.60, effect:'coffee' }, { ico:'🥪', label:'Sandwich jambon', price:7.90, effect:'food', pts:220 },
+      { ico:'🥨', label:'Bretzel', price:3.20, effect:'food', pts:90 }, { ico:'🥤', label:'Rivella', price:3.50, effect:'drink' }, { ico:'🍫', label:'Chocolat suisse', price:2.90, effect:'food', pts:90 } ];
+    if(cur === '$') return [
+      { ico:'☕', label:'Coffee', price:2.49, effect:'coffee' }, { ico:'🍔', label:'Cheeseburger', price:7.99, effect:'food', pts:250 },
+      { ico:'🍩', label:'Donut', price:1.99, effect:'food', pts:80 }, { ico:'🥤', label:'Soda', price:2.29, effect:'drink' }, { ico:'🌭', label:'Hot dog', price:3.49, effect:'food', pts:120 } ];
+    if(cur === '¥') return [
+      { ico:'☕', label:'缶コーヒー', price:150, effect:'coffee' }, { ico:'🍙', label:'おにぎり', price:180, effect:'food', pts:90 },
+      { ico:'🍱', label:'弁当', price:590, effect:'food', pts:250 }, { ico:'🍵', label:'お茶', price:160, effect:'drink' }, { ico:'🍜', label:'カップ麺', price:230, effect:'food', pts:120 } ];
+    return [
+      { ico:'☕', label:'Café', price:2.50, effect:'coffee' }, { ico:'🥖', label:'Sandwich jambon-beurre', price:5.90, effect:'food', pts:200 },
+      { ico:'🥐', label:'Croissant', price:1.90, effect:'food', pts:80 }, { ico:'🥤', label:'Canette de soda', price:2.80, effect:'drink' }, { ico:'🍫', label:'Barre chocolatée', price:1.60, effect:'food', pts:60 } ];
+  }
+
+  DG.StopKit = { tollPlaza, fuelStation, speedCamera, policeCar, shopItems };
 
   // ---------- Route 66 ----------
   function saguaroGeo(T){
@@ -430,20 +588,46 @@
       ...[[-0.3, -0.7], [0.3, -0.7], [-0.3, 0.7], [0.3, 0.7]].map(([x, z])=>({ geo:new T.BoxGeometry(0.16, 0.65, 0.16), pos:[x, 0.33, z], color:body })),
     ]));
   }
-  // Tunnel routier (A2) : portail rocheux + tube eclaire de lampes au sodium,
-  // ombre du plafond sur la route (le plafond projette une ombre).
-  function roadTunnel(T, z, len){
+  // Tunnel routier realiste : voute elliptique (profil extrude), carrelage
+  // clair en bas des parois, rampes lumineuses continues, ventilateurs au
+  // plafond, niches SOS eclairees en vert, catadioptres, portail en beton avec
+  // le nom du tunnel dans une masse rocheuse. Le plafond projette son ombre.
+  function roadTunnel(T, z, len, name){
     const g = new T.Group();
-    const wallMat = M('std:tunnelWall', ()=>new T.MeshStandardMaterial({ color:0x6a6864, roughness:0.9 }));
-    const segs = Math.round(len / 2.5);
-    [-7.2, 7.2].forEach(x=>{ const w = new T.Mesh(new T.BoxGeometry(0.6, 7.4, len, 1, 1, segs), wallMat); w.position.set(x, 3.7, -len/2); w.castShadow = true; g.add(w); });
-    const ceil = new T.Mesh(new T.BoxGeometry(15, 0.6, len, 1, 1, segs), wallMat); ceil.position.set(0, 7.4, -len/2); ceil.castShadow = true; g.add(ceil);
-    const lampMat = M('bas:sodium', ()=>new T.MeshBasicMaterial({ color:0xffb050 }));
-    for(let k = 2; k < len; k += 6){ [-4.4, 4.4].forEach(x=>{ const l = new T.Mesh(M('geo:tunnelLamp', ()=>new T.BoxGeometry(0.4, 0.12, 1.4)), lampMat); l.position.set(x, 7.05, -k); g.add(l); }); }
-    // portail : masse rocheuse autour de l'ouverture
-    const rock = M('std:portalRock', ()=>new T.MeshStandardMaterial({ color:0x5e5a52, roughness:1 }));
-    [[-15, 9, 16, 18], [15, 9, 16, 18], [0, 12.2, 14.4, 9.6]].forEach(([x, y, w, h])=>{ const b = new T.Mesh(new T.BoxGeometry(w, h, 6), rock); b.position.set(x, y, -1); b.castShadow = true; g.add(b); });
-    const frame = new T.Mesh(new T.BoxGeometry(15.6, 0.8, 0.8), M('std:portalFrame', ()=>new T.MeshStandardMaterial({ color:0xb8b2a6, roughness:0.8 }))); frame.position.set(0, 7.8, 2.1); g.add(frame);
+    const steps = Math.round(len / 3);
+    const vault = M('geo:tunnelVault:' + len, ()=>{
+      const s = new T.Shape();
+      s.moveTo(-8.4, 0); s.lineTo(-8.4, 2.6); s.absellipse(0, 2.6, 8.4, 5.4, Math.PI, 0, true); s.lineTo(8.4, 0); s.lineTo(7.8, 0); s.lineTo(7.8, 2.6);
+      s.absellipse(0, 2.6, 7.8, 4.8, 0, Math.PI, false); s.lineTo(-7.8, 0); s.closePath();
+      const geo = new T.ExtrudeGeometry(s, { depth:len, steps, bevelEnabled:false, curveSegments:18 }); geo.translate(0, 0, -len); return geo;
+    });
+    const tube = new T.Mesh(vault, M('std:tunnelConcrete', ()=>new T.MeshStandardMaterial({ color:0x4a4a4c, roughness:0.95, side:T.DoubleSide })));
+    tube.castShadow = true; g.add(tube);
+    const tile = M('std:tunnelTile', ()=>new T.MeshStandardMaterial({ color:0xc8ccce, roughness:0.35, metalness:0.1 }));
+    [-7.72, 7.72].forEach(x=>{ const t = new T.Mesh(new T.BoxGeometry(0.1, 2.4, len, 1, 1, steps), tile); t.position.set(x, 1.4, -len/2); g.add(t); });
+    // rampes lumineuses continues (LED chaudes) de chaque cote de la voute
+    const led = M('bas:tunnelLed', ()=>new T.MeshBasicMaterial({ color:0xffd9a0 }));
+    [-5.6, 5.6].forEach(x=>{ const l = new T.Mesh(new T.BoxGeometry(0.25, 0.12, len - 4, 1, 1, steps), led); l.position.set(x, 6.9, -len/2); g.add(l); });
+    // ventilateurs (paires de cylindres) tous les 40
+    const fanMat = M('std:jetfan', ()=>new T.MeshStandardMaterial({ color:0x9aa0a6, metalness:0.7, roughness:0.35 }));
+    for(let k = 20; k < len - 10; k += 40){ [-1.4, 1.4].forEach(x=>{ const f = new T.Mesh(M('geo:jetfan', ()=>{ const c = new T.CylinderGeometry(0.55, 0.55, 3.6, 14); c.rotateX(Math.PI/2); return c; }), fanMat); f.position.set(x, 7.0, -k); g.add(f); }); }
+    // niches SOS vertes + catadioptres le long des parois
+    const sosMat = M('mat:sos', ()=>{ const c = document.createElement('canvas'); c.width = 64; c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#0a8a3a'; x.fillRect(0, 0, 64, 64); x.fillStyle = '#fff'; x.font = '900 22px Arial'; x.textAlign = 'center'; x.fillText('SOS', 32, 40); const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return new T.MeshBasicMaterial({ map:t, toneMapped:false }); });
+    for(let k = 12; k < len; k += 30){ const s = new T.Mesh(M('geo:sos', ()=>new T.PlaneGeometry(1.1, 1.1)), sosMat); s.rotation.y = -Math.PI/2; s.position.set(7.64, 1.9, -k); g.add(s); }
+    const refl = M('bas:tunnelRefl', ()=>new T.MeshBasicMaterial({ color:0xffa530 }));
+    for(let k = 3; k < len; k += 6){ [-7.64, 7.64].forEach(x=>{ const r = new T.Mesh(M('geo:tunnelRefl', ()=>new T.BoxGeometry(0.05, 0.12, 0.3)), refl); r.position.set(x, 0.8, -k); g.add(r); }); }
+    // portail : cadre en beton + nom, dans une masse rocheuse
+    const frame = new T.Mesh(M('geo:portalFrame', ()=>{
+      const s = new T.Shape();
+      s.moveTo(-9.6, 0); s.lineTo(-9.6, 2.6); s.absellipse(0, 2.6, 9.6, 6.6, Math.PI, 0, true); s.lineTo(9.6, 0); s.lineTo(8.4, 0); s.lineTo(8.4, 2.6);
+      s.absellipse(0, 2.6, 8.4, 5.4, 0, Math.PI, false); s.lineTo(-8.4, 0); s.closePath();
+      return new T.ExtrudeGeometry(s, { depth:1.2, bevelEnabled:false, curveSegments:18 });
+    }), M('std:portalFrame', ()=>new T.MeshStandardMaterial({ color:0xb8b2a6, roughness:0.8 })));
+    frame.position.z = 0.2; frame.castShadow = true; g.add(frame);
+    const plate = new T.Mesh(new T.PlaneGeometry(6, 0.9), new T.MeshBasicMaterial({ map:(()=>{ const c = document.createElement('canvas'); c.width = 384; c.height = 58; const x = c.getContext('2d'); x.fillStyle = '#e8e4da'; x.fillRect(0, 0, 384, 58); x.fillStyle = '#1a1a1a'; x.font = '900 36px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText((name || 'TUNNEL').toUpperCase(), 192, 31); const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return t; })() }));
+    plate.position.set(0, 9.3, 1.45); g.add(plate);
+    const rock = M('std:portalRock', ()=>new T.MeshStandardMaterial({ color:0x5e5a52, roughness:1, flatShading:true }));
+    [[-19, 10, 20, 20], [19, 10, 20, 20], [0, 15.5, 22, 9]].forEach(([x, y, w, h])=>{ const b = new T.Mesh(new T.DodecahedronGeometry(1, 1), rock); b.scale.set(w/2, h/2, 6); b.position.set(x, y - 2, -3); b.castShadow = true; g.add(b); });
     g.position.set(0, 0, z);
     return g;
   }
@@ -456,6 +640,8 @@
     // voie CFF (train rouge qui croise), villages vignerons et vignes du Jura.
     {
       id:'lac-neuchatel', name:'Lac de Neuchâtel', difficulty:'Détente', spacing:9,
+      currency:'CHF', coinValue:0.95, fuelPrices:[1.86, 1.97, 1.91], fuelLabels:['BLEIFREI 95', 'BLEIFREI 98', 'DIESEL'], fuelColor:0xc8101e, fuelColor2:0xf4f4f4, fuelBrand:'Station-service', fuelStationName:'Station du Littoral',
+      radars:{ limit:80, style:'ch', police:'Police neuchâteloise', policeStyle:'ch', chaseOver:30, every:1500, fine:(o)=> o <= 5 ? 40 : o <= 10 ? 100 : o <= 15 ? 160 : o <= 20 ? 240 : 600 },
       fog:0xbcd2e2, fogNear:40, fogFar:190, ground:0x3f6a2c, exposure:0.9,
       road:0x24262c, stripe:0xf2f2ee, edge:0x55585e, edgeEmissive:0x000000,
       sky:{ top:0x0a3272, mid:0x3a78c4, bottom:0xc4dcf0, glow:0xfff0d0, glowI:0.5, band:0.07 },
@@ -579,7 +765,8 @@
       sky:{ top:0x123e8a, mid:0x5a8ac8, bottom:0xe8dcc0, glow:0xffd090, glowI:0.55, band:0.08 },
       light:{ key:0xffe2bc, keyI:1.55, hemiSky:0xcfdcff, hemiGround:0x4a4a2a, hemiI:0.5, ambient:0xfff0dc, ambientI:0.2 },
       headlights:0, bend:{ y:0.25 }, // plaine du Po : quasi pas de relief
-      fuelPrice:1.84, fuelLabels:['GASOLIO', 'BENZINA', 'GPL'], fuelColor:0x1a6a3a, fuelBrand:'Stazione di servizio', fuelStationName:'Area di servizio',
+      fuelPrices:[1.94, 1.85, 0.79], fuelLabels:['BENZINA', 'GASOLIO', 'GPL'], fuelColor:0x1a6a3a, fuelBrand:'Stazione di servizio', fuelStationName:'Area di servizio',
+      radars:{ limit:130, style:'it', police:'Polizia Stradale', policeStyle:'it', chaseOver:60, every:1500, fine:(o)=> o <= 10 ? 42 : o <= 40 ? 173 : o <= 60 ? 543 : 845 },
       celestial:{ color:0xfff2d0, halo:0xffc878, size:24, x:-70, y:34, haloOp:.38 },
       horizonGlow:{ color:0xffe0b0, op:.2, y:5, w:340, h:36 },
       groundTex(T){ return { tex:S().grassTex(T), rx:34, ry:32 }; },
@@ -587,11 +774,11 @@
         road:'A1', from:'Bologna', to:'Milano', unitsPerKm:22, pricePerKm:0.078, operator:"Autostrade per l'Italia",
         stops:[
           { name:'Modena Nord', km:39 },
-          { name:'Casello di Parma', km:92, toll:true },
+          { name:'Casello di Parma', km:92, toll:true, price:7.30 },
           { name:'Fiorenzuola', km:125 },
-          { name:'Piacenza Sud', km:150, toll:true },
+          { name:'Piacenza Sud', km:150, toll:true, price:4.10 },
           { name:'Lodi', km:180 },
-          { name:'Barriera di Milano Sud', km:205, toll:true }
+          { name:'Barriera di Milano Sud', km:205, toll:true, price:5.20 }
         ]
       },
       tollPlaza(T, stop){ return tollPlaza(T, stop); },
@@ -745,7 +932,8 @@
       sky:{ top:0x1a3a8a, mid:0x6a8ac8, bottom:0xffb070, glow:0xffa050, glowI:0.7, band:0.08 },
       light:{ key:0xffc890, keyI:1.6, hemiSky:0xffd0a8, hemiGround:0x5a2a14, hemiI:0.5, ambient:0xffe0c0, ambientI:0.22 },
       headlights:0.3, bend:{ y:1.2, yf:1.4 }, dips:{ amp:2.6, len:110 }, // ligne droite infinie qui plonge et remonte dans les creux du desert
-      currency:'$', fuelPrice:0.95, fuelLabels:['REGULAR', 'PLUS', 'DIESEL'], fuelColor:0xb01818, fuelColor2:0xf4f2ea, fuelBrand:'Gas station', fuelStationName:'Route 66 Gas & Diner',
+      currency:'$', coinValue:1.1, fuelUnit:'gal', fuelPrices:[3.39, 3.79, 3.89], fuelLabels:['REGULAR', 'PLUS', 'DIESEL'],
+      radars:{ limit:105, unitLabel:'mph', style:'us', police:'Arizona Highway Patrol', policeStyle:'us', chaseOver:40, every:1400, fine:(o)=>{ const mph = o / 1.609; return mph < 15 ? 150 : mph < 25 ? 250 : 400; } }, fuelColor:0xb01818, fuelColor2:0xf4f2ea, fuelBrand:'Gas station', fuelStationName:'Route 66 Gas & Diner',
       celestial:{ color:0xfff0c8, halo:0xff9a40, size:32, x:60, y:14, haloOp:.5 },
       horizonGlow:{ color:0xff9a50, op:.3, y:4, w:360, h:40 },
       groundTex(T){ return { tex:S().sandTex(T), rx:40, ry:36 }; },
@@ -832,6 +1020,8 @@
     // kilometriques, et le Mont Ventoux a la cime blanche au loin.
     {
       id:'provence', name:'Route de Provence', difficulty:'Standard', spacing:9,
+      fuelPrices:[1.79, 1.89, 1.99], fuelLabels:['GAZOLE', 'SP95-E10', 'SP98'], fuelDefault:1, fuelColor:0x1a4fa8, fuelColor2:0xff7a00, fuelStationName:'Station du village',
+      radars:{ limit:80, style:'fr', police:'Gendarmerie', policeStyle:'fr', chaseOver:50, every:1500, fine:(o)=> o < 20 ? 68 : o < 50 ? 135 : 1500 },
       fog:0xd4e0ea, fogNear:40, fogFar:190, ground:0x7a6a42, exposure:0.9,
       road:0x2c2c30, stripe:0xf4f4ee, edge:0x6a6660, edgeEmissive:0x000000,
       sky:{ top:0x0a3a9a, mid:0x3a86e0, bottom:0xcfe2f2, glow:0xfff4d8, glowI:0.45, band:0.07 },
@@ -908,17 +1098,18 @@
       celestial:{ color:0xfffcf0, halo:0xfff4d0, size:22, x:60, y:62, haloOp:.3 },
       horizonGlow:{ color:0xffffff, op:.1, y:6, w:340, h:36 },
       groundTex(T){ return { tex:S().grassTex(T), rx:34, ry:32 }; },
-      fuelPrice:1.89, fuelLabels:['GAZOLE', 'SP95-E10', 'SP98'], fuelColor:0x1a4fa8, fuelColor2:0xff7a00, fuelBrand:'Station-service', fuelStationName:'Aire de service',
+      fuelPrices:[1.86, 1.96, 2.06], fuelLabels:['GAZOLE', 'SP95-E10', 'SP98'], fuelDefault:1, fuelColor:0x1a4fa8, fuelColor2:0xff7a00, fuelBrand:'Station-service', fuelStationName:'Aire de service',
+      radars:{ limit:130, style:'fr', police:'Gendarmerie nationale', policeStyle:'fr', chaseOver:50, every:1500, fine:(o)=> o < 20 ? 68 : o < 50 ? 135 : 1500 },
       tollStyle:{ bg:'#1c4fa8', title:'PÉAGE', accent:'#ff7a00', left:'t', right:'CB' },
       journey:{
         road:'A7', from:'Lyon', to:'Marseille', unitsPerKm:20, pricePerKm:0.095, operator:'Autoroutes du Sud',
         stops:[
-          { name:'Péage de Vienne-Reventin', km:34, toll:true },
+          { name:'Péage de Vienne-Reventin', km:34, toll:true, price:3.40 },
           { name:'Valence Nord', km:98 },
           { name:'Montélimar Sud', km:152 },
           { name:'Orange', km:204 },
           { name:'Avignon Nord', km:226 },
-          { name:'Péage de Lançon', km:288, toll:true },
+          { name:'Péage de Lançon', km:288, toll:true, price:27.90 },
           { name:'Marseille', km:318 }
         ]
       },
@@ -985,7 +1176,8 @@
       celestial:{ color:0xfffcf0, halo:0xfff4d0, size:22, x:-50, y:66, haloOp:.3 },
       horizonGlow:{ color:0xffffff, op:.1, y:6, w:340, h:36 },
       groundTex(T){ return { tex:S().grassTex(T), rx:34, ry:32 }; },
-      currency:'CHF', fuelPrice:1.95, fuelLabels:['DIESEL', 'BLEIFREI 95', 'BLEIFREI 98'], fuelColor:0xc8101e, fuelColor2:0xf4f4f4, fuelBrand:'Tankstelle', fuelStationName:'Raststätte',
+      currency:'CHF', coinValue:0.95, fuelPrices:[1.88, 1.99, 1.93], fuelLabels:['BLEIFREI 95', 'BLEIFREI 98', 'DIESEL'],
+      radars:{ limit:120, style:'ch', police:'Kantonspolizei Uri', policeStyle:'ch', chaseOver:30, every:1500, fine:(o)=> o <= 5 ? 20 : o <= 10 ? 60 : o <= 15 ? 120 : o <= 20 ? 180 : o <= 25 ? 260 : 600 }, fuelColor:0xc8101e, fuelColor2:0xf4f4f4, fuelBrand:'Tankstelle', fuelStationName:'Raststätte',
       journey:{
         road:'A2', from:'Basel', to:'Lugano', unitsPerKm:18, pricePerKm:0, currency:'CHF',
         intro:'🇨🇭 Vignette ✓ — pas de péage sur les autoroutes suisses',
@@ -1023,7 +1215,7 @@
           if(i % 3 === 1){ const c = new T.Mesh(chaletGeo(T), vc('chalet')); c.position.set(20 + Math.random()*14, 0, z); c.rotation.y = Math.random() < 0.3 ? Math.PI : 0; add(c); }
           if(i === 4 || i === 12) add(journeyGantry(T, z, '#0a7a3a', wrap * N * 2, null));
           // tunnel (repere rare) : on passe dedans, le plafond fait de l'ombre
-          if(i === 8){ const t = roadTunnel(T, z, 80); t.userData.wrapDist = wrap * N * 3; add(t); }
+          if(i === 8){ const t = roadTunnel(T, z, 90, 'San Gottardo'); t.userData.wrapDist = wrap * N * 3; add(t); }
         }
         // forets d'epiceas et vaches dans les alpages
         add(Sc.strip(T, spruceGeo(T), vc('spruce'), 40, 18, (d, c, i)=>placeRow(d, c, i % 2 ? 1 : -1, 12, 40, 40)));
