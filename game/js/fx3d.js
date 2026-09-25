@@ -102,7 +102,7 @@
     const T = window.THREE;
     if(!player) return;
     player.updateMatrixWorld(true);
-    const box = new T.Box3().setFromObject(player);
+    const box = DG.Loader && DG.Loader.worldBox ? DG.Loader.worldBox(T, player) : new T.Box3().setFromObject(player);
     const size = new T.Vector3(); box.getSize(size);
     const glow = car && car.glow != null ? car.glow : 0x66ccff;
     this._underMat.color.setHex(glow);

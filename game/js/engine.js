@@ -620,7 +620,7 @@
     const T = window.THREE;
     const wrap = this._player;
     wrap.updateMatrixWorld(true);
-    const box = new T.Box3().setFromObject(wrap);
+    const box = DG.Loader.worldBox(T, wrap);
     const zLen = box.max.z - box.min.z;
     const xLen = box.max.x - box.min.x;
     // Quelques exports (ex: Supra Dekztrax) embarquent un residu de geometrie
@@ -635,7 +635,7 @@
     let maxBodyY = box.min.y;
     wrap.traverse(n=>{
       if(!n.isMesh) return;
-      const b = new T.Box3().setFromObject(n);
+      const b = DG.Loader.worldBox(T, n);
       if(!isFinite(b.max.y)) return;
       if((b.max.x-b.min.x) > xLen*0.9 && (b.max.z-b.min.z) > zLen*0.9) return;
       if(b.max.y > maxBodyY) maxBodyY = b.max.y;
@@ -763,7 +763,7 @@
       this._blinkMat = new T.SpriteMaterial({ map:glow(T), color:0xffa21a, transparent:true, opacity:1, blending:T.AdditiveBlending, depthWrite:false });
     }
     wrap.updateMatrixWorld(true);
-    const box = new T.Box3().setFromObject(wrap);
+    const box = DG.Loader.worldBox(T, wrap);
     const sx = box.max.x - box.min.x, sy = box.max.y - box.min.y;
     const y = box.min.y + Math.min(sy * 0.42, 1.1), z = box.max.z + 0.03;
     [-1, 1].forEach(side=>{

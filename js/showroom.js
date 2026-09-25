@@ -85,10 +85,28 @@
   // .getComponent() n'existe que sur BufferAttribute, pas sur InterleavedBufferAttribute
   // (frequent pour les attributs skinIndex/skinWeight issus de GLTFLoader) : on passe par
   // getX/getY/getZ/getW, supportes par les deux.
-  function attrComp(attr, i, k){
-    switch(k){ case 0: return attr.getX(i); case 1: return attr.getY(i); case 2: return attr.getZ(i); default: return attr.getW(i); }
+  // Attributs quantifies (KHR_mesh_quantization, frequents dans les .glb compresses) :
+  // stockes en entiers "normalized" que le GPU ramene a [-1,1] / [0,1], mais que
+  // getX() de three.js r128 renvoie BRUTS (ex. 0..32767). On applique la meme
+  // conversion que le GPU pour mesurer les vraies positions / poids.
+  function normScale(attr){
+    if(!attr.normalized) return 1;
+    const a = attr.array || (attr.data && attr.data.array);
+    if(a instanceof Int8Array) return 1 / 127;
+    if(a instanceof Uint8Array) return 1 / 255;
+    if(a instanceof Int16Array) return 1 / 32767;
+    if(a instanceof Uint16Array) return 1 / 65535;
+    return 1;
+  }
+  function attrComp(attr, i, k, sc){
+    const raw = k === 0 ? attr.getX(i) : k === 1 ? attr.getY(i) : k === 2 ? attr.getZ(i) : attr.getW(i);
+    return sc === 1 || sc === undefined ? raw : Math.max(raw * sc, -1);
   }
 
+  // Boite englobante mesuree sur les VRAIS sommets, et non sur la boite stockee
+  // dans le fichier : certains exports (ex. Pagani Huayra BC) ont des boites
+  // min/max bien plus grandes que la geometrie reelle, ce qui faisait flotter la
+  // voiture au-dessus du sol une fois posee dessus.
   function worldBox(T, root){
     const box = new T.Box3();
     const v = new T.Vector3();
@@ -99,19 +117,24 @@
       if(!n.isMesh) return;
       const geo = n.geometry;
       const pos = geo && geo.attributes && geo.attributes.position;
-      if(!n.isSkinnedMesh || !n.skeleton || !pos || !geo.attributes.skinIndex || !geo.attributes.skinWeight){
-        box.expandByObject(n);
+      if(!pos){ box.expandByObject(n); return; }
+      const ps = normScale(pos);
+      if(!n.isSkinnedMesh || !n.skeleton || !geo.attributes.skinIndex || !geo.attributes.skinWeight){
+        for(let i=0;i<pos.count;i++){
+          v.set(attrComp(pos, i, 0, ps), attrComp(pos, i, 1, ps), attrComp(pos, i, 2, ps)).applyMatrix4(n.matrixWorld);
+          box.expandByPoint(v);
+        }
         return;
       }
       n.skeleton.update();
       const boneMatrices = n.skeleton.boneMatrices;
-      const skinIndex = geo.attributes.skinIndex, skinWeight = geo.attributes.skinWeight;
+      const skinIndex = geo.attributes.skinIndex, skinWeight = geo.attributes.skinWeight, ws = normScale(skinWeight);
       for(let i=0;i<pos.count;i++){
-        v.fromBufferAttribute(pos, i);
+        v.set(attrComp(pos, i, 0, ps), attrComp(pos, i, 1, ps), attrComp(pos, i, 2, ps));
         tmp4.set(v.x, v.y, v.z, 1).applyMatrix4(n.bindMatrix);
         acc.set(0,0,0,0);
         for(let k=0;k<4;k++){
-          const weight = attrComp(skinWeight, i, k);
+          const weight = attrComp(skinWeight, i, k, ws);
           if(!weight) continue;
           boneMat.fromArray(boneMatrices, attrComp(skinIndex, i, k) * 16);
           const px=tmp4.x, py=tmp4.y, pz=tmp4.z, pw=tmp4.w, e=boneMat.elements;
@@ -208,7 +231,7 @@
   Showroom.prototype.makeStage = function(car){
     const T = window.THREE;
     car.updateMatrixWorld(true);
-    const box = new T.Box3().setFromObject(car);
+    const box = worldBox(T, car);
     const floorY = isFinite(box.min.y) ? box.min.y + 0.01 : -0.6;
     // Centre sur le pivot de la voiture (elle tourne autour), pas sur sa boite du moment
     const cx = car.position.x, cz = car.position.z;
@@ -329,7 +352,7 @@
       body = m ? self0.normalizeModel(m, 4.6, def.rotY || 0) : new T.Group();
       car.add(body);
       const sc = car.scale.x; car.scale.setScalar(1); car.updateMatrixWorld(true);
-      const bb = new T.Box3().setFromObject(body);
+      const bb = worldBox(T, body);
       if(isFinite(bb.min.y)) stage.position.y = bb.min.y + 0.01;
       car.scale.setScalar(sc);
       scaleTarget = 1;

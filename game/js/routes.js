@@ -279,8 +279,29 @@
   function loadUmbrellaModel(){ if(!_umbrellaModelP) _umbrellaModelP = DG.Loader.loadModel('../uploads/umbrella_wooden_chair.glb'); return _umbrellaModelP; }
   function loadGasStationModel(){ if(!_gasStationModelP) _gasStationModelP = DG.Loader.loadModel('../uploads/gas-station.glb'); return _gasStationModelP; }
   function loadLampModel(){ if(!_lampModelP) _lampModelP = DG.Loader.loadModel('../uploads/lampadaire.glb'); return _lampModelP; }
-  function loadCyberBuilding(){ if(!_cyberBuildingP) _cyberBuildingP = DG.Loader.loadModel('../uploads/g1_cyberpunk_building.glb'); return _cyberBuildingP; }
-  function loadSingaporeBuilding(){ if(!_singaporeBuildingP) _singaporeBuildingP = DG.Loader.loadModel('../uploads/singapore_office_skyscraper_free.glb'); return _singaporeBuildingP; }
+  // La facade du modele cyberpunk est gris clair (#e7e7e7) : de nuit elle
+  // ressortait presque blanche, comme eclairee en plein jour. On l'assombrit une
+  // fois pour toutes (materiau partage par tous les clones) ; ses bandes
+  // lumineuses rouge/cyan, elles, restent intactes.
+  function loadCyberBuilding(){
+    if(!_cyberBuildingP) _cyberBuildingP = DG.Loader.loadModel('../uploads/g1_cyberpunk_building.glb').then(src=>{
+      if(src) src.traverse(n=>{
+        if(!n.isMesh || !n.material || n.material.name !== 'FrontColor') return;
+        n.material.color.setHex(0x030206); n.material.roughness = 0.85; n.material.metalness = 0.15;
+      });
+      return src;
+    });
+    return _cyberBuildingP;
+  }
+  // Meme probleme pour la tour de Singapour (textures claires de jour) : on
+  // assombrit tout sauf les materiaux qui ont deja des fenetres lumineuses.
+  function loadSingaporeBuilding(){
+    if(!_singaporeBuildingP) _singaporeBuildingP = DG.Loader.loadModel('../uploads/singapore_office_skyscraper_free.glb').then(src=>{
+      if(src) src.traverse(n=>{ if(n.isMesh && n.material && !n.material.emissiveMap && n.material.color) n.material.color.setHex(0x1c1826); });
+      return src;
+    });
+    return _singaporeBuildingP;
+  }
   function loadAsianSkyline(){ if(!_asianSkylineP) _asianSkylineP = DG.Loader.loadModel('../uploads/asian_themed_low_poly_night_city_buildings.glb'); return _asianSkylineP; }
 
   // Redimensionne un modele charge a une HAUTEUR cible (palmier/parasol : ce qui
@@ -378,6 +399,27 @@
   const NEON_BANNERS = ['NIGHT MARKET', 'CYBER · CAFÉ', 'PHARMACIE 24/7', 'HOTEL LUMIÈRE', 'ARCADE ∞', 'RAMEN · BAR'];
   let _neonSignI = 0;
 
+  // Animation des enseignes d'un bloc : quelques tubes "fatigues" qui gresillent
+  // (micro-coupures irregulieres) et des bandeaux qui respirent doucement. On
+  // anime la COULEUR du materiau (propre a chaque enseigne) : la fusion des
+  // pieces fixes du bloc (mergeStatic) la conserve, donc aucun cout de dessin.
+  function animateSign(G, mat, mode){
+    const list = G.userData.signFx || (G.userData.signFx = []);
+    list.push({ mat, mode, ph:Math.random() * 10 });
+    if(G.userData.tick) return;
+    G.userData.tick = (t)=>{
+      for(const f of G.userData.signFx){
+        let v = 1;
+        if(f.mode === 'flicker'){
+          const u = (t + f.ph) % 5.3;
+          if(u < 0.55) v = Math.sin(u * 97 + f.ph) > 0.1 ? 1 : 0.15;
+          else if(u > 3.1 && u < 3.18) v = 0.3;
+        } else v = 0.72 + 0.28 * Math.sin(t * 1.7 + f.ph);
+        f.mat.color.setScalar(v);
+      }
+    };
+  }
+
   // Enseignes d'un immeuble : enseigne "drapeau" verticale qui sort de la
   // facade cote route (+ son halo et son reflet sur le trottoir mouille), et
   // parfois un bandeau horizontal plaque sur la facade. inner = distance du
@@ -391,6 +433,7 @@
     const cy = Math.min(maxY - signH/2, 5.4 + signH/2 + Math.random()*4);
     const blade = new T.Mesh(M('geo:unitPlane', ()=>new T.PlaneGeometry(1, 1)), new T.MeshBasicMaterial({ map:S().bladeSignTex(T, NEON_WORDS[k % NEON_WORDS.length], col), side:T.DoubleSide }));
     blade.scale.set(signW, signH, 1); blade.position.set(sx, cy, 0); G.add(blade);
+    if(k % 4 === 1) animateSign(G, blade.material, 'flicker');
     const refl = wetStreak(T, col, 1.1, 7, 0.42);
     refl.position.set(sx, 0.118, 3.5); G.add(refl);
     if(Math.random() < 0.45 && h > 8){
@@ -400,8 +443,71 @@
       banner.rotation.y = -side*Math.PI/2;
       banner.position.set(-side*(inner + 0.06), 3.4 + Math.random()*1.2, (Math.random()-.5)*1.2);
       G.add(banner);
+      if(k % 2 === 0) animateSign(G, banner.material, 'pulse');
     }
+    // Ecran hologramme geant sur la facade (1 immeuble sur 3 environ)
+    if(k % 3 === 0 && h > 12) holoScreen(T, G, side, inner, h, k);
   }
+
+  // Ecran publicitaire accroche a la facade cote route, tourne a 45 degres vers
+  // les voitures qui arrivent (a plat contre la facade, on ne le voyait que par
+  // la tranche) : texture partagee dont les pubs defilent (ticker de la route),
+  // halo colore devant, reflet au sol.
+  function holoScreen(T, G, side, inner, h, k){
+    const w = 3.2, hh = 4.6;
+    const y = Math.min(h - hh/2 - 1, 9 + Math.random() * 4);
+    const scr = new T.Mesh(M('geo:unitPlane', ()=>new T.PlaneGeometry(1, 1)), M('mat:holo' + (k % 2), ()=>new T.MeshBasicMaterial({ map:S().holoAdTex(T, k % 2), toneMapped:false })));
+    scr.scale.set(w, hh, 1);
+    scr.rotation.y = -side*Math.PI/4;
+    scr.position.set(-side*(inner + w*0.38), y, 1.2);
+    G.add(scr);
+    const col = NEON[(k + 3) % NEON.length];
+    const halo = new T.Sprite(new T.SpriteMaterial({ map:S().glow(T), color:col, transparent:true, opacity:.4, blending:T.AdditiveBlending, depthWrite:false }));
+    halo.scale.set(w * 2.2, hh * 1.6, 1); halo.position.set(-side*(inner + 0.9), y, scr.position.z); G.add(halo);
+    const refl = wetStreak(T, col, 2.2, 9, 0.32);
+    refl.position.set(-side*(inner + 1.8), 0.118, 3); G.add(refl);
+  }
+
+  // Guirlande de lanternes en papier tendue au-dessus de la rue (ambiance
+  // marche de nuit) : cable qui pend en chainette + lanternes chaudes, qui
+  // contrastent avec les neons froids. Tout est fixe -> fusionne en 2-3 dessins.
+  function lanternString(T, z){
+    const g = new T.Group();
+    const span = 15, top = 7.6, sag = 1.1, n = 9;
+    const at = (u)=>({ x:-span/2 + u*span, y:top - sag * 4 * u * (1 - u) });
+    const pts = [];
+    for(let i = 0; i <= 24; i++){ const p = at(i/24); pts.push(new T.Vector3(p.x, p.y, 0)); }
+    g.add(new T.Line(new T.BufferGeometry().setFromPoints(pts), M('line:cable', ()=>new T.LineBasicMaterial({ color:0x05030a }))));
+    const warm = [0xff3b2a, 0xff7a1a, 0xff3b2a, 0xffc23d];
+    for(let i = 1; i < n; i++){
+      const p = at(i/n), col = warm[i % warm.length];
+      const body = new T.Mesh(M('geo:lantern', ()=>new T.CylinderGeometry(0.2, 0.2, 0.46, 10)), basic(col));
+      body.position.set(p.x, p.y - 0.34, 0); g.add(body);
+      const cap = new T.Mesh(M('geo:lanternCap', ()=>new T.CylinderGeometry(0.12, 0.12, 0.06, 8)), basic(0x1a0c06));
+      cap.position.set(p.x, p.y - 0.08, 0); g.add(cap);
+      const glowS = new T.Sprite(new T.SpriteMaterial({ map:S().glow(T), color:col, transparent:true, opacity:.55, blending:T.AdditiveBlending, depthWrite:false }));
+      glowS.scale.set(1.6, 1.6, 1); glowS.position.set(p.x, p.y - 0.34, 0); g.add(glowS);
+    }
+    g.position.set(0, 0, z);
+    return g;
+  }
+
+  // Distributeur de boissons sur le trottoir : caisson sombre + facade eclairee
+  // (MeshBasic : lumineux sans lumiere dynamique) et sa flaque de lumiere.
+  function vendingMachine(T, x, z, colorHex){
+    const g = new T.Group();
+    const side = x < 0 ? -1 : 1;
+    const body = new T.Mesh(M('geo:vendBody', ()=>{ const b = new T.BoxGeometry(0.9, 1.9, 0.7); b.translate(0, 0.95, 0); return b; }), M('std:vendBody', ()=>new T.MeshStandardMaterial({ color:0x1a1d26, roughness:0.4, metalness:0.6 })));
+    g.add(body);
+    const face = new T.Mesh(M('geo:unitPlane', ()=>new T.PlaneGeometry(1, 1)), M('mat:vend' + colorHex, ()=>new T.MeshBasicMaterial({ map:S().vendingTex(T, colorHex), toneMapped:false })));
+    face.scale.set(0.78, 1.62, 1); face.position.set(0, 1.0, 0.356); g.add(face);
+    const pool = new T.Mesh(M('geo:pool', ()=>new T.PlaneGeometry(1, 1)), additive('pool', S().pool(T), colorHex, 0.5));
+    pool.rotation.x = -Math.PI/2; pool.scale.set(2.2, 2.2, 1); pool.position.set(0, 0.12, 1.0); g.add(pool);
+    g.rotation.y = -side * Math.PI/2; // facade tournee vers la route
+    g.position.set(x, 0, z);
+    return g;
+  }
+
 
   // Batiment de la rue neon : pioche au hasard entre le batiment procedural
   // (fenetres neon generees) et 2 vrais modeles .glb — sinon c'etait toujours
@@ -481,6 +587,29 @@
     halo.scale.set(16, 5, 1); halo.position.set(0, 8.4, 0); g.add(halo);
     const refl = wetStreak(T, 0x3df0ff, 3.2, 14, 0.28); refl.position.set(0, 0.03, 7); g.add(refl);
     g.position.set(0, 0, z);
+    return g;
+  }
+
+  // Essaim de lucioles a l'oree du bois : points vert-jaune qui flottent et
+  // s'allument/s'eteignent chacun a son rythme (sprites, anime par tick).
+  function fireflies(T, x, z){
+    const g = new T.Group();
+    const mat = M('spr:firefly', ()=>new T.SpriteMaterial({ map:S().glow(T), color:0xd8ff6a, transparent:true, blending:T.AdditiveBlending, depthWrite:false }));
+    const bugs = [];
+    for(let k = 0; k < 7; k++){
+      // materiau propre a chaque luciole : chacune clignote a son rythme
+      const s = new T.Sprite(k ? mat.clone() : mat);
+      s.scale.set(0.32, 0.32, 1); g.add(s);
+      bugs.push({ s, ox:(Math.random()-.5)*3, oy:0.5 + Math.random()*1.6, oz:(Math.random()-.5)*5, ph:Math.random()*20 });
+    }
+    g.userData.tick = (t)=>{
+      for(const b of bugs){
+        b.s.position.set(b.ox + Math.sin(t*0.7 + b.ph)*0.5, b.oy + Math.sin(t*1.1 + b.ph*1.3)*0.3, b.oz + Math.cos(t*0.5 + b.ph)*0.5);
+        const f = (t*0.45 + b.ph) % 1;
+        b.s.material.opacity = f < 0.45 ? Math.sin(f / 0.45 * Math.PI) : 0.05;
+      }
+    };
+    g.position.set(x, 0, z);
     return g;
   }
 
@@ -605,6 +734,27 @@
           const s = ctx.add(new T.Sprite(new T.SpriteMaterial({ map:Sc.cloud(T), color:col, transparent:true, opacity:op, depthWrite:false, fog:false })));
           s.scale.set(w, w*0.3, 1); s.position.set(x, y, -210);
         });
+        // Etoiles filantes : une trainee traverse le ciel toutes les 4 a 10 s.
+        // Tete brillante a l'origine du plan, queue qui s'estompe derriere.
+        const shootGeo = new T.PlaneGeometry(0.45, 18); shootGeo.translate(0, 9, 0);
+        const shoot = ctx.add(new T.Mesh(shootGeo, new T.MeshBasicMaterial({ map:Sc.beamTex(T), color:0xe6eeff, transparent:true, opacity:0, blending:T.AdditiveBlending, depthWrite:false, fog:false, side:T.DoubleSide })));
+        const star = { wait:3, life:0, dx:0, dy:0 };
+        ctx.tick((dt)=>{
+          if(star.wait > 0){
+            star.wait -= dt;
+            if(star.wait <= 0){
+              const phi = (Math.random() < 0.5 ? -1 : 1) * (0.7 + Math.random()*0.5);
+              shoot.rotation.z = phi;
+              shoot.position.set((Math.random()-.5)*200, 80 + Math.random()*40, -215);
+              star.dx = Math.sin(phi) * 110; star.dy = -Math.cos(phi) * 110; star.life = 0;
+            }
+            return;
+          }
+          star.life += dt / 0.85;
+          shoot.position.x += star.dx * dt; shoot.position.y += star.dy * dt;
+          shoot.material.opacity = Math.sin(Math.min(1, star.life) * Math.PI) * 0.9;
+          if(star.life >= 1){ shoot.material.opacity = 0; star.wait = 4 + Math.random()*6; }
+        });
       },
       buildDecor(T, scene, N){
         const items = [];
@@ -657,6 +807,7 @@
           if(i % 5 === 0){
             add(streetlight(T, side*5.9, z - 3, 0xffc36b));
           }
+          if(i % 3 === 2) add(fireflies(T, side*(7 + Math.random()*2.5), z));
 
           if(i === 4 || i === 12){
             const gt = gantry(T, z - 1);
@@ -795,7 +946,15 @@
         if(lighthouse){
           const lh = ctx.add(new T.Sprite(new T.SpriteMaterial({ map:Sc.glow(T), color:0xfff0c0, transparent:true, opacity:1, blending:T.AdditiveBlending, depthWrite:false, fog:false })));
           lh.position.copy(farMesh.userData.worldAt(lighthouse[0], lighthouse[1])); lh.scale.set(5, 5, 1);
-          ctx.tick((dt, t)=>{ const k = Math.pow(Math.max(0, Math.sin(t*1.6)), 6); lh.material.opacity = 0.2 + k*0.8; lh.scale.set(4 + k*6, 4 + k*6, 1); });
+          // Faisceau qui balaie la mer : il pointe vers nous (vu en raccourci) au
+          // moment de l'eclat, et s'allonge sur le cote le reste du temps.
+          const beamGeo = new T.PlaneGeometry(2.2, 70); beamGeo.translate(0, 35, 0); beamGeo.rotateX(-Math.PI/2);
+          const beam = ctx.add(new T.Mesh(beamGeo, new T.MeshBasicMaterial({ map:Sc.beamTex(T), color:0xfff0c0, transparent:true, opacity:.22, blending:T.AdditiveBlending, depthWrite:false, fog:false, side:T.DoubleSide })));
+          beam.position.copy(lh.position);
+          ctx.tick((dt, t)=>{
+            const k = Math.pow(Math.max(0, Math.sin(t*1.6)), 6); lh.material.opacity = 0.2 + k*0.8; lh.scale.set(4 + k*6, 4 + k*6, 1);
+            beam.rotation.y = t*1.6 - Math.PI/2 + Math.PI;
+          });
         }
         ctx.add(Sc.silhouette(T, {
           radius:190, height:44, yBase:-6, peak:16, top:0x4a2248, bottom:fog, rim:0xff9a6a, rimA:.35,
@@ -805,6 +964,21 @@
         [[20, 26, 90, 0.6, 0xff7a40], [75, 34, 80, 0.55, 0xff6a4a], [-40, 42, 110, 0.5, 0xa03a5a], [-110, 30, 90, 0.45, 0x802a50], [130, 48, 100, 0.45, 0x902e58], [-10, 70, 130, 0.35, 0x4a1a48], [60, 58, 70, 0.5, 0xff8060]].forEach(([x, y, w, op, col])=>{
           const s = ctx.add(new T.Sprite(new T.SpriteMaterial({ map:Sc.cloud(T), color:col, transparent:true, opacity:op, depthWrite:false, fog:false })));
           s.scale.set(w, w*0.22, 1); s.position.set(x, y, -205);
+        });
+        // Mouettes en contre-jour : planent en larges boucles et battent des
+        // ailes de temps en temps (on ecrase le sprite en hauteur).
+        const gulls = [];
+        for(let k = 0; k < 6; k++){
+          const s = ctx.add(new T.Sprite(new T.SpriteMaterial({ map:Sc.gullTex(T), transparent:true, depthWrite:false, fog:false })));
+          gulls.push({ s, cx:-30 + Math.random()*90, cy:22 + Math.random()*22, r:8 + Math.random()*14, z:-90 - Math.random()*60, sp:0.12 + Math.random()*0.1, ph:Math.random()*6.3, size:2.2 + Math.random()*1.4 });
+        }
+        ctx.tick((dt, t)=>{
+          for(const q of gulls){
+            const a = t*q.sp + q.ph;
+            q.s.position.set(q.cx + Math.cos(a)*q.r, q.cy + Math.sin(a*2)*2.5, q.z);
+            const flap = (t*0.6 + q.ph) % 3 < 1 ? 0.55 + 0.45*Math.abs(Math.sin(t*9 + q.ph)) : 1;
+            q.s.scale.set(q.size, q.size*0.5*flap, 1);
+          }
         });
       },
       // Cote fixe : l'ocean reste toujours du meme cote de la route (comme une
@@ -935,9 +1109,50 @@
           s.position.copy(p); s.scale.set(3.5, 3.5, 1); return { s, ph:k*0.37 };
         });
         ctx.tick((dt, t)=>{ for(const b of blinkers) b.s.material.opacity = ((t + b.ph) % 1.4) < 0.3 ? 1 : 0.1; });
+
+        // Lumiere de contre cyan venant de la gauche : avec la lumiere principale
+        // violette, la carrosserie prend des reflets bicolores typiques du neon.
+        const rimL = new T.DirectionalLight(0x3df0ff, 0.55); rimL.position.set(-9, 4, 3); ctx.add(rimL);
+
+        // Projecteurs qui balaient le ciel derriere la ville (additifs, hors brouillard)
+        const beamMat = (hex)=>new T.MeshBasicMaterial({ map:Sc.beamTex(T), color:hex, transparent:true, opacity:.3, blending:T.AdditiveBlending, depthWrite:false, side:T.DoubleSide, fog:false });
+        const beamGeo = new T.CylinderGeometry(7, 0.5, 170, 16, 1, true); beamGeo.translate(0, 85, 0);
+        // (devant les silhouettes de la ville, rayon 182+, qui sont opaques)
+        const beams = [[-30, 0x7a3dff, 0.0], [-9, 0x3df0ff, 1.7], [11, 0xff3df0, 3.1], [32, 0x7a3dff, 4.4]].map(([x, col, ph])=>{
+          const b = ctx.add(new T.Mesh(beamGeo, beamMat(col)));
+          b.position.set(x, -4, -150); return { b, ph };
+        });
+        // Trafic aerien : vehicules volants (phare blanc + feu arriere) qui traversent
+        const flyers = [];
+        for(let k = 0; k < 7; k++){
+          const g = new T.Group();
+          const head = new T.Sprite(new T.SpriteMaterial({ map:Sc.glow(T), color:0xdff6ff, transparent:true, blending:T.AdditiveBlending, depthWrite:false, fog:false }));
+          head.scale.set(2.6, 2.6, 1); g.add(head);
+          const tail = new T.Sprite(new T.SpriteMaterial({ map:Sc.glow(T), color:k % 2 ? 0xff2a4a : 0xff3df0, transparent:true, blending:T.AdditiveBlending, depthWrite:false, fog:false }));
+          tail.scale.set(1.8, 1.8, 1); g.add(tail);
+          ctx.add(g);
+          flyers.push({ g, head, tail, dir:k % 2 ? 1 : -1, y:26 + Math.random()*34, z:-120 - Math.random()*70, v:10 + Math.random()*12, x:(Math.random()-.5)*260 });
+        }
+        const holo = [Sc.holoAdTex(T, 0), Sc.holoAdTex(T, 1)];
+        ctx.tick((dt, t)=>{
+          for(const q of beams){ q.b.rotation.z = Math.sin(t * 0.23 + q.ph) * 0.42; q.b.rotation.x = Math.sin(t * 0.17 + q.ph * 2) * 0.18; }
+          for(const f of flyers){
+            f.x += f.dir * f.v * dt;
+            if(f.x > 140) f.x = -140; else if(f.x < -140) f.x = 140;
+            f.g.position.set(f.x, f.y + Math.sin(t * 0.8 + f.z) * 0.6, f.z);
+            f.tail.position.set(-f.dir * 1.3, 0, 0);
+            f.tail.material.opacity = (t * 1.3 + f.z) % 1 < 0.5 ? 1 : 0.35;
+          }
+          // Pubs : une nouvelle toutes les 3.2 s, avec un bref "glitch" au changement
+          holo.forEach((tx, k)=>{
+            const u = t / 3.2 + k * 0.5, slot = Math.floor(u) % 4, f = u % 1;
+            tx.offset.y = slot * 0.25;
+            tx.offset.x = f < 0.04 ? (Math.random() - 0.5) * 0.08 : 0;
+          });
+        });
         // trottoirs dalles mouilles (reflets via la meme carte d'environnement que la route)
         const slab = Sc.slabTex(T); slab.repeat.set(3, 150);
-        const walkMat = new T.MeshStandardMaterial({ map:slab, color:0x241e30, roughness:0.3, metalness:0.35, envMap:ctx.env, envMapIntensity:0.5 });
+        const walkMat = new T.MeshStandardMaterial({ map:slab, color:0x16121f, roughness:0.3, metalness:0.4, envMap:ctx.env, envMapIntensity:0.4 });
         [-1, 1].forEach(s=>{
           const w = new T.Mesh(new T.PlaneGeometry(6, 300), walkMat);
           w.rotation.x = -Math.PI/2; w.position.set(s*8.62, 0.1, -120); ctx.add(w);
@@ -966,6 +1181,8 @@
           if(i % 5 === 2){
             add(steamVent(T, -side*(7.6 + Math.random()*2), -15 - i*8));
           }
+          if(i % 4 === 1) add(lanternString(T, -16 - i*8));
+          if(i % 3 === 0) add(vendingMachine(T, side*10.6, -14.5 - i*8, NEON[(i + 1) % NEON.length]));
           if(i === 5){
             const arch = neonArch(T, -15 - i*8);
             arch.userData.wrapDist = wrap * N * 2;

@@ -235,6 +235,71 @@
     return (cache[key] = tex(T, c, { aniso:4, srgb:true }));
   };
 
+  // Ecran publicitaire "hologramme" : 4 pubs empilees dans une meme texture
+  // (repeat.y = 1/4) ; la route fait defiler les pubs en changeant offset.y.
+  // Lignes de balayage et bord lumineux cuits dans la texture (aucun shader).
+  S.holoAdTex = function(T, variant){
+    const key = 'holo:' + variant;
+    if(cache[key]) return cache[key];
+    const [c, g] = cv(256, 1024);
+    const ads = [
+      { a:'#ff3df0', b:'#3df0ff', t1:'DEYLO', t2:'GARAGE', sub:'SUPERCARS · 24/7' },
+      { a:'#3dffb0', b:'#7a3dff', t1:'ネオン', t2:'NEO', sub:'TOKYO · NIGHT' },
+      { a:'#ffe23d', b:'#ff5a8a', t1:'RAMEN', t2:'拉麺', sub:'OUVERT TARD' },
+      { a:'#3df0ff', b:'#ff3df0', t1:'NITRO', t2:'BOOST', sub:'+200% FUN' }
+    ];
+    const order = variant ? [2, 3, 0, 1] : [0, 1, 2, 3];
+    order.forEach((idx, slot)=>{
+      const ad = ads[idx], y0 = slot * 256;
+      const bg = g.createLinearGradient(0, y0, 0, y0 + 256);
+      bg.addColorStop(0, ad.a); bg.addColorStop(1, ad.b);
+      g.globalAlpha = 0.28; g.fillStyle = bg; g.fillRect(0, y0, 256, 256); g.globalAlpha = 1;
+      g.strokeStyle = ad.a; g.lineWidth = 6; g.shadowColor = ad.a; g.shadowBlur = 18; g.strokeRect(8, y0 + 8, 240, 240);
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = '900 64px "Saira Condensed", Arial Narrow, Arial, sans-serif';
+      g.fillStyle = ad.a; g.fillText(ad.t1, 128, y0 + 86); g.shadowBlur = 0; g.fillStyle = 'rgba(255,255,255,.9)'; g.fillText(ad.t1, 128, y0 + 86);
+      g.shadowColor = ad.b; g.shadowBlur = 16; g.font = '900 52px "Saira Condensed", Arial Narrow, Arial, sans-serif';
+      g.fillStyle = ad.b; g.fillText(ad.t2, 128, y0 + 150); g.shadowBlur = 0;
+      g.font = '700 20px "Saira Condensed", Arial Narrow, Arial, sans-serif'; g.fillStyle = 'rgba(255,255,255,.75)'; g.fillText(ad.sub, 128, y0 + 206);
+    });
+    g.shadowBlur = 0; g.fillStyle = 'rgba(0,0,0,.35)';
+    for(let y = 0; y < 1024; y += 4) g.fillRect(0, y, 256, 1);
+    const t = tex(T, c, { aniso:4, srgb:true });
+    t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(1, 0.25);
+    return (cache[key] = t);
+  };
+  // Facade de distributeur automatique : bandeau colore + etageres de canettes.
+  S.vendingTex = function(T, colorHex){
+    const key = 'vend:' + colorHex;
+    if(cache[key]) return cache[key];
+    const [c, g] = cv(64, 128);
+    const col = css(colorHex);
+    g.fillStyle = '#e8f4ff'; g.fillRect(0, 0, 64, 128);
+    g.fillStyle = col; g.fillRect(0, 0, 64, 22);
+    g.fillStyle = 'rgba(255,255,255,.9)'; g.font = '900 13px Arial'; g.textAlign = 'center'; g.fillText('DRINKS', 32, 15);
+    const cans = ['#ff3d5a', '#3d8bff', '#ffd23d', '#3dffb0', '#ff8a3d', '#b14dff'];
+    for(let r = 0; r < 4; r++) for(let k = 0; k < 5; k++){ g.fillStyle = cans[(r*5 + k) % cans.length]; g.fillRect(5 + k*11.5, 28 + r*18, 8, 13); }
+    g.fillStyle = '#20242c'; g.fillRect(6, 104, 36, 18); g.fillStyle = col; g.fillRect(46, 104, 12, 8);
+    return (cache[key] = tex(T, c, { srgb:true }));
+  };
+  // Silhouette de mouette (un "V" aux ailes arrondies), sombre en contre-jour.
+  S.gullTex = function(T){
+    if(cache.gull) return cache.gull;
+    const [c, g] = cv(64, 32);
+    g.strokeStyle = 'rgba(40,20,40,.95)'; g.lineWidth = 3.2; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(4, 20); g.quadraticCurveTo(18, 6, 32, 18); g.quadraticCurveTo(46, 6, 60, 20); g.stroke();
+    return (cache.gull = tex(T, c, {}));
+  };
+  // Faisceau de projecteur : fondu vertical (opaque a la base, transparent en haut).
+  S.beamTex = function(T){
+    if(cache.beam) return cache.beam;
+    const [c, g] = cv(4, 128);
+    const gr = g.createLinearGradient(0, 128, 0, 0);
+    gr.addColorStop(0, 'rgba(255,255,255,.9)'); gr.addColorStop(0.4, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 4, 128);
+    return (cache.beam = tex(T, c, {}));
+  };
+
   // Carte d'environnement "rue neon" (equirectangulaire) : sert aux reflets de
   // la chaussee/trottoirs mouilles, passee dans un PMREM une seule fois.
   S.neonEnvCanvas = function(T){
