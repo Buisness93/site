@@ -306,6 +306,44 @@
     const mat2 = mat.clone(); mat2.position.set(15.2, 0.07, 9.5); g.add(mat2);
     const shopSign = new T.Mesh(new T.PlaneGeometry(4.2, 0.7), new T.MeshBasicMaterial({ map:(()=>{ const c = document.createElement('canvas'); c.width = 384; c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#' + col.toString(16).padStart(6, '0'); x.fillRect(0, 0, 384, 64); x.fillStyle = '#fff'; x.font = '900 34px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText((route.shopWord || (cur === '$' ? 'FOOD · SHOP' : cur === '¥' ? 'コンビニ' : cur === 'CHF' && route.journey && route.journey.lang === 'de' ? 'SHOP · CAFÉ' : 'BOUTIQUE · CAFÉ')), 192, 34); const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return t; })(), toneMapped:false }));
     shopSign.rotation.y = -Math.PI/2; shopSign.position.set(14.4, 3.2, 7); g.add(shopSign);
+    // voie de sortie (avant l'aire) et voie d'insertion (apres), ligne discontinue,
+    // ligne de rive, cadre de stationnement devant la pompe, panneaux, police garee
+    const apronMat = M('std:svcLane', ()=>new T.MeshStandardMaterial({ color:0x17181b, roughness:0.88, metalness:0.1 }));
+    [[139.5, 205], [-80.5, 95]].forEach(([z, len])=>{
+      const lane = new T.Mesh(new T.PlaneGeometry(3.6, len, 1, Math.ceil(len / 5)), apronMat); lane.rotation.x = -Math.PI/2; lane.position.set(6.4, 0.013, z); g.add(lane);
+      const rive = new T.Mesh(new T.PlaneGeometry(0.14, len), lineMat); rive.rotation.x = -Math.PI/2; rive.position.set(8.1, 0.03, z); g.add(rive);
+    });
+    for(let z = 40; z < 236; z += 5){ const m = new T.Mesh(M('geo:decelDash', ()=>null), lineMat); m.rotation.x = -Math.PI/2; m.position.set(4.7, 0.03, z); g.add(m); }
+    for(let z = -35; z > -124; z -= 5){ const m = new T.Mesh(M('geo:decelDash', ()=>null), lineMat); m.rotation.x = -Math.PI/2; m.position.set(4.7, 0.03, z); g.add(m); }
+    const boxMat = M('bas:parkBox', ()=>new T.MeshBasicMaterial({ color:0xffd23a }));
+    [[6.3 - 1.25, 8.2, 0.12, 5.2], [6.3 + 1.25, 8.2, 0.12, 5.2], [6.3, 8.2 - 2.6, 2.62, 0.12], [6.3, 8.2 + 2.6, 2.62, 0.12]].forEach(([x, z, w, h])=>{ const b = new T.Mesh(new T.PlaneGeometry(w, h), boxMat); b.rotation.x = -Math.PI/2; b.position.set(x, 0.036, z); g.add(b); });
+    const pMark = (()=>{ const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#ffd23a'; x.font = '900 52px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('P', 32, 36); const t = new T.CanvasTexture(c); return t; })();
+    const pm = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({ map:pMark, transparent:true, depthWrite:false })); pm.rotation.x = -Math.PI/2; pm.position.set(6.3, 0.037, 8.2 - 1.6); g.add(pm);
+    const signPost = M('std:radarPole', ()=>new T.MeshStandardMaterial({ color:0x8a9098, metalness:0.6, roughness:0.4 }));
+    const exitSign = new T.Group();
+    const ec = document.createElement('canvas'); ec.width = 256; ec.height = 160; const ex = ec.getContext('2d');
+    ex.fillStyle = cur === '$' ? '#0a6a3a' : '#1f4fa8'; ex.fillRect(0, 0, 256, 160); ex.strokeStyle = '#fff'; ex.lineWidth = 6; ex.strokeRect(6, 6, 244, 148);
+    ex.fillStyle = '#fff'; ex.textAlign = 'center'; ex.font = '900 46px Arial'; ex.fillText('⛽ 🍴', 128, 62); ex.font = '800 24px Arial'; ex.fillText(cur === '$' ? 'GAS · FOOD' : cur === '¥' ? 'サービスエリア' : 'AIRE DE SERVICE', 128, 104); ex.font = '900 26px Arial'; ex.fillText('↘ ' + (cur === '$' ? 'EXIT' : 'SORTIE'), 128, 140);
+    const et = new T.CanvasTexture(ec); et.encoding = T.sRGBEncoding;
+    const ep = new T.Mesh(new T.PlaneGeometry(2.6, 1.62), new T.MeshBasicMaterial({ map:et, toneMapped:false })); ep.position.set(0, 3.1, 0.06); exitSign.add(ep);
+    const epost = new T.Mesh(new T.CylinderGeometry(0.08, 0.08, 3.6, 8), signPost); epost.position.y = 1.8; exitSign.add(epost);
+    exitSign.position.set(9.4, 0, 250); g.add(exitSign);
+    [[42, 30], [-40, 90]].forEach(([z, lim], k)=>{ if(k && cur !== '€') return; const s = new T.Group(); const plate = new T.Mesh(new T.PlaneGeometry(0.9, cur === '$' ? 1.12 : 0.9), limitSignTex(T, cur === '$' ? 48 : lim, cur === '$')); plate.position.set(0, 2.1, 0.05); s.add(plate); const pp = new T.Mesh(new T.CylinderGeometry(0.05, 0.05, 2.4, 6), signPost); pp.position.y = 1.2; s.add(pp); s.position.set(8.6, 0, z); g.add(s); });
+    const cop = policeCar(T, route.radars && route.radars.policeStyle || (cur === '$' ? 'us' : cur === 'CHF' ? 'ch' : route.id === 'autostrada' ? 'it' : 'fr'));
+    ['sirenRed', 'sirenBlue'].forEach(n=>{ const o = cop.getObjectByName(n); if(o) o.material.opacity = 0.25; });
+    cop.position.set(16.4, 0, -13); cop.rotation.y = -1.35; g.add(cop);
+    // pistolet de la pompe arriere (on le decroche pour faire le plein) + son compteur
+    const noz = new T.Group(); noz.name = 'nozzle';
+    const nm = M('std:nozzle', ()=>new T.MeshStandardMaterial({ color:0x1a1a1c, roughness:0.5, metalness:0.3 }));
+    const grip = new T.Mesh(new T.BoxGeometry(0.1, 0.2, 0.07), nm); grip.position.set(0.06, -0.09, 0); noz.add(grip);
+    const nbody = new T.Mesh(new T.BoxGeometry(0.24, 0.085, 0.085), M('std:nozzleCol' + col, ()=>new T.MeshStandardMaterial({ color:col, roughness:0.4 }))); noz.add(nbody);
+    const spout = new T.Mesh(new T.CylinderGeometry(0.018, 0.022, 0.26, 8), M('std:spout', ()=>new T.MeshStandardMaterial({ color:0xb0b4ba, metalness:0.8, roughness:0.3 }))); spout.rotation.z = Math.PI / 2; spout.position.set(-0.24, -0.02, 0); noz.add(spout);
+    noz.position.set(8.22, 1.33, 11.08); noz.rotation.z = -0.9; g.add(noz);
+    const lc = document.createElement('canvas'); lc.width = 256; lc.height = 160;
+    const lx = lc.getContext('2d'); lx.fillStyle = '#050c08'; lx.fillRect(0, 0, 256, 160); lx.fillStyle = '#6dff9e'; lx.font = '700 30px Courier New'; lx.textAlign = 'right'; lx.fillText('0,00', 246, 92); lx.fillText('0,00', 246, 146);
+    const lt = new T.CanvasTexture(lc); lt.encoding = T.sRGBEncoding;
+    const lcd = new T.Mesh(new T.PlaneGeometry(0.62, 0.39), new T.MeshBasicMaterial({ map:lt, toneMapped:false }));
+    lcd.name = 'pumpLcd'; lcd.userData.canvas = lc; lcd.position.set(8.7, 1.62, 11.315); g.add(lcd);
     const inside = shopInterior(T, route); inside.position.set(18, 0, 7); g.add(inside);
     // modele de station fourni (gas-station.glb) : grande station derriere la
     // voie de service (sa propre boutique, ses pompes, son parking)

@@ -629,3 +629,25 @@ h1,h2,h3{font-family:'Saira Condensed',sans-serif;text-transform:uppercase;margi
 @keyframes cardEject{to{transform:translateY(46px)}}
 .pm-bankcard.eject + .receipt{margin-top:52px}
 .tpe-screen small{font-size:9px;text-align:center;line-height:1.3;padding:0 6px}
+
+/* pompe : panneau sur le cote (on voit le pistolet dans la voiture) */
+@media (min-width:760px){ .pump-panel{left:auto;right:16px;top:50%;bottom:auto;transform:translateY(-50%)} }
+.pump-presets{flex-direction:column;align-items:stretch;gap:6px}
+.pp-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.pp-row span{width:64px;font-size:10px;letter-spacing:.12em;color:#8a8f98;text-transform:uppercase}
+.pp-row [data-step]{width:30px;padding:5px 0 !important}
+.pp-val{min-width:62px;text-align:center;font-family:'Courier New',monospace;font-size:14px;color:#cfd6df;padding:5px 4px;border-radius:9px;border:1px solid rgba(255,255,255,.14)}
+.pp-val.on{color:#8dffb4;border-color:#2fea6a;background:rgba(47,234,106,.16)}
+/* carte : passage de droite a gauche */
+.pm-stage.swipe{flex-direction:row;justify-content:flex-start;padding-left:26px;min-height:270px}
+.pm-card-zone.swipe{position:absolute;right:-4px;top:50%;margin:0;transform:translateY(-50%)}
+.pm-card-zone.swipe .pm-bankcard{width:150px;height:94px;border-radius:11px}
+.pm-card-zone.swipe .bc-chip{top:24px;left:14px;width:24px;height:18px}
+.pm-card-zone.swipe .bc-nfc{top:30px}
+.pm-card-zone.swipe .bc-num{bottom:24px;left:14px;font-size:10.5px}
+.pm-card-zone.swipe .bc-name{bottom:9px;left:14px;font-size:8.5px}
+.tpe.hot{box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 0 0 2px rgba(61,139,255,.8),0 0 30px -6px rgba(61,139,255,.95)}
+.swipe-hint{position:absolute;left:0;right:0;top:42%;text-align:center;font-size:44px;font-weight:900;color:rgba(110,170,255,.85);pointer-events:none;animation:swipeHint 1.5s ease-in-out infinite;text-shadow:0 0 12px rgba(61,139,255,.9)}
+@keyframes swipeHint{0%{transform:translateX(50px);opacity:0}25%{opacity:1}100%{transform:translateX(-50px);opacity:0}}
+.nfc-leds i.err{background:#ff4a3a;box-shadow:0 0 9px #ff4a3a}
+.pm-bankcard.away{animation:none !important;transition:transform .55s ease-in,opacity .55s;transform:translate(-30px,70px) rotate(-12deg) scale(.8) !important;opacity:0}

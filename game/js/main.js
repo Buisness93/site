@@ -698,7 +698,10 @@
         else if(kind==='rule-fine'){ popup('🧾 AMENDE ' + money(payload.fine, payload.currency) + ' · ' + payload.title + ' (−' + payload.pts + ' pts)', '#ff5a3d', true); tone({ f:330, dur:0.2, vol:0.05, type:'square' }); }
         else if(kind==='horn'){ popup('📯 ATTENTION DERRIÈRE !', '#ff5a3d', true); tone({ f:392, dur:0.55, vol:0.06, type:'sawtooth' }); tone({ f:494, dur:0.55, vol:0.05, type:'sawtooth' }); }
         else if(kind==='breakdown') popup('🚨 Feux de détresse · dépanneuse appelée, attends sur la bande d\'arrêt d\'urgence', '#ffcc00', true);
-        else if(kind==='fuel-station') popup('⛽ STATION À 300 m — appuie sur E pour t\'y arrêter', '#ffcc33', true);
+        else if(kind==='fuel-station') popup('⛽ AIRE DE SERVICE — voie de droite puis sortie ▶ (tu conduis, tu te gares toi-même)', '#ffcc33', true);
+        else if(kind==='fuel-hint') popup('⛽ Pour faire le plein : voie de droite, puis ▶ dans la voie de sortie', '#ffcc33', true);
+        else if(kind==='fuel-missed') popup('⛽ Pompe ratée — rejoins l\'autoroute par la voie d\'insertion ◀', '#ff9a3d', true);
+        else if(kind==='parked'){ popup('🅿 Bien garé ! Coupe le moteur…', '#4ee39a', true); tone({ f:880, dur:0.08, vol:0.04 }); }
         else if(kind==='telepass'){ popup('📡 Télépéage · ' + money(payload.price, payload.currency) + ' débité (−' + payload.pts + ' pts)', '#ffcc00', true); tone({ f:1760, dur:0.09, vol:0.05 }); tone({ f:2350, dur:0.12, vol:0.05, delay:0.1 }); }
         else if(kind==='radar-flash'){
           showTicket(payload);
@@ -708,7 +711,7 @@
         else if(kind==='radar-ok') popup('📸 Radar : ' + speedTxt(payload.kmh, payload.unitLabel) + ' ✓', '#4ee39a');
         else if(kind==='police-chase') popup('🚓 LA POLICE TE POURSUIT ! Nitro pour la semer', '#5a8aff', true);
         else if(kind==='police-lost'){ popup('🚓 Police semée ! +200', '#4ee39a', true); chimeSound(2); }
-        else if(kind==='fuel-enter') popup('⛽ Arrêt à la pompe…', '#ffcc33');
+        else if(kind==='fuel-enter') popup('↘ Voie de sortie · ralentis à 30 km/h et gare-toi dans le cadre 🅿', '#ffcc33', true);
         else if(kind==='fuel-low') popup('⚠ RÉSERVE ! Fais le plein à la prochaine station', '#ff5a3d', true);
         else if(kind==='out-of-fuel') popup('⛽ PANNE SÈCHE ! Range-toi à droite ▶ sur la bande d\'arrêt d\'urgence', '#ff5a3d', true);
         else if(kind==='arrival'){ popup('🏁 ARRIVÉE À ' + ((payload && payload.city) || '').toUpperCase() + ' ! +500', '#4ee39a', true); confetti(innerWidth/2, innerHeight*0.35); chimeSound(4); }
@@ -753,6 +756,7 @@
   function openPayment(o){
     // o : { method, amount, currency, pin, label, onDone }
     _pay = Object.assign({ step:0, code:'' }, o);
+    els.pmStage.classList.remove('swipe');
     els.payModal.classList.remove('hidden');
     els.payModal.dataset.method = o.method;
     els.pmIcon.textContent = o.method === 'card' ? '💳' : '💶';
@@ -775,101 +779,90 @@
   }
   function cardStep0(){
     const p = _pay, lim = NFC_LIMIT[p.currency] || 50;
-    p.nfcOk = !p.pin && p.amount <= lim + 1e-6;
-    const msg = p.nfcOk ? 'PRÉSENTEZ OU INSÉREZ<br>VOTRE CARTE' : p.pin ? 'INSÉREZ VOTRE CARTE' : 'SANS CONTACT MAX ' + money(lim, p.currency) + '<br>INSÉREZ VOTRE CARTE';
-    p.screen0 = '<small>MONTANT</small><b>' + money(p.amount, p.currency) + '</b><small>' + msg + '</small>';
-    els.pmStage.innerHTML = terminalHTML(p.screen0) + '<div class="pm-card-zone" id="pmCardZone"><div class="pm-bankcard" id="pmCard">' + CARD_FACE + '</div></div>';
-    els.pmFoot.innerHTML = '<span class="pm-hint">' + (p.nfcOk ? '🖐 Attrape la carte et <b>maintiens-la sur )))</b> jusqu\'aux 4 voyants — ou glisse-la dans la fente' : '🖐 Attrape la carte et <b>glisse-la dans la fente</b> du terminal') + ' · <kbd>Entrée</kbd></span><button class="pm-cancel" id="pmCancel">Annuler</button>';
+    p.needPin = p.pin || p.amount > lim + 1e-6;
+    p.screen0 = '<small>' + money(p.amount, p.currency) + '</small><b>PASSEZ LA CARTE</b><small>⟵ DE DROITE À GAUCHE' + (p.needPin ? '<br>PUIS CODE' : '<br>SANS CONTACT') + '</small>';
+    els.pmStage.classList.add('swipe');
+    els.pmStage.innerHTML = terminalHTML(p.screen0, '<div class="swipe-hint">⟵</div>') + '<div class="pm-card-zone swipe" id="pmCardZone"><div class="pm-bankcard" id="pmCard">' + CARD_FACE + '</div></div>';
+    els.pmFoot.innerHTML = '<span class="pm-hint">🖐 <b>Maintiens</b> la carte et <b>passe-la de droite à gauche</b> sur le terminal (ni trop vite, ni trop lent)' + (p.needPin ? ' · plus de ' + money(lim, p.currency) + ' : code demandé' : '') + ' · <kbd>Entrée</kbd></span><button class="pm-cancel" id="pmCancel">Annuler</button>';
     document.getElementById('pmCancel').addEventListener('click', ()=>closePayment(false));
-    wireCard(p);
+    wireSwipe(p);
   }
-  function wireCard(p){
-    const card = document.getElementById('pmCard'), zoneEl = document.getElementById('pmCardZone');
-    const nfc = document.getElementById('pmNfc'), slot = document.getElementById('pmSlot'), scr = document.getElementById('pmScreen');
-    const leds = nfc.querySelectorAll('i');
-    let drag = null, over = null, hold = 0, last = 0, raf = 0, read = false, off = { x:0, y:0 };
+  function wireSwipe(p){
+    const card = document.getElementById('pmCard'), tpe = els.pmStage.querySelector('.tpe'), scr = document.getElementById('pmScreen');
+    const leds = document.getElementById('pmNfc').querySelectorAll('i');
+    let drag = null, off = { x:0, y:0 }, rd = null, done = false, lastProg = -1;
     const setLeds = (n, cls)=>leds.forEach((l, k)=>{ l.className = k < n ? (cls || 'on') : ''; });
-    const place = (x, y, rot)=>{ off.x = x; off.y = y; card.style.transform = 'translate(' + x + 'px,' + y + 'px) rotate(' + (rot || 0) + 'deg)'; };
-    const zone = ()=>{
-      const c = card.getBoundingClientRect(), n = nfc.getBoundingClientRect(), s = slot.getBoundingClientRect();
+    const place = (x, y, r)=>{ off.x = x; off.y = y; card.style.transform = 'translate(' + x + 'px,' + y + 'px) rotate(' + (r || 0) + 'deg)'; };
+    const fail = (msg)=>{
+      rd = null; setLeds(4, 'err'); tone({ f:300, dur:0.22, vol:0.05, type:'square' });
+      scr.innerHTML = '<b class="err">' + msg + '</b><small>RECOMMENCEZ ⟵</small>';
+      setTimeout(()=>{ if(!done && !rd) setLeds(0); }, 550);
+    };
+    // lecture : le centre de la carte doit traverser tout le terminal, de son bord droit a son bord gauche
+    const check = (now)=>{
+      if(done) return;
+      const c = card.getBoundingClientRect(), t = tpe.getBoundingClientRect();
       const cx = (c.left + c.right) / 2, cy = (c.top + c.bottom) / 2;
-      if(cx > n.left - 25 && cx < n.right + 25 && cy > n.top - 45 && cy < n.bottom + 55) return 'nfc';
-      if(Math.abs(c.top - s.top) < 24 && cx > s.left - 25 && cx < s.right + 25) return 'slot';
-      return null;
-    };
-    const setOver = (z)=>{
-      if(z === over) return;
-      over = z;
-      slot.classList.toggle('hot', z === 'slot'); nfc.classList.toggle('hot', z === 'nfc');
-      if(z === 'nfc' && !p.nfcOk){ scr.innerHTML = '<b class="err">SANS CONTACT REFUSÉ</b><small>INSÉREZ VOTRE CARTE</small>'; tone({ f:330, dur:0.15, vol:0.04, type:'square' }); }
-      else if(z === 'nfc') tone({ f:1400, dur:0.03, vol:0.03 });
-      else if(z === 'slot') scr.innerHTML = '<small>RELÂCHE POUR</small><b>INSÉRER</b>';
-      else if(!read) scr.innerHTML = p.screen0;
-    };
-    const tick = (now)=>{
-      raf = 0; if(!drag || read || _pay !== p) return;
-      const dt = Math.min(0.1, Math.max(0, (now - last) / 1000)); last = now;
-      if(over === 'nfc' && p.nfcOk){
-        hold += dt;
-        setLeds(Math.min(4, 1 + Math.floor(hold / 0.3)));
-        scr.innerHTML = '<small>' + money(p.amount, p.currency) + '</small><b>LECTURE…</b><small>NE BOUGEZ PAS LA CARTE</small>';
-        if(hold >= 1.2){
-          read = true; setLeds(4, 'ok'); p.usedNfc = true;
-          tone({ f:2093, dur:0.18, vol:0.05 });
-          scr.innerHTML = '<b class="ok">✔ CARTE LUE</b><small>VOUS POUVEZ RETIRER LA CARTE</small>';
-          setTimeout(()=>{ if(_pay === p) finish('nfc'); }, 500);
-          return;
+      const inY = cy > t.top + 6 && cy < t.bottom - 6;
+      const prog = (t.right - cx) / t.width;
+      tpe.classList.toggle('hot', inY && prog > -0.25 && prog < 1.1);
+      if(!rd){
+        if(inY && prog >= 0 && prog < 0.4 && lastProg < 0.02){ rd = { t0:now, max:prog }; tone({ f:1400, dur:0.03, vol:0.03 }); scr.innerHTML = '<small>' + money(p.amount, p.currency) + '</small><b>LECTURE…</b><small>CONTINUE ⟵</small>'; }
+      } else {
+        if(!inY) fail('CARTE SORTIE DU LECTEUR');
+        else if(prog < rd.max - 0.3) fail('MAUVAIS SENS');
+        else {
+          rd.max = Math.max(rd.max, prog);
+          const n = Math.max(0, Math.min(4, Math.floor(rd.max * 4 + 0.001)));
+          if(n > leds.length - [...leds].filter(l=>!l.className).length) tone({ f:1000 + n * 150, dur:0.03, vol:0.025 });
+          setLeds(n);
+          if(rd.max >= 1){
+            const dt = (now - rd.t0) / 1000;
+            if(dt < 0.28) fail('TROP RAPIDE');
+            else if(dt > 3.5) fail('TROP LENT');
+            else success();
+          }
         }
-      } else if(hold > 0){
-        hold = 0; setLeds(0);
-        tone({ f:300, dur:0.2, vol:0.05, type:'square' });
-        scr.innerHTML = '<b class="err">CARTE RETIRÉE TROP TÔT</b><small>REPRÉSENTEZ LA CARTE</small>';
       }
-      raf = requestAnimationFrame(tick);
+      lastProg = prog;
     };
-    const start = ()=>{ last = performance.now(); if(!raf) raf = requestAnimationFrame(tick); };
+    function success(){
+      done = true; rd = null; setLeds(4, 'ok'); tpe.classList.remove('hot');
+      tone({ f:2093, dur:0.18, vol:0.05 });
+      scr.innerHTML = '<b class="ok">✔ CARTE LUE</b><small>' + (p.needPin ? 'SAISISSEZ VOTRE CODE' : 'SANS CONTACT') + '</small>';
+      p.usedNfc = !p.needPin; p.step = 1;
+      drag = null; card.classList.remove('drag'); card.classList.add('away');
+      setTimeout(()=>{ if(_pay === p){ if(p.needPin) cardPin(); else cardProcess(); } }, 700);
+    }
     card.addEventListener('pointerdown', (e)=>{
-      if(p.step !== 0 || read) return;
+      if(done || drag) return;
       e.preventDefault(); try { card.setPointerCapture(e.pointerId); } catch(err){}
-      drag = { x0:e.clientX - off.x, y0:e.clientY - off.y }; card.classList.add('drag'); start();
+      drag = { x0:e.clientX - off.x, y0:e.clientY - off.y }; card.classList.add('drag');
     });
     card.addEventListener('pointermove', (e)=>{
-      if(!drag || read || drag.auto) return;
+      if(!drag || drag.auto || done) return;
       const x = e.clientX - drag.x0, y = e.clientY - drag.y0;
-      place(x, y, Math.max(-8, Math.min(8, x * 0.04)));
-      setOver(zone());
+      place(x, y, Math.max(-6, Math.min(6, (e.movementX || 0) * 0.4)));
+      check(performance.now());
     });
-    const up = ()=>{ if(!drag || drag.auto) return; release(); };
+    const up = ()=>{
+      if(!drag || drag.auto || done) return;
+      drag = null; card.classList.remove('drag'); tpe.classList.remove('hot');
+      if(rd) fail('PASSAGE INCOMPLET');
+      card.style.transform = ''; off.x = off.y = 0; lastProg = -1; // la carte revient dans la main
+    };
     card.addEventListener('pointerup', up); card.addEventListener('pointercancel', up);
-    function release(){
-      const was = over; drag = null; card.classList.remove('drag'); setOver(null);
-      if(read) return;
-      if(hold > 0){ hold = 0; setLeds(0); }
-      if(was === 'slot'){ insert(); return; }
-      card.style.transform = ''; off.x = off.y = 0; // la carte revient dans la main
-    }
-    function insert(){
-      p.step = 1;
-      const s = slot.getBoundingClientRect(), c = card.getBoundingClientRect();
-      const x = off.x + ((s.left + s.right) / 2 - (c.left + c.right) / 2), y = off.y + (s.top - c.top);
-      card.classList.add('drag'); card.style.transition = 'transform .22s ease-out'; place(x, y);
-      setTimeout(()=>{ zoneEl.classList.add('ins'); card.style.transition = 'transform .5s cubic-bezier(.5,0,.4,1)'; place(x, y - 74); tone({ f:520, dur:0.05, vol:0.04 }); }, 240);
-      setTimeout(()=>{ tone({ f:180, dur:0.06, vol:0.05, type:'square' }); scr.innerHTML = '<small>CARTE INSÉRÉE</small><b>…</b>'; }, 760);
-      setTimeout(()=>{ if(_pay === p) cardPin(); }, 1150);
-    }
-    function finish(){ p.step = 1; card.classList.remove('drag'); card.style.transition = 'transform .45s cubic-bezier(.3,1.3,.5,1), opacity .45s'; card.style.transform = ''; setTimeout(()=>{ if(_pay === p) cardProcess(); }, 420); }
-    // Entree : la carte est presentee / inseree toute seule
+    // Entree : la carte est passee toute seule
     p.autoCard = ()=>{
-      if(p.step !== 0 || read) return;
-      const n = nfc.getBoundingClientRect(), s = slot.getBoundingClientRect(), c = card.getBoundingClientRect();
-      card.classList.add('drag'); card.style.transition = 'transform .45s ease-out';
-      if(p.nfcOk){
-        place(off.x + ((n.left + n.right) / 2 - (c.left + c.right) / 2), off.y + ((n.top + n.bottom) / 2 + 30 - (c.top + c.bottom) / 2), -4);
-        drag = { auto:true }; setTimeout(()=>{ if(_pay === p){ setOver('nfc'); start(); } }, 460);
-      } else {
-        place(off.x + ((s.left + s.right) / 2 - (c.left + c.right) / 2), off.y + (s.top - c.top));
-        setTimeout(()=>{ if(_pay === p) insert(); }, 460);
-      }
+      if(done || drag) return;
+      const c = card.getBoundingClientRect(), t = tpe.getBoundingClientRect();
+      const y = off.y + ((t.top + t.bottom) / 2 - (c.top + c.bottom) / 2);
+      const cx = (c.left + c.right) / 2, x0 = off.x + (t.right + 12 - cx), x1 = off.x + (t.left - 16 - cx);
+      drag = { auto:true }; card.classList.add('drag'); lastProg = -1;
+      place(x0, y, -3); check(performance.now());
+      const t0 = performance.now(), N = 14; let k = 0;
+      const stepA = ()=>{ if(done || _pay !== p) return; k++; place(x0 + (x1 - x0) * k / N, y, -3); check(t0 + k * 65); if(k < N) setTimeout(stepA, 50); else if(!done){ drag = null; card.classList.remove('drag'); card.style.transform = ''; } };
+      setTimeout(stepA, 150);
     };
   }
   function cardInsert(){ if(_pay && _pay.autoCard) _pay.autoCard(); }
@@ -879,8 +872,7 @@
     const keys = ['1','2','3','4','5','6','7','8','9','✕','0','✔'];
     const render = ()=>{
       els.pmStage.innerHTML = terminalHTML('<small>' + money(p.amount, p.currency) + '</small><b>CODE</b>' + dots(),
-        '<div class="tpe-keys">' + keys.map(k=>'<button data-k="' + k + '" class="' + (k === '✕' ? 'red' : k === '✔' ? 'green' : '') + '">' + k + '</button>').join('') + '</div>') +
-        '<div class="pm-bankcard inserted">' + CARD_FACE + '</div>';
+        '<div class="tpe-keys">' + keys.map(k=>'<button data-k="' + k + '" class="' + (k === '✕' ? 'red' : k === '✔' ? 'green' : '') + '">' + k + '</button>').join('') + '</div>', 4);
       els.pmStage.querySelectorAll('[data-k]').forEach(b=>b.addEventListener('click', ()=>pinKey(b.dataset.k)));
     };
     p.renderPin = render; render();
@@ -897,18 +889,17 @@
   }
   function cardProcess(){
     const p = _pay;
-    els.pmStage.innerHTML = terminalHTML('<small>' + money(p.amount, p.currency) + '</small><b class="proc">' + (p.usedNfc ? 'SANS CONTACT' : 'AUTORISATION') + '<span class="dots"><i></i><i></i><i></i></span></b>', '', p.usedNfc ? 4 : 0) +
-      (p.usedNfc ? '' : '<div class="pm-bankcard inserted">' + CARD_FACE + '</div>');
+    els.pmStage.classList.remove('swipe');
+    els.pmStage.innerHTML = terminalHTML('<small>' + money(p.amount, p.currency) + '</small><b class="proc">' + (p.usedNfc ? 'SANS CONTACT' : 'AUTORISATION') + '<span class="dots"><i></i><i></i><i></i></span></b>', '', 4);
     els.pmFoot.innerHTML = '';
     setTimeout(()=>{
       if(_pay !== p) return;
       tone({ f:1568, dur:0.12, vol:0.05 }); tone({ f:2093, dur:0.16, vol:0.05, delay:0.12 });
       const d = new Date();
-      els.pmStage.innerHTML = terminalHTML('<b class="ok">✔ PAIEMENT ACCEPTÉ</b><small>' + (p.usedNfc ? 'MERCI' : 'RETIREZ VOTRE CARTE') + '</small>', '', p.usedNfc ? 4 : 0) +
-        (p.usedNfc ? '' : '<div class="pm-bankcard inserted eject">' + CARD_FACE + '</div>') +
+      els.pmStage.innerHTML = terminalHTML('<b class="ok">✔ PAIEMENT ACCEPTÉ</b><small>MERCI, BONNE ROUTE</small>', '', 4) +
         '<div class="receipt"><b>' + (p.merchant || 'REÇU') + '</b><span>' + d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }) + '</span>' +
         (p.lines || []).map(l=>'<span class="rl"><em>' + l[0] + '</em><em>' + l[1] + '</em></span>').join('') +
-        '<span class="rl tot"><em>TOTAL</em><em>' + money(p.amount, p.currency) + '</em></span><span>CARTE •••• 4821' + (p.usedNfc ? ' · SANS CONTACT' : ' · PUCE + CODE OK') + '</span></div>';
+        '<span class="rl tot"><em>TOTAL</em><em>' + money(p.amount, p.currency) + '</em></span><span>CARTE •••• 4821' + (p.usedNfc ? ' · SANS CONTACT' : ' · CODE OK') + '</span></div>';
       setTimeout(()=>{ if(_pay === p) closePayment(true); }, 1700);
     }, 1300);
   }
@@ -1017,23 +1008,40 @@
   const PUMP_PRESETS = { '€':[10, 20, 40], 'CHF':[20, 50, 80], '$':[10, 20, 40], '¥':[2000, 4000, 6000] };
   let _pump = null;
   function startPump(info){
-    _pump = { info, grade:info.grade || 0, preset:'full', liters:0, holding:false, done:false, full:false, last:0, flowT:0 };
-    els.pumpPanel.classList.remove('hidden');
-    if(els.pumpUnitLbl) els.pumpUnitLbl.textContent = info.gal ? 'GALLONS' : 'LITRES';
-    renderPump();
+    const p = _pump = { info, grade:info.grade || 0, mode:{ t:'free' }, custom:info.gal ? 5 : 20, liters:0, holding:false, done:false, full:false, last:0, flowT:0 };
+    const show = ()=>{
+      if(_pump !== p) return;
+      els.pumpPanel.classList.remove('hidden');
+      if(els.pumpUnitLbl) els.pumpUnitLbl.textContent = info.gal ? 'GALLONS' : 'LITRES';
+      renderPump(); clickSound(true);
+    };
+    if(engine.startPumpWalk(show)) popup('🚶 Tu sors, tu fais le tour de la voiture et tu décroches le pistolet…', '#ffffff');
+    else show();
   }
   function pumpTarget(){
-    const p = _pump, g = p.info.grades[p.grade], max = p.info.maxLiters;
-    if(p.preset === 'full') return max;
-    return Math.min(max, p.preset / g.ppu * (p.info.gal ? 3.785 : 1));
+    const p = _pump, g = p.info.grades[p.grade], max = p.info.maxLiters, m = p.mode;
+    if(m.t === 'U') return Math.min(max, m.v * (p.info.gal ? 3.785 : 1));
+    if(m.t === '€') return Math.min(max, m.v / g.ppu * (p.info.gal ? 3.785 : 1));
+    return max;
   }
   function renderPump(){
     const p = _pump, info = p.info, cur = info.currency;
     els.pumpHead.innerHTML = '⛽ Pompe ' + info.lane + ' · ' + (info.station || '') + ' <small>réservoir : ' + Math.round(info.fuelPct) + ' % · ' + (info.gal ? (info.maxLiters / 3.785).toFixed(1) + ' gal' : Math.round(info.maxLiters) + ' L') + ' libres</small>';
     els.pumpGrades.innerHTML = info.grades.map((gr, k)=>'<button data-g="' + k + '" class="' + (k === p.grade ? 'on' : '') + '"' + (p.liters > 0 ? ' disabled' : '') + '><b>' + gr.label + '</b><small>' + money(gr.ppu, cur) + '/' + info.unit + '</small></button>').join('');
-    els.pumpPresets.innerHTML = '<span>Quantité</span>' + (PUMP_PRESETS[cur] || PUMP_PRESETS['€']).map(v=>'<button data-p="' + v + '" class="' + (p.preset === v ? 'on' : '') + '">' + money(v, cur).replace(/[,.]00/, '') + '</button>').join('') + '<button data-p="full" class="' + (p.preset === 'full' ? 'on' : '') + '">PLEIN</button>';
+    const ul = info.gal ? 'gal' : 'L', m = p.mode;
+    const bt = (t, v, txt)=>'<button data-t="' + t + '" data-v="' + v + '" class="' + (m.t === t && (v === '' || m.v === +v) ? 'on' : '') + '">' + txt + '</button>';
+    els.pumpPresets.innerHTML =
+      '<div class="pp-row"><span>Litres</span>' + (info.gal ? [3, 5, 8, 12] : [10, 20, 30, 40]).map(v=>bt('U', v, v + ' ' + ul)).join('') + '</div>' +
+      '<div class="pp-row"><span>Montant</span>' + (PUMP_PRESETS[cur] || PUMP_PRESETS['€']).map(v=>bt('€', v, money(v, cur).replace(/[,.]00/, ''))).join('') + '</div>' +
+      '<div class="pp-row"><span>Au choix</span><button data-step="-1">−</button><b class="pp-val' + (m.t === 'U' && m.v === p.custom ? ' on' : '') + '">' + p.custom + ' ' + ul + '</b><button data-step="1">+</button>' + bt('free', '', 'LIBRE') + bt('full', '', 'PLEIN') + '</div>';
     els.pumpGrades.querySelectorAll('[data-g]').forEach(b=>b.addEventListener('click', ()=>{ if(p.liters > 0) return; p.grade = +b.dataset.g; clickSound(); renderPump(); }));
-    els.pumpPresets.querySelectorAll('[data-p]').forEach(b=>b.addEventListener('click', ()=>{ p.preset = b.dataset.p === 'full' ? 'full' : +b.dataset.p; p.full = p.liters >= pumpTarget() - 1e-6; clickSound(); renderPump(); }));
+    const setMode = (md)=>{ p.mode = md; p.full = md.t !== 'free' && p.liters >= pumpTarget() - 1e-6; clickSound(); renderPump(); };
+    els.pumpPresets.querySelectorAll('[data-t]').forEach(b=>b.addEventListener('click', ()=>setMode(b.dataset.v === '' ? { t:b.dataset.t } : { t:b.dataset.t, v:+b.dataset.v })));
+    els.pumpPresets.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click', (e)=>{
+      const maxU = Math.floor(info.maxLiters / (info.gal ? 3.785 : 1));
+      p.custom = Math.max(1, Math.min(maxU, p.custom + (+b.dataset.step) * (e.shiftKey ? 5 : 1)));
+      setMode({ t:'U', v:p.custom });
+    }));
     pumpLcd();
   }
   function pumpLcd(){
@@ -1042,11 +1050,12 @@
     els.pumpQty.textContent = q.toFixed(2).replace('.', ',');
     els.pumpAmount.textContent = money(q * g.ppu, info.currency);
     els.pumpBar.style.width = Math.min(100, info.fuelPct + p.liters / 55 * 100) + '%';
+    engine.setPumpLcd(q.toFixed(2).replace('.', ','), money(q * g.ppu, info.currency), info.gal ? 'GALLONS' : 'LITRES', g.label);
     els.pumpDone.disabled = p.liters < 1 || p.done;
     els.pumpSkip.disabled = p.liters > 0 || p.done;
     els.pumpNozzle.classList.toggle('on', p.holding);
     els.pumpNozzle.classList.toggle('full', p.full);
-    els.pumpNozzle.querySelector('b').textContent = p.full ? (p.preset === 'full' ? '✔ RÉSERVOIR PLEIN (déclic)' : '✔ MONTANT ATTEINT') : p.holding ? '⛽ REMPLISSAGE…' : p.liters > 0 ? '⛽ MAINTIENS POUR CONTINUER' : '⛽ MAINTIENS LE PISTOLET';
+    els.pumpNozzle.querySelector('b').textContent = p.full ? (p.mode.t === 'U' ? '✔ ' + p.mode.v + (info.gal ? ' gal' : ' L') + ' — déclic' : p.mode.t === '€' ? '✔ MONTANT ATTEINT — déclic' : '✔ RÉSERVOIR PLEIN — déclic') : p.holding ? '⛽ REMPLISSAGE…' : p.liters > 0 ? '⛽ MAINTIENS POUR CONTINUER (ou raccroche)' : '⛽ MAINTIENS LE PISTOLET';
   }
   function pumpHold(on){
     const p = _pump; if(!p || p.done || els.pumpPanel.classList.contains('hidden')) return;
@@ -1075,14 +1084,13 @@
     const res = engine.setFuelFill(p.grade, p.liters);
     if(!res){ pumpLcd(); return; }
     Object.assign(_stopInfo, { price:res.price, qty:res.qty, fuelLabel:res.fuelLabel, ppl:res.ppl, cardPoints:res.cardPoints, coinsNeed:res.coinsNeed });
-    els.pumpHead.textContent = '✔ Pistolet raccroché — 🚶 direction la caisse…';
-    tone({ f:520, dur:0.07, vol:0.04 });
+    els.pumpHead.textContent = '✔ Tu raccroches le pistolet — 🚶 direction la caisse…';
     pumpLcd();
-    setTimeout(()=>{ els.pumpPanel.classList.add('hidden'); _pump = null; openCounter(_stopInfo); }, 650);
+    setTimeout(()=>{ els.pumpPanel.classList.add('hidden'); _pump = null; openCounter(_stopInfo); }, 350);
   }
   function pumpSkip(){
     const p = _pump; if(!p || p.done || p.liters > 0) return;
-    if(engine.cancelFuel()){ els.pumpPanel.classList.add('hidden'); _pump = null; popup('🚗 Tu repars sans prendre d\'essence — accélère ▲', '#ffcc33'); }
+    if(engine.cancelFuel(()=>popup('🚗 Tu repars sans prendre d\'essence — accélère ▲', '#ffcc33'))){ els.pumpPanel.classList.add('hidden'); _pump = null; }
   }
   // Bandeau des voies du peage (type de chaque voie, la notre en surbrillance)
   const LANE_ICO = { cash:['💶', 'ESPÈCES + CB'], cb:['💳', 'CB UNIQUEMENT'], t:['Ⓣ', 'TÉLÉPÉAGE'] };
@@ -1095,7 +1103,10 @@
   }
   // Bruits a pied : pas, portiere, portes automatiques (+ carillon de la boutique)
   function walkSound(kind){
-    if(kind === 'step') tone({ f:85 + Math.random() * 35, dur:0.05, vol:0.028, type:'triangle' });
+    if(kind === 'nozzle') tone({ f:700, dur:0.05, vol:0.03 });
+    else if(kind === 'clunk'){ tone({ f:160, dur:0.08, vol:0.05, type:'square' }); tone({ f:900, dur:0.04, vol:0.03, delay:0.05 }); }
+    else if(kind === 'hang') tone({ f:220, dur:0.1, vol:0.05, type:'square' });
+    else if(kind === 'step') tone({ f:85 + Math.random() * 35, dur:0.05, vol:0.028, type:'triangle' });
     else if(kind === 'cardoor'){ tone({ f:90, dur:0.08, vol:0.06, type:'square' }); tone({ f:60, dur:0.12, vol:0.05, type:'square', delay:0.06 }); }
     else if(kind === 'door'){ tone({ f:260, to:420, glide:0.45, dur:0.5, vol:0.018 }); tone({ f:1319, dur:0.35, vol:0.03, delay:0.25 }); tone({ f:988, dur:0.5, vol:0.03, delay:0.55 }); }
   }
@@ -1213,7 +1224,19 @@
         '<span class="rw-info"><b>' + (r.mobile ? '⚠ CONTRÔLE MOBILE' : '📸 RADAR') + '</b><small>' + Math.round(r.dist) + ' m' + (over ? ' · freine ↓' : ' · OK ✓') + '</small></span>';
       cls = 'radar' + (over ? ' over' : '');
     }
-    else if(alerts.station){ const s = alerts.station; html = '<span class="ac-ico">⛽</span><span>' + (s.requested ? 'Direction la pompe…' : '<b>STATION</b> dans ' + Math.round(s.dist) + ' m<br><small><kbd>E</kbd> / touche ici pour faire le plein</small>') + '</span>'; cls = 'station' + (s.fuel < 0.35 ? ' low' : '') + (s.requested ? ' requested' : ''); }
+    else if(alerts.station){
+      const s = alerts.station; let t, sub;
+      if(s.phase === 'open' || s.dist < -40){ t = '↖ <b>VOIE D\'INSERTION</b>'; sub = 'regarde le trafic et rejoins l\'autoroute ◀'; }
+      else if(s.phase === 'offer'){
+        if(s.dist > 232){ t = '<b>STATION</b> · sortie dans ' + Math.round(s.dist - 232) + ' m'; sub = 'mets-toi dans la voie de droite'; }
+        else if(s.dist > 0){ t = '↘ <b>SORTIE</b> — prends-la ▶'; sub = 'voie de sortie à droite · 30 km/h sur l\'aire'; }
+        else { t = '<b>STATION</b> dépassée'; sub = ''; }
+      }
+      else if(s.dist > 3){ t = '🅿 Pompe dans <b>' + Math.round(s.dist) + ' m</b>'; sub = (s.kmh > 30 ? '<span style="color:#ff7a6a">⚠ ' + s.kmh + ' km/h — 30 max, police !</span>' : s.kmh + ' km/h · 30 max') + ' · freine ▼ dans le cadre jaune'; }
+      else if(s.dist > -1.5){ t = '🅿 <b>DANS LE CADRE</b>'; sub = Math.abs(s.kmh) > 1 ? 'freine ▼ et arrête-toi' : 'parfait…'; }
+      else { t = '↩ Pompe dépassée de <b>' + (-s.dist).toFixed(1) + ' m</b>'; sub = 'à l\'arrêt, maintiens ▼ pour reculer'; }
+      html = '<span class="ac-ico">⛽</span><span>' + t + '<br><small>' + sub + '</small></span>'; cls = 'station' + (s.fuel < 0.35 ? ' low' : '');
+    }
     el.className = 'alert-chip ' + cls + (html ? '' : ' hidden');
     el.innerHTML = html;
   }
