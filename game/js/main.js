@@ -12,7 +12,7 @@
     dailyCard:$('dailyCard'), dailyDesc:$('dailyDesc'), dailyCta:$('dailyCta'),
     dailyBrand:$('dailyBrand'), dailyCarName:$('dailyCarName'), dailyStars:$('dailyStars'), dailyReward:$('dailyReward'), dailyRing:$('dailyRing'), dailyPct:$('dailyPct'),
     dailyBar:$('dailyBar'), dailyNote:$('dailyNote'), dailyStreak:$('dailyStreak'), dailyTimer:$('dailyTimer'),
-    drawCard:$('drawCard'), drawDesc:$('drawDesc'), drawCta:$('drawCta'), drawNote:$('drawNote'), drawTimer:$('drawTimer'),
+    drawCard:$('drawCard'), drawDesc:$('drawDesc'), drawCta:$('drawCta'), drawNote:$('drawNote'), drawTimer:$('drawTimer'), drawStreak:$('drawStreak'),
     ovWheel:$('ovWheel'), wheelEl:$('wheelEl'), reelTrack:$('reelTrack'), wheelResult:$('wheelResult'), btnSpinWheel:$('btnSpinWheel'), btnCloseWheel:$('btnCloseWheel'),
     overDailyCard:$('overDailyCard'), overDailyDesc:$('overDailyDesc'), btnClaimDaily:$('btnClaimDaily'),
     btnLeft:$('btnLeft'), btnRight:$('btnRight'), btnBoost:$('btnBoost'), btnCam:$('btnCam'), btnPause:$('btnPause'), btnFullscreen:$('btnFullscreen'), btnMusic:$('btnMusic'), bgAudio:$('bgAudio'),
@@ -400,15 +400,26 @@
   }
 
   // Tirage du jour : contrairement au defi (qui demande d'atteindre un score),
-  // c'est une action immediate — des credits la plupart du temps, et une chance
-  // infime (1%) de gagner une voiture rare. Probabilites : claim_daily_draw() (SQL).
+  // c'est une action immediate — des credits a coup sur, et 2% de chance de
+  // gagner une voiture rare. Tirage, probabilites et bonus de serie (+10%/jour,
+  // max +50%, Epique garanti le 7e jour) : claim_daily_draw() (SQL).
   const LOOT = [
-    { credits:120,  rarity:'Commun',     color:'#8fa3b8', ico:'🪙', w:55 },
-    { credits:300,  rarity:'Rare',       color:'#3d8bff', ico:'💰', w:30 },
-    { credits:700,  rarity:'Épique',     color:'#b14dff', ico:'💎', w:10 },
-    { credits:1500, rarity:'Légendaire', color:'#ffb020', ico:'👑', w:4 },
-    { jackpot:true, rarity:'Jackpot',    color:'#ff3d6e', ico:'🏆', w:1 }
+    { key:'commun',     credits:200,  rarity:'Commun',     color:'#8fa3b8', ico:'🪙', w:50 },
+    { key:'rare',       credits:400,  rarity:'Rare',       color:'#3d8bff', ico:'💰', w:30 },
+    { key:'epique',     credits:900,  rarity:'Épique',     color:'#b14dff', ico:'💎', w:13 },
+    { key:'legendaire', credits:2000, rarity:'Légendaire', color:'#ffb020', ico:'👑', w:5 },
+    { key:'jackpot', jackpot:true, rarity:'Jackpot',       color:'#ff3d6e', ico:'🏆', w:2 }
   ];
+  // Lot renvoye par le serveur -> rarete. `rarity` est fourni par la version
+  // actuelle de claim_daily_draw() ; les seuils ne servent que de repli pour
+  // l'ancienne version (120 / 300 / 700 / 1500, et 5000 si tout est debloque).
+  function lootFor(res){
+    const byKey = res.rarity && LOOT.find(l=>l.key === res.rarity);
+    if(byKey) return byKey;
+    if(res.carId || res.credits >= 5000) return LOOT[4];
+    return res.credits >= 1500 ? LOOT[3] : res.credits >= 700 ? LOOT[2] : res.credits >= 300 ? LOOT[1] : LOOT[0];
+  }
+  const pctBonus = (mult)=>Math.round(((mult || 1) - 1) * 100);
   function updateDrawCta(claimed){
     if(!els.drawCard) return;
     els.drawCard.classList.toggle('done', claimed);
@@ -419,20 +430,33 @@
       tickDailyTimers();
       return;
     }
+    const st = state.drawStatus;
     els.drawCta.textContent = claimed ? '✓ Ouverte' : '🎁 Ouvrir';
     els.drawDesc.textContent = claimed
-      ? 'Reviens demain pour une nouvelle caisse.'
-      : 'Crédits garantis, et une chance infime de gagner une voiture rare.';
+      ? 'Reviens demain : ta série continue et le bonus grimpe.'
+      : st && st.weekly ? 'Coffre du 7e jour : Épique ou mieux garanti !'
+      : 'Crédits garantis, et 2% de chance de gagner une voiture rare.';
+    // Serie : jour en cours et bonus (fournis par le serveur si la fonction SQL
+    // daily_draw_status() est installee, sinon la pastille reste cachee)
+    const streak = st ? st.streak : 0, bonus = pctBonus(st && st.mult);
+    els.drawStreak.textContent = '🔥 J' + streak + (bonus ? ' · +' + bonus + '%' : '');
+    els.drawStreak.classList.toggle('hidden', !st);
+    els.drawStreak.title = 'Jour ' + streak + ' de série : +10% de crédits par jour consécutif (max +50%), Épique garanti tous les 7 jours';
     const last = readLocal('dg_draw_last');
+    const todayLot = st && st.claimed
+      ? (st.car_id ? (DG.carById(st.car_id) || {}).name : '+' + (st.credits || 0).toLocaleString('fr-FR') + ' crédits')
+      : (last && last.day === DG.dailyChallenge().days ? last.label : null);
     els.drawNote.innerHTML = claimed
-      ? (last && last.day === DG.dailyChallenge().days ? 'Lot du jour : <b>' + last.label + '</b>' : 'Caisse déjà ouverte aujourd\'hui')
-      : 'Ouvre-la pour découvrir ton lot';
+      ? (todayLot ? 'Lot du jour : <b>' + todayLot + '</b>' : 'Caisse déjà ouverte aujourd\'hui')
+      : streak > 1 ? 'Jour <b>' + streak + '</b> de série · bonus <b>+' + bonus + '%</b>'
+      : 'Reviens chaque jour : +10% par jour de série';
     tickDailyTimers();
   }
 
   async function renderDrawCard(){
     if(!els.drawCard) return;
-    const claimed = await DG.Economy.hasClaimedDailyDraw();
+    state.drawStatus = await DG.Economy.dailyDrawStatus();
+    const claimed = state.drawStatus ? !!state.drawStatus.claimed : await DG.Economy.hasClaimedDailyDraw();
     updateDrawCta(claimed);
   }
 
@@ -503,13 +527,13 @@
       els.btnSpinWheel.textContent = '🎁 Ouvrir la caisse';
       return;
     }
-    // Lot tire cote serveur -> element de la bande : voiture (ou le repli 5000
-    // credits quand tout est deja debloque) = jackpot, sinon la rarete exacte.
+    // Lot tire cote serveur -> element de la bande, avec le montant REELLEMENT
+    // gagne (bonus de serie compris). Jackpot sans voiture (tout deja debloque) :
+    // case jackpot avec le gros bonus de credits.
     const carName = res.carId ? (DG.carById(res.carId) || {}).name : null;
-    let win;
-    if(res.carId) win = Object.assign({}, LOOT[4], { carName });
-    else if(res.credits === 5000) win = Object.assign({}, LOOT[4], { jackpot:false, credits:5000, ico:'🏆' });
-    else win = LOOT.find(l=>l.credits === res.credits) || LOOT[0];
+    const loot = lootFor(res), level = LOOT.indexOf(loot);
+    const win = res.carId ? Object.assign({}, loot, { carName })
+      : Object.assign({}, loot, { jackpot:false, credits:res.credits });
     buildReel(win);
     const m = reelMetrics();
     setReelX(m.view / 2 - m.w / 2 - m.step * 3, false);
@@ -540,14 +564,18 @@
       els.ovWheel.classList.remove('burst'); void els.ovWheel.offsetWidth; els.ovWheel.classList.add('burst');
       const label = res.carId ? carName : '+' + res.credits.toLocaleString('fr-FR') + ' crédits';
       writeLocal('dg_draw_last', { day:DG.dailyChallenge().days, label });
+      if(state.drawStatus) Object.assign(state.drawStatus, { claimed:true, credits:res.credits, car_id:res.carId || null });
       els.wheelResult.style.setProperty('--r', win.color);
-      els.wheelResult.innerHTML = '<span class="rr-lbl">' + win.rarity + (res.carId ? ' · voiture rare !' : '') + '</span><span class="rr-val">' + (res.carId ? '🏆 ' + carName : '') + '</span>';
+      const bonus = pctBonus(res.mult);
+      const extra = (res.weekly ? '<span class="rr-sub">🎁 Coffre du 7e jour</span>' : '') +
+        (res.streak > 1 ? '<span class="rr-sub">🔥 Jour ' + res.streak + ' de série' + (bonus && !res.carId ? ' · bonus +' + bonus + '% inclus' : '') + '</span>' : '');
+      els.wheelResult.innerHTML = '<span class="rr-lbl">' + win.rarity + (res.carId ? ' · voiture rare !' : '') + '</span><span class="rr-val">' + (res.carId ? '🏆 ' + carName : '') + '</span>' + extra;
       replay(els.wheelResult, 'pop');
       if(!res.carId) countUp(els.wheelResult.querySelector('.rr-val'), res.credits, n=>'+' + Math.round(n).toLocaleString('fr-FR') + ' crédits', 900);
-      chimeSound((res.carId || res.credits === 5000) ? 4 : Math.max(0, LOOT.indexOf(win)));
+      chimeSound(level);
       updateDrawCta(true);
       refreshPilotBar();
-      if(res.carId || res.credits >= 700) confetti(innerWidth/2, innerHeight*0.4);
+      if(level >= 2) confetti(innerWidth/2, innerHeight*0.4);
       if(res.carId){
         els.drawCard.classList.add('jackpot');
         popup('🏆 Voiture rare gagnée !', '#ff3d6e', true);

@@ -192,6 +192,8 @@ h1,h2,h3{font-family:'Saira Condensed',sans-serif;text-transform:uppercase;margi
 .reel-result{min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 .reel-result .rr-lbl{font-size:11px;font-weight:800;letter-spacing:.24em;text-transform:uppercase;color:var(--r,#b48cff)}
 .reel-result .rr-val{font-family:'Saira Condensed';font-weight:900;font-size:clamp(26px,4.6vw,36px);line-height:1;color:#fff;text-shadow:0 0 24px var(--r,#b48cff)}
+.reel-result .rr-sub{font-size:11.5px;letter-spacing:.06em;color:#cfd6df;margin-top:4px}
+.reel-streak{font-size:11.5px;letter-spacing:.04em;color:#ffb35c;text-shadow:0 0 8px rgba(255,140,40,.6);text-align:center}
 .reel-result.pop{animation:rrPop .6s cubic-bezier(.2,1.6,.4,1)}
 @keyframes rrPop{0%{transform:scale(.6);opacity:0}100%{transform:none;opacity:1}}
 #ovWheel.burst::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;background:radial-gradient(circle at 50% 42%,var(--burst,#b48cff),transparent 60%);animation:overFlashBurst 1.2s cubic-bezier(.15,.7,.3,1) forwards}

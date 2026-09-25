@@ -169,8 +169,20 @@
         this.money = DG.Auth.profile ? DG.Auth.profile.money : this.money;
         if(data && data.car_id && this.unlocked.indexOf(data.car_id) === -1) this.unlocked.push(data.car_id);
         this._emit();
-        return { ok:true, credits: (data && data.credits) || 0, carId: data && data.car_id };
+        return { ok:true, credits: (data && data.credits) || 0, carId: data && data.car_id,
+          rarity: data && data.rarity, streak: (data && data.streak) || 1, mult: (data && data.mult) || 1, weekly: !!(data && data.weekly) };
       } catch(e){ return { ok:false, error: e.message || 'Tirage déjà réclamé aujourd\'hui.' }; }
+    },
+
+    // Etat du tirage (deja tire ?, jour de serie, bonus). null si non connecte ou si
+    // la fonction SQL daily_draw_status() n'est pas encore installee.
+    async dailyDrawStatus(){
+      if(!DG.Auth.isLoggedIn()) return null;
+      try{
+        const { data, error } = await DG.supabase.rpc('daily_draw_status');
+        if(error) throw error;
+        return data || null;
+      } catch(e){ return null; }
     },
 
     async hasClaimedDailyDraw(){
