@@ -254,13 +254,14 @@
     const arrowTex = M('tex:arrow', ()=>{ const c = document.createElement('canvas'); c.width = 64; c.height = 128; const x = c.getContext('2d'); x.fillStyle = 'rgba(232,230,222,.9)'; x.beginPath(); x.moveTo(32, 4); x.lineTo(60, 44); x.lineTo(42, 44); x.lineTo(42, 124); x.lineTo(22, 124); x.lineTo(22, 44); x.lineTo(4, 44); x.closePath(); x.fill(); const t = new T.CanvasTexture(c); return t; });
     [26, 40].forEach(z=>{ const a = new T.Mesh(M('geo:arrowDecal', ()=>new T.PlaneGeometry(1.1, 2.2)), M('mat:arrowDecal', ()=>new T.MeshBasicMaterial({ map:arrowTex, transparent:true, depthWrite:false }))); a.rotation.x = -Math.PI/2; a.rotation.z = -0.25; a.position.set(6.3, 0.035, z); g.add(a); });
     // auvent : toit blanc, bandeau a la couleur de l'enseigne, liseré lumineux
-    const roof = new T.Mesh(new T.BoxGeometry(8, 0.6, 13), white); roof.position.set(8.7, 5.4, 7.5); g.add(roof);
-    const band = new T.Mesh(new T.BoxGeometry(8.1, 0.55, 13.1), brand); band.position.set(8.7, 4.95, 7.5); g.add(band);
-    const led = new T.Mesh(new T.BoxGeometry(8.2, 0.08, 13.2), M('bas:fuelLed' + col2, ()=>new T.MeshBasicMaterial({ color:col2 }))); led.position.set(8.7, 4.64, 7.5); g.add(led);
-    [[5.4, 2.4], [5.4, 12.6], [12, 2.4], [12, 12.6]].forEach(([x, z])=>{ const p = new T.Mesh(new T.BoxGeometry(0.35, 4.8, 0.35), white); p.position.set(x, 2.4, z); g.add(p); });
-    for(let k = 0; k < 3; k++){ const l = new T.Mesh(new T.BoxGeometry(6, 0.05, 0.3), M('bas:tollLight', ()=>new T.MeshBasicMaterial({ color:0xfff6e0 }))); l.position.set(8.7, 5.08, 4 + k*3.5); g.add(l); }
+    // grand auvent au-dessus des 2 ilots
+    const roof = new T.Mesh(new T.BoxGeometry(9.8, 0.6, 13.4), white); roof.position.set(9.75, 5.4, 7.5); g.add(roof);
+    const band = new T.Mesh(new T.BoxGeometry(9.9, 0.55, 13.5), brand); band.position.set(9.75, 4.95, 7.5); g.add(band);
+    const led = new T.Mesh(new T.BoxGeometry(8.2, 0.08, 13.2), M('bas:fuelLed' + col2, ()=>new T.MeshBasicMaterial({ color:col2 }))); led.position.set(9.75, 4.64, 7.5); led.scale.x = 10 / 8.2; g.add(led);
+    [[5.3, 2.4], [5.3, 12.6], [14.15, 2.4], [14.15, 12.6]].forEach(([x, z])=>{ const p = new T.Mesh(new T.BoxGeometry(0.35, 4.8, 0.35), white); p.position.set(x, 2.4, z); g.add(p); });
+    for(let k = 0; k < 3; k++) [7.9, 11.9].forEach(x=>{ const l = new T.Mesh(new T.BoxGeometry(3.4, 0.05, 0.3), M('bas:tollLight', ()=>new T.MeshBasicMaterial({ color:0xfff6e0 }))); l.position.set(x, 5.08, 4 + k*3.5); g.add(l); });
     // ilot des pompes (a cote de la voie de service ou s'arrete la voiture)
-    const island = new T.Mesh(new T.BoxGeometry(1.3, 0.28, 10), concrete); island.position.set(8.7, 0.14, 7.5); g.add(island);
+    [8.7, 12.9].forEach(x=>{ const island = new T.Mesh(new T.BoxGeometry(1.3, 0.28, 10), concrete); island.position.set(x, 0.14, 7.5); g.add(island); });
     const pumpGeo = M('geo:pumpV3', ()=>S().merge(T, [
       { geo:new T.BoxGeometry(0.75, 2.0, 1.0), pos:[0, 1.0, 0], color:0xe8eaec },
       { geo:new T.BoxGeometry(0.77, 0.45, 1.02), pos:[0, 2.05, 0], color:col },
@@ -269,10 +270,10 @@
       { geo:new T.BoxGeometry(0.6, 0.2, 0.8), pos:[0, 0.1, 0], color:0x8a8e94 },
     ]));
     const screenMat = M('mat:pumpScreen:' + route.id, ()=>{ const c = document.createElement('canvas'); c.width = 128; c.height = 96; const x = c.getContext('2d'); x.fillStyle = '#0a1410'; x.fillRect(0, 0, 128, 96); x.fillStyle = '#6dff9e'; x.font = '700 14px Courier New'; x.textAlign = 'center'; labels.forEach((l, k)=>{ x.fillText(l + ' ' + fmt(prices[k] || prices[0]), 64, 24 + k*26); }); const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return new T.MeshBasicMaterial({ map:t, toneMapped:false }); });
-    [4.2, 7.5, 10.8].forEach(z=>{
-      const p = new T.Mesh(pumpGeo, vc('pump')); p.position.set(8.7, 0.28, z); g.add(p);
-      const sc = new T.Mesh(M('geo:pumpScreen', ()=>new T.PlaneGeometry(0.62, 0.46)), screenMat); sc.rotation.y = -Math.PI/2; sc.position.set(8.3, 1.9, z); g.add(sc);
-    });
+    [8.7, 12.9].forEach(ix=>[4.2, 7.5, 10.8].forEach(z=>{
+      const p = new T.Mesh(pumpGeo, vc('pump')); p.position.set(ix, 0.28, z); g.add(p);
+      const sc = new T.Mesh(M('geo:pumpScreen', ()=>new T.PlaneGeometry(0.62, 0.46)), screenMat); sc.rotation.y = -Math.PI/2; sc.position.set(ix - 0.4, 1.9, z); g.add(sc);
+    }));
     // tuyau de la pompe du milieu vers la trappe a carburant (visible pendant le plein)
     const hosePts = [new T.Vector3(8.3, 1.3, 7.2), new T.Vector3(8.0, 0.35, 7.8), new T.Vector3(7.95, 0.8, 8.6)];
     const hose = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(hosePts), 14, 0.05, 6), M('std:hose', ()=>new T.MeshStandardMaterial({ color:0x121212, roughness:0.6 })));
@@ -361,6 +362,7 @@
     }
     // petits details : poubelles, borne de gonflage, place de parking
     const bin = new T.Mesh(M('geo:bin', ()=>new T.CylinderGeometry(0.3, 0.26, 0.9, 10)), M('std:bin', ()=>new T.MeshStandardMaterial({ color:0x2a5a3a, roughness:0.6 }))); bin.position.set(8.7, 0.72, 2.6); g.add(bin);
+    const air0 = null;
     const air = new T.Mesh(M('geo:airPump', ()=>S().merge(T, [ { geo:new T.BoxGeometry(0.5, 1.4, 0.4), pos:[0, 0.7, 0], color:0x1f5ad8 }, { geo:new T.BoxGeometry(0.52, 0.3, 0.42), pos:[0, 1.2, 0], color:0xf2f2f2 } ])), vc('airpump')); air.position.set(13.6, 0, -4); g.add(air);
     for(let k = 0; k < 4; k++){ const m = new T.Mesh(M('geo:parkLine', ()=>new T.PlaneGeometry(0.12, 4.6)), lineMat); m.rotation.x = -Math.PI/2; m.rotation.z = Math.PI/2; m.position.set(16.2, 0.03, -6 - k*2.8); g.add(m); }
     // totem des prix, visible de loin (avant l'entree)
@@ -569,6 +571,28 @@
     const poster = (txt, sub, col, x, y, z, ry, w)=>{ const c = document.createElement('canvas'); c.width = 256; c.height = 128; const k = c.getContext('2d'); k.fillStyle = col; k.fillRect(0, 0, 256, 128); k.fillStyle = '#fff'; k.textAlign = 'center'; k.font = '900 40px Arial'; k.fillText(txt, 128, 58); k.font = '700 22px Arial'; k.fillText(sub, 128, 98); const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; const m = new T.Mesh(new T.PlaneGeometry(w || 1.6, (w || 1.6) / 2), new T.MeshBasicMaterial({ map:t, toneMapped:false })); m.position.set(x, y, z); m.rotation.y = ry; g.add(m); };
     const items = shopItems(route), cur = route.currency || '€';
     const priceTxt = (v)=> cur === '$' ? '$' + v.toFixed(2) : cur === '¥' ? '¥' + Math.round(v) : v.toFixed(2).replace('.', ',') + ' ' + cur;
+    // bar le long de la vitrine (on s'y assoit pour manger) + 3 tabourets
+    const barTop = new T.Mesh(new T.BoxGeometry(0.55, 0.06, 5.5), M('std:barTop', ()=>new T.MeshStandardMaterial({ color:0x6a4a2a, roughness:0.5 }))); barTop.position.set(-3.12, 1.05, -1.85); g.add(barTop);
+    const barLeg = new T.Mesh(new T.BoxGeometry(0.08, 1.0, 5.3), M('std:barLeg', ()=>new T.MeshStandardMaterial({ color:0x2a2e34, metalness:0.6, roughness:0.4 }))); barLeg.position.set(-3.3, 0.55, -1.85); g.add(barLeg);
+    [-3.6, -2.0, -0.4].forEach(z=>{
+      const seat = new T.Mesh(M('geo:stoolSeat', ()=>new T.CylinderGeometry(0.2, 0.2, 0.07, 14)), M('std:stool' + brandCol, ()=>new T.MeshStandardMaterial({ color:brandCol, roughness:0.5 }))); seat.position.set(-2.55, 0.78, z); g.add(seat);
+      const pole = new T.Mesh(M('geo:stoolPole', ()=>new T.CylinderGeometry(0.03, 0.03, 0.72, 8)), M('std:barLeg', ()=>null)); pole.position.set(-2.55, 0.42, z); g.add(pole);
+      const foot = new T.Mesh(M('geo:stoolFoot', ()=>new T.CylinderGeometry(0.17, 0.2, 0.03, 14)), M('std:barLeg', ()=>null)); foot.position.set(-2.55, 0.07, z); g.add(foot);
+    });
+    // produits en rayon (on les prend a la main) : 0 cafe (machine), 1 frigo gauche,
+    // 2 vitrine chaude, 3 frigo droit (boissons), 4 gondole ; etiquette de prix a cote
+    const tag = (txt, price, x, y, z, ry)=>{ const c = document.createElement('canvas'); c.width = 256; c.height = 96; const k = c.getContext('2d'); k.fillStyle = '#fff8d8'; k.fillRect(0, 0, 256, 96); k.fillStyle = '#c8141e'; k.fillRect(0, 0, 256, 18); k.fillStyle = '#1a1a1a'; k.font = '700 26px Arial'; k.textAlign = 'center'; k.fillText(txt.slice(0, 18), 128, 50); k.fillStyle = '#c8141e'; k.font = '900 30px Arial'; k.fillText(price, 128, 86); const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; const m = new T.Mesh(new T.PlaneGeometry(0.42, 0.16), new T.MeshBasicMaterial({ map:t, toneMapped:false })); m.position.set(x, y, z); m.rotation.y = ry; g.add(m); };
+    const prod = (i, parts, x, y, z)=>{ const o = new T.Mesh(S().merge(T, parts), vc('prod')); o.name = 'prod' + i; o.position.set(x, y, z); g.add(o); };
+    const cupP = []; for(let k = 0; k < 4; k++) cupP.push({ geo:new T.CylinderGeometry(0.045, 0.035, 0.1, 10), pos:[0, 0.05, -0.15 + k * 0.1], color:k % 2 ? 0xf2f2ee : 0x8a5a2a });
+    prod(0, cupP, 1.62, 1.08, -2.1); tag(items[0].label, priceTxt(items[0].price), 1.45, 1.35, -2.55, -Math.PI / 2);
+    const sandP = []; for(let k = 0; k < 6; k++) sandP.push({ geo:new T.BoxGeometry(0.16, 0.1, 0.12), pos:[(k % 3) * 0.2 - 0.2, Math.floor(k / 3) * 0.42, 0], color:[0xe8c890, 0xd8a860, 0xf0d8a0][k % 3] });
+    prod(1, sandP, -1.4, 1.05, -4.92); tag(items[1].label, priceTxt(items[1].price), -1.4, 0.85, -4.88, 0);
+    const crP = []; for(let k = 0; k < 5; k++) crP.push({ geo:new T.SphereGeometry(0.06, 8, 6), pos:[0, 0.05, -0.3 + k * 0.15], color:0xd8962a });
+    prod(2, crP, 1.95, 1.56, 2.1); tag(items[2].label, priceTxt(items[2].price), 1.6, 1.28, 2.1, -Math.PI / 2);
+    const canP = []; for(let k = 0; k < 6; k++) canP.push({ geo:new T.CylinderGeometry(0.04, 0.04, 0.13, 10), pos:[(k % 3) * 0.12 - 0.12, Math.floor(k / 3) * 0.42, 0], color:[0xd8202a, 0x1f6ad8, 0x2fae4a][k % 3] });
+    prod(3, canP, 0.7, 1.1, -4.92); tag(items[3].label, priceTxt(items[3].price), 0.7, 0.85, -4.88, 0);
+    const choP = []; for(let k = 0; k < 6; k++) choP.push({ geo:new T.BoxGeometry(0.14, 0.03, 0.05), pos:[-0.3 + k * 0.12, 0.02, 0], color:[0x6a3a1a, 0x8a2a8a, 0xd8a020][k % 3] });
+    prod(4, choP, -0.6, 1.02, 3.2); tag(items[4].label, priceTxt(items[4].price), -0.6, 0.88, 2.84, Math.PI);
     poster(items[0].label.toUpperCase(), priceTxt(items[0].price), '#b01818', W/2 - 0.55, 2.55, -1.6, -Math.PI/2, 1.3);
     poster(items[1].label.split(' ')[0].toUpperCase(), priceTxt(items[1].price), '#1f6ad8', W/2 - 0.55, 2.55, 2.2, -Math.PI/2, 1.3);
     return g;

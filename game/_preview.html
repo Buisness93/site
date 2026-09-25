@@ -11,9 +11,9 @@
 <link rel="preconnect" href="https://uzzlhtaeoybonwljjgge.supabase.co" crossorigin>
 <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js">
 <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Saira:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/game.css?v=2026092505">
-<link rel="stylesheet" href="css/game-fx.css?v=2026092505">
-<link rel="stylesheet" href="css/game-menu.css?v=2026092505">
+<link rel="stylesheet" href="css/game.css?v=1790346216">
+<link rel="stylesheet" href="css/game-fx.css?v=1790346216">
+<link rel="stylesheet" href="css/game-menu.css?v=1790346216">
 </head>
 <body>
 <div id="stage">
@@ -323,18 +323,26 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
-<script src="../js/supabase-client.js?v=2026092505"></script>
-<script src="../js/cars.js?v=2026092505"></script>
-<script src="../js/auth.js?v=2026092505"></script>
-<script src="../js/economy.js?v=2026092505"></script>
-<script src="../js/leaderboard.js?v=2026092505"></script>
-<script src="../js/ads.js?v=2026092505"></script>
-<script src="js/scenery.js?v=2026092505"></script>
-<script src="js/routes.js?v=2026092505"></script>
-<script src="js/routes-europe.js?v=2026092505"></script>
-<script src="js/loader.js?v=2026092505"></script>
+<script src="../js/supabase-client.js?v=1790346216"></script>
+<script src="../js/cars.js?v=1790346216"></script>
+<script src="../js/auth.js?v=1790346216"></script>
+<script src="../js/economy.js?v=1790346216"></script>
+<script src="../js/leaderboard.js?v=1790346216"></script>
+<script src="../js/ads.js?v=1790346216"></script>
+<script src="js/scenery.js?v=1790346216"></script>
+<script src="js/routes.js?v=1790346216"></script>
+<script src="js/routes-europe.js?v=1790346216"></script>
+<script src="js/loader.js?v=1790346216"></script>
 <script src="js/fx3d.js"></script>
-<script src="js/engine.js?v=2026092505"></script>
-<script src="js/main.js?v=2026092505"></script>
+<script src="js/engine.js?v=1790346216"></script>
+<script>
+DG.Auth.init=async()=>{};DG.Auth.isLoggedIn=()=>true;DG.Auth.displayName=()=>'Test';DG.Auth.user={id:'x'};DG.Auth.refreshProfile=async()=>{};
+const _ei=DG.Economy.init.bind(DG.Economy);DG.Economy.init=async()=>{try{await _ei()}catch(e){} DG.Economy.unlocked=DG.CARS.map(c=>c.id);};
+DG.Economy.hasClaimedDailyChallenge=async()=>false;
+const _gi=DG.GameEngine.prototype.init; DG.GameEngine.prototype.init=function(){ window.__dgEngine=this; return _gi.apply(this, arguments); };
+DG.Economy.dailyDrawStatus=async()=>({claimed:false,streak:3,mult:1.2,weekly:false});
+DG.Economy.claimDailyDraw=async()=>({ok:true,credits:1080,rarity:'epique',streak:3,mult:1.2,weekly:false});
+</script>
+<script src="js/main.js?v=1790346216"></script>
 </body>
 </html>
