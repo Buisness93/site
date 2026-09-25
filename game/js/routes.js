@@ -673,6 +673,148 @@
   // Bande de sable mouille + ecume qui lèche le rivage (entre sable et mer).
   const SHORE_X = 13;
 
+  // ---------- Japon · Sakura ----------
+  const SAKURA_PINKS = [0xff8fb8, 0xff76a6, 0xffa3c6, 0xf0709e, 0xffb8d2, 0xff6a9c];
+
+  // Cerisier en fleurs : tronc noueux + 6-7 boules de fleurs roses (couleurs de
+  // sommet), fusionne en UNE geometrie -> 1 appel de dessin par arbre, et
+  // instanciable par centaines pour les rangees du fond.
+  function sakuraGeo(T){
+    return M('geo:sakura', ()=>{
+      const bark = 0x3a2420;
+      const parts = [
+        { geo:new T.CylinderGeometry(0.13, 0.24, 2.3, 6), pos:[0, 1.15, 0], color:bark },
+        { geo:new T.CylinderGeometry(0.06, 0.11, 1.5, 5), pos:[0.42, 2.25, 0.1], rot:[0.2, 0, -0.85], color:bark },
+        { geo:new T.CylinderGeometry(0.05, 0.1, 1.3, 5), pos:[-0.38, 2.2, -0.15], rot:[-0.2, 0, 0.8], color:bark },
+      ];
+      const blobs = [[0, 3.05, 0, 1.35], [1.05, 2.75, 0.3, 1.0], [-1.0, 2.7, -0.2, 1.05], [0.35, 3.55, -0.6, 0.95], [-0.45, 3.4, 0.65, 0.9], [0.2, 2.5, -0.95, 0.85], [-0.2, 2.45, 1.0, 0.8]];
+      blobs.forEach((b, k)=>parts.push({ geo:new T.IcosahedronGeometry(b[3], 1), pos:[b[0], b[1], b[2]], scale:[1, 0.78, 1], color:SAKURA_PINKS[k % SAKURA_PINKS.length] }));
+      return S().merge(T, parts);
+    });
+  }
+  function sakuraMat(T){
+    return M('lam:sakura', ()=>new T.MeshLambertMaterial({ vertexColors:true, emissive:0x24060f }));
+  }
+  function sakuraTree(T, x, z, scale){
+    const g = new T.Group();
+    const tree = new T.Mesh(sakuraGeo(T), sakuraMat(T));
+    tree.scale.setScalar(scale || 1); tree.rotation.y = Math.random() * Math.PI * 2;
+    g.add(tree);
+    // tapis de petales tombes au pied de l'arbre
+    const carpet = new T.Mesh(M('geo:pool', ()=>new T.PlaneGeometry(1, 1)), M('mat:petalCarpet', ()=>new T.MeshBasicMaterial({ map:S().pool(T), color:0xffb0cc, transparent:true, opacity:.55, depthWrite:false })));
+    carpet.rotation.x = -Math.PI/2; carpet.scale.set(4.6 * (scale || 1), 4.6 * (scale || 1), 1); carpet.position.y = 0.02;
+    g.add(carpet);
+    g.position.set(x, 0, z);
+    return g;
+  }
+
+  // Torii rouge au-dessus de la route (piliers sur les bas-cotes) : repere fort
+  // et rare, comme le portique de la ville neon.
+  function torii(T, z){
+    const g = new T.Group();
+    const red = M('std:toriiRed', ()=>new T.MeshStandardMaterial({ color:0xc42a1e, roughness:0.55, metalness:0.05, emissive:0x2a0602 }));
+    const black = M('std:toriiBlack', ()=>new T.MeshStandardMaterial({ color:0x141012, roughness:0.6 }));
+    [-6.3, 6.3].forEach(x=>{
+      const pil = new T.Mesh(M('geo:toriiPillar', ()=>new T.CylinderGeometry(0.3, 0.36, 7.4, 14)), red); pil.position.set(x, 3.7, 0); g.add(pil);
+      const foot = new T.Mesh(M('geo:toriiFoot', ()=>new T.CylinderGeometry(0.44, 0.44, 0.55, 14)), black); foot.position.set(x, 0.27, 0); g.add(foot);
+      // lanterne suspendue sous la traverse + son halo
+      const lamp = new T.Mesh(M('geo:lantern', ()=>new T.CylinderGeometry(0.2, 0.2, 0.46, 10)), basic(0xffb347)); lamp.position.set(x * 0.72, 5.0, 0.25); g.add(lamp);
+      const halo = new T.Sprite(new T.SpriteMaterial({ map:S().glow(T), color:0xffa040, transparent:true, opacity:.6, blending:T.AdditiveBlending, depthWrite:false }));
+      halo.scale.set(2.2, 2.2, 1); halo.position.copy(lamp.position); g.add(halo);
+    });
+    const nuki = new T.Mesh(new T.BoxGeometry(14.2, 0.36, 0.32), red); nuki.position.set(0, 5.7, 0); g.add(nuki);
+    const shimaki = new T.Mesh(new T.BoxGeometry(15.4, 0.34, 0.5), red); shimaki.position.set(0, 6.95, 0); g.add(shimaki);
+    const kasagi = new T.Mesh(new T.BoxGeometry(15.2, 0.4, 0.66), black); kasagi.position.set(0, 7.32, 0); g.add(kasagi);
+    // extremites relevees du linteau (silhouette caracteristique du torii)
+    [-1, 1].forEach(s=>{
+      const tip = new T.Mesh(M('geo:toriiTip', ()=>new T.BoxGeometry(1.6, 0.4, 0.66)), black);
+      tip.position.set(s*8.25, 7.5, 0); tip.rotation.z = s*0.22; g.add(tip);
+    });
+    const plaque = new T.Mesh(new T.BoxGeometry(1.0, 1.25, 0.14), black); plaque.position.set(0, 6.32, 0.02); g.add(plaque);
+    const label = new T.Mesh(M('geo:unitPlane', ()=>new T.PlaneGeometry(1, 1)), new T.MeshBasicMaterial({ map:S().bladeSignTex(T, '京都', 0xffd27a) }));
+    label.scale.set(0.7, 1.05, 1); label.position.set(0, 6.32, 0.1); g.add(label);
+    const refl = lightPool(T, 0xff7040, 16, 8, 0.12); refl.position.set(0, 0.03, 1); g.add(refl);
+    g.position.set(0, 0, z);
+    return g;
+  }
+
+  // Lanterne de pierre (toro) au bord de la route : flamme chaude dans la
+  // cage, halo et flaque de lumiere au sol (sans lumiere dynamique).
+  function stoneLantern(T, x, z){
+    const g = new T.Group();
+    const stone = M('std:stone', ()=>new T.MeshStandardMaterial({ color:0x8c8680, roughness:0.95 }));
+    const add = (geo, y, mat, rotY)=>{ const m = new T.Mesh(geo, mat || stone); m.position.y = y; if(rotY) m.rotation.y = rotY; g.add(m); return m; };
+    add(M('geo:toroBase', ()=>new T.CylinderGeometry(0.34, 0.42, 0.26, 6)), 0.13);
+    add(M('geo:toroPole', ()=>new T.CylinderGeometry(0.12, 0.15, 0.95, 6)), 0.73);
+    add(M('geo:toroDeck', ()=>new T.BoxGeometry(0.62, 0.12, 0.62)), 1.26);
+    add(M('geo:toroFire', ()=>new T.BoxGeometry(0.4, 0.36, 0.4)), 1.5, basic(0xffc070));
+    add(M('geo:toroRoof', ()=>new T.ConeGeometry(0.6, 0.38, 4)), 1.87, null, Math.PI/4);
+    add(M('geo:toroTip', ()=>new T.SphereGeometry(0.09, 8, 6)), 2.1);
+    const halo = new T.Sprite(new T.SpriteMaterial({ map:S().glow(T), color:0xffa850, transparent:true, opacity:.55, blending:T.AdditiveBlending, depthWrite:false }));
+    halo.scale.set(1.9, 1.9, 1); halo.position.y = 1.5; g.add(halo);
+    const pool = lightPool(T, 0xffa050, 3.4, 3.4, 0.28); pool.position.y = 0.02; g.add(pool);
+    g.position.set(x, 0, z);
+    return g;
+  }
+
+  // Maison traditionnelle (machiya) en retrait : bois sombre, etage enduit
+  // blanc, toit de tuiles a deux pans, fenetres a claire-voie eclairees et
+  // lanterne rouge a l'entree, cote route.
+  function machiya(T, x, z){
+    const side = x < 0 ? -1 : 1;
+    const g = new T.Group();
+    const w = 4.2 + Math.random()*1.6, d = 4.4, h = 3.1;
+    const wood = M('std:machiyaWood', ()=>new T.MeshStandardMaterial({ color:0x2e1d16, roughness:0.85 }));
+    const plaster = M('std:machiyaPlaster', ()=>new T.MeshStandardMaterial({ color:0xd9d0c0, roughness:0.9 }));
+    const tile = M('std:machiyaTile', ()=>new T.MeshStandardMaterial({ color:0x2a2e36, roughness:0.7, metalness:0.2 }));
+    const low = new T.Mesh(new T.BoxGeometry(d, h*0.6, w), wood); low.position.y = h*0.3; g.add(low);
+    const up = new T.Mesh(new T.BoxGeometry(d*0.96, h*0.4, w*0.96), plaster); up.position.y = h*0.8; g.add(up);
+    // toit a 2 pans : prisme triangulaire (cylindre a 3 faces couche le long de z)
+    const roof = new T.Mesh(new T.CylinderGeometry(d*0.72, d*0.72, w + 0.8, 3, 1), tile);
+    roof.rotation.x = -Math.PI/2; roof.scale.set(1, 1, 0.42); // pointe vers le haut, aplatie
+    roof.position.y = h + 0.5; g.add(roof);
+    // facade cote route : 2 fenetres chaudes + lanterne
+    const fx = -side*(d/2 + 0.02);
+    const winMat = M('mat:machiyaWin', ()=>new T.MeshBasicMaterial({ color:0xffb35a }));
+    [-w*0.24, w*0.24].forEach(oz=>{
+      const win = new T.Mesh(M('geo:unitPlane', ()=>new T.PlaneGeometry(1, 1)), winMat);
+      win.scale.set(1.1, 0.8, 1); win.rotation.y = -side*Math.PI/2; win.position.set(fx, h*0.34, oz); g.add(win);
+    });
+    const lamp = new T.Mesh(M('geo:lantern', ()=>new T.CylinderGeometry(0.2, 0.2, 0.46, 10)), basic(0xff3b2a));
+    lamp.position.set(fx - side*0.3, 2.0, 0); g.add(lamp);
+    const halo = new T.Sprite(new T.SpriteMaterial({ map:S().glow(T), color:0xff5a30, transparent:true, opacity:.55, blending:T.AdditiveBlending, depthWrite:false }));
+    halo.scale.set(1.8, 1.8, 1); halo.position.copy(lamp.position); g.add(halo);
+    const pool = lightPool(T, 0xffa050, 5, 3, 0.2); pool.position.set(fx - side*1.8, 0.02, 0); g.add(pool);
+    g.position.set(x, 0, z);
+    return g;
+  }
+
+  // Pagode a 5 etages (repere rare, en retrait) : corps rouges, toits sombres
+  // debordants, fenetres eclairees et fleche doree.
+  function pagoda(T, x, z){
+    const g = new T.Group();
+    const red = M('std:pagodaRed', ()=>new T.MeshStandardMaterial({ color:0x8e2a20, roughness:0.7 }));
+    const roofM = M('std:pagodaRoof', ()=>new T.MeshStandardMaterial({ color:0x1e2026, roughness:0.6, metalness:0.2 }));
+    const warm = basic(0xffc070);
+    let y = 0.8;
+    const base = new T.Mesh(new T.BoxGeometry(6.4, 0.8, 6.4), M('std:stone', ()=>new T.MeshStandardMaterial({ color:0x8c8680, roughness:0.95 })));
+    base.position.y = 0.4; g.add(base);
+    for(let k = 0; k < 5; k++){
+      const s = 4.2 - k*0.55, bh = 1.7 - k*0.1;
+      const body = new T.Mesh(new T.BoxGeometry(s, bh, s), red); body.position.y = y + bh/2; g.add(body);
+      const win = new T.Mesh(new T.BoxGeometry(s*0.5, bh*0.4, s + 0.02), warm); win.position.y = y + bh*0.5; g.add(win);
+      y += bh;
+      const roof = new T.Mesh(new T.ConeGeometry((s + 2.4) * 0.72, 0.9, 4), roofM);
+      roof.rotation.y = Math.PI/4; roof.position.y = y + 0.3; g.add(roof);
+      y += 0.55;
+    }
+    const spire = new T.Mesh(new T.CylinderGeometry(0.06, 0.1, 3, 6), basic(0xd9a441)); spire.position.y = y + 1.4; g.add(spire);
+    const halo = new T.Sprite(new T.SpriteMaterial({ map:S().glow(T), color:0xff9a50, transparent:true, opacity:.3, blending:T.AdditiveBlending, depthWrite:false }));
+    halo.scale.set(16, 20, 1); halo.position.y = y * 0.55; g.add(halo);
+    g.position.set(x, 0, z);
+    return g;
+  }
+
   const ROUTES = [
     {
       id:'autoroute-nuit', name:'Autoroute Nocturne', difficulty:'Standard', spacing:9,
@@ -1202,6 +1344,137 @@
         // Plots lumineux cyan/magenta entre les tirets (effet "piste" futuriste).
         add(S().strip(T, new T.BoxGeometry(0.15, 0.03, 0.15), new T.MeshBasicMaterial({ color:0xffffff }), 10, 6, (d, c, i)=>{
           d.position.set([-2.2, 0, 2.2][i % 3], 0.035, i < 3 ? -2.5 : -7.5); c.setHex(i % 2 ? 0x3df0ff : 0xff5ad1);
+        }));
+        return items;
+      }
+    },
+    {
+      id:'japon-sakura', name:'Japon · Sakura', difficulty:'Standard', spacing:9,
+      fog:0xc98aa2, fogNear:28, fogFar:160, ground:0x2a3a1e, exposure:1.0,
+      road:0x1b1a20, stripe:0xf4ece6, edge:0x4a4048, edgeEmissive:0x5a2038,
+      sky:{ top:0x0e0c2a, mid:0x4a2a64, bottom:0xffa0b8, glow:0xffb0c8, glowI:0.6, band:0.08 },
+      light:{ key:0xffd8cc, keyI:1.1, hemiSky:0xffb8d4, hemiGround:0x1e2a1a, hemiI:0.6, ambient:0xffe6f0, ambientI:0.28 },
+      headlights:1.4,
+      celestial:{ color:0xfff2e8, halo:0xff8fb0, size:30, x:62, y:18, haloOp:.45, tex:(T)=>S().sun(T) },
+      horizonGlow:{ color:0xff8fb8, op:.28, y:5, w:340, h:40 },
+      groundTex(T){ return { tex:S().grassTex(T), rx:34, ry:32 }; },
+      // Decor lointain fixe : Mont Fuji enneige dans l'axe gauche de la route,
+      // collines avec pagodes et villages eclaires, nuages roses, et des petales
+      // de cerisier qui tombent en continu autour de la voiture.
+      extras(T, ctx){
+        const Sc = S(), fog = this.fog;
+        const range = Sc.fbm(21), hills = Sc.fbm(5);
+        // Fuji : cone large au sommet legerement tronque, entoure de chaines basses
+        const FUJI_A = 0.24;
+        const fujiH = (a)=>{ const d = Math.abs(a - FUJI_A) / 0.34; return d < 1 ? Math.min(60, 66 * Math.pow(1 - d, 1.35)) : 0; };
+        ctx.add(Sc.silhouette(T, {
+          radius:226, height:110, yBase:-6, peak:66, top:0x3a2e5c, bottom:fog, rim:0xffc0d4, rimA:.5,
+          profile:(a)=>Math.max(fujiH(a), 5 + range(a*5 + 2)*18),
+          decorate(g, o){
+            // neige : de la crete jusqu'a ~38 unites, avec un bord dechiquete
+            for(let x = 0; x < o.W; x++){
+              const h = o.profile[x];
+              if(h < 40) continue;
+              const snowLow = 38 + Math.sin(x*0.9)*1.6 + Math.sin(x*0.23)*2.4;
+              const y0 = o.toPx(h), y1 = o.toPx(Math.max(snowLow, h - 22));
+              const gr = g.createLinearGradient(0, y0, 0, y1);
+              gr.addColorStop(0, 'rgba(255,244,248,.97)'); gr.addColorStop(1, 'rgba(255,196,214,.85)');
+              g.fillStyle = gr; g.fillRect(x, y0, 1, Math.max(1, y1 - y0));
+            }
+          }
+        }));
+        // collines proches : pagodes en silhouette + lumieres de villages
+        ctx.add(Sc.silhouette(T, {
+          radius:186, height:60, yBase:-6, peak:24, top:0x2a1c3c, bottom:fog, rim:0xff9ab8, rimA:.35,
+          profile:(a)=> Math.abs(a - FUJI_A) < 0.12 ? 2 + hills(a*9)*4 : 4 + hills(a*9 + 4)*16,
+          decorate(g, o){
+            const pag = (cx)=>{
+              let y = o.toPx(o.profile[cx]);
+              for(let k = 0; k < 5; k++){
+                const w = 14 - k*2.2, bh = 6 - k*0.4;
+                g.fillStyle = '#1e1428'; g.fillRect(cx - w/2 + 2, y - bh, w - 4, bh);
+                g.beginPath(); g.moveTo(cx - w/2 - 3, y - bh); g.lineTo(cx + w/2 + 3, y - bh); g.lineTo(cx, y - bh - 4); g.closePath(); g.fill();
+                g.fillStyle = 'rgba(255,190,120,.9)'; g.fillRect(cx - 1, y - bh*0.6, 2, 2);
+                y -= bh + 3;
+              }
+              g.fillStyle = '#1e1428'; g.fillRect(cx - 0.5, y - 9, 1, 9);
+            };
+            [0.28, 0.42, 0.6].forEach(f=>pag(Math.floor(o.W * f)));
+            for(let i = 0; i < 90; i++){
+              const x = Math.floor(Math.random() * o.W), y = o.toPx(o.profile[x]) + 2 + Math.random()*10;
+              g.fillStyle = Math.random() < 0.7 ? 'rgba(255,196,130,.95)' : 'rgba(255,120,110,.9)'; g.fillRect(x, y, 1, 1);
+            }
+          }
+        }));
+        // nuages etires roses / lavande
+        [[-120, 40, 90, 0.5, 0xffa6c4], [-40, 58, 110, 0.4, 0xd88ab8], [30, 34, 80, 0.5, 0xffb8c8], [110, 50, 100, 0.42, 0xb07ab0], [0, 80, 140, 0.3, 0x6a4a8a]].forEach(([x, y, w, op, col])=>{
+          const s = ctx.add(new T.Sprite(new T.SpriteMaterial({ map:Sc.cloud(T), color:col, transparent:true, opacity:op, depthWrite:false, fog:false })));
+          s.scale.set(w, w*0.22, 1); s.position.set(x, y, -208);
+        });
+        // Petales de cerisier : tombent en tournoyant et defilent avec la route
+        const NP = 460, pp = new Float32Array(NP*3), seeds = [];
+        const spawn = (s, anywhere)=>{ s.x = (Math.random()-.5)*40; s.y = anywhere ? Math.random()*12 : 9 + Math.random()*5; s.z = anywhere ? -80 + Math.random()*92 : -90 + Math.random()*40; };
+        for(let i = 0; i < NP; i++){ const s = { vy:0.45 + Math.random()*0.6, ph:Math.random()*6.28, sw:0.5 + Math.random()*0.9 }; spawn(s, true); seeds.push(s); }
+        const pg = new T.BufferGeometry(); pg.setAttribute('position', new T.BufferAttribute(pp, 3));
+        const petals = ctx.add(new T.Points(pg, new T.PointsMaterial({ map:Sc.petalTex(T), size:0.24, sizeAttenuation:true, transparent:true, depthWrite:false, alphaTest:0.05 })));
+        petals.frustumCulled = false;
+        ctx.tick((dt, t)=>{
+          const sc = ctx.scroll();
+          for(let i = 0; i < NP; i++){
+            const s = seeds[i];
+            s.y -= s.vy * dt; s.x += Math.sin(t*1.3 + s.ph) * s.sw * dt; s.z += sc + Math.cos(t*0.9 + s.ph) * 0.3 * dt;
+            if(s.y < 0.05 || s.z > 14) spawn(s, false);
+            pp[i*3] = s.x; pp[i*3+1] = s.y; pp[i*3+2] = s.z;
+          }
+          pg.attributes.position.needsUpdate = true;
+        });
+      },
+      buildDecor(T, scene, N){
+        const items = [];
+        const add = (o)=>{ scene.add(o); items.push(o); return o; };
+        const wrap = this.spacing || 9;
+        for(let i = 0; i < N; i++){
+          const side = i % 2 === 0 ? -1 : 1;
+          const z = -12 - i*9;
+          add(sakuraTree(T, side*(6.6 + Math.random()*1.6), z + Math.random()*2, 0.9 + Math.random()*0.35));
+          if(i % 3 === 0) add(sakuraTree(T, -side*(7.2 + Math.random()*2), z - 4, 0.8 + Math.random()*0.3));
+          add(stoneLantern(T, side*5.35, z - 4.5));
+          if(i % 3 === 1) add(machiya(T, side*(12.5 + Math.random()*3), z - 2));
+          if(i % 5 === 4) add(lanternString(T, z - 6));
+          if(i === 2 || i === 10){
+            const t = torii(T, z - 1);
+            t.userData.wrapDist = wrap * N * 2;
+            add(t);
+          }
+          if(i === 6){
+            const p = pagoda(T, -side*(24 + Math.random()*4), z - 8);
+            p.userData.wrapDist = wrap * N * 2;
+            add(p);
+          }
+        }
+        const Sc = S();
+        // Rangees de cerisiers du fond (instancies : des centaines d'arbres en 1 dessin)
+        add(Sc.strip(T, sakuraGeo(T), sakuraMat(T), 54, 16, (d, c, i)=>{
+          const s = i % 2 ? 1 : -1;
+          d.position.set(s*(11 + Math.random()*30), 0, -Math.random()*54);
+          d.rotation.y = Math.random()*6.28; d.scale.setScalar(0.9 + Math.random()*0.6);
+        }));
+        // Bosquets de bambous par endroits, derriere la cloture
+        const bambooGeo = new T.CylinderGeometry(0.06, 0.08, 1, 5); bambooGeo.translate(0, 0.5, 0);
+        add(Sc.strip(T, bambooGeo, M('lam:bamboo', ()=>new T.MeshLambertMaterial({ color:0xffffff })), 72, 34, (d, c, i)=>{
+          const s = i < 17 ? -1 : 1, grove = (i % 17) < 9 ? 0 : 1;
+          d.position.set(s*(9 + Math.random()*1.8), 0, -8 - grove*36 - Math.random()*7);
+          d.scale.set(1, 5.5 + Math.random()*3.5, 1); d.rotation.z = (Math.random()-.5)*0.08;
+          c.setHex([0x6f8f3a, 0x7fa048, 0x5d7a30][i % 3]);
+        }));
+        // Cloture basse en bois le long des bas-cotes (poteau + 2 lisses, 1 dessin)
+        const fenceGeo = Sc.merge(T, [
+          { geo:new T.BoxGeometry(0.12, 1.0, 0.12), pos:[0, 0.5, 0], color:0x3a2a20 },
+          { geo:new T.BoxGeometry(0.06, 0.07, 3), pos:[0, 0.82, -1.5], color:0x4a3628 },
+          { geo:new T.BoxGeometry(0.06, 0.07, 3), pos:[0, 0.45, -1.5], color:0x4a3628 },
+        ]);
+        add(Sc.strip(T, fenceGeo, M('lam:fence', ()=>new T.MeshLambertMaterial({ vertexColors:true })), 3, 2, (d, c, i)=>{
+          d.position.set(i ? 4.65 : -4.65, 0, 0);
         }));
         return items;
       }

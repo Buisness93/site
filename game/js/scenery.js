@@ -282,6 +282,15 @@
     g.fillStyle = '#20242c'; g.fillRect(6, 104, 36, 18); g.fillStyle = col; g.fillRect(46, 104, 12, 8);
     return (cache[key] = tex(T, c, { srgb:true }));
   };
+  // Petale de cerisier (goutte ovale rose avec un coeur plus clair).
+  S.petalTex = function(T){
+    if(cache.petal) return cache.petal;
+    const [c, g] = cv(32, 32);
+    const gr = g.createRadialGradient(14, 14, 1, 16, 16, 13);
+    gr.addColorStop(0, 'rgba(255,240,246,1)'); gr.addColorStop(0.6, 'rgba(255,170,205,.95)'); gr.addColorStop(1, 'rgba(255,150,195,0)');
+    g.fillStyle = gr; g.beginPath(); g.ellipse(16, 16, 13, 8, 0.6, 0, Math.PI*2); g.fill();
+    return (cache.petal = tex(T, c, { srgb:true }));
+  };
   // Silhouette de mouette (un "V" aux ailes arrondies), sombre en contre-jour.
   S.gullTex = function(T){
     if(cache.gull) return cache.gull;

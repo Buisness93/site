@@ -577,7 +577,10 @@
       route.extras(T, {
         add, env:this._env,
         tick:(f)=>this._tickers.push(f),
-        scrollTex:(tex, k)=>this._scrollTex.push({ tex, k })
+        scrollTex:(tex, k)=>this._scrollTex.push({ tex, k }),
+        // distance parcourue par le decor pendant la derniere image (particules
+        // qui doivent "rester dans le monde" et defiler avec la route)
+        scroll:()=>this._lastScroll || 0
       });
     }
     if(route.horizonGlow){
@@ -1087,6 +1090,7 @@
   };
 
   GameEngine.prototype._scrollWorld = function(scroll){
+    this._lastScroll = scroll;
     for(const st of this._stripes){ st.position.z += scroll; if(st.position.z > 10) st.position.z -= 240; }
     if(this._roadTex) this._roadTex.offset.y += scroll * 60 / 260;
     if(this.groundMat.map) this.groundMat.map.offset.y += scroll * this._groundK;
