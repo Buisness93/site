@@ -15,7 +15,7 @@
     drawCard:$('drawCard'), drawDesc:$('drawDesc'), drawCta:$('drawCta'), drawNote:$('drawNote'), drawTimer:$('drawTimer'), drawStreak:$('drawStreak'),
     ovWheel:$('ovWheel'), wheelEl:$('wheelEl'), reelTrack:$('reelTrack'), wheelResult:$('wheelResult'), btnSpinWheel:$('btnSpinWheel'), btnCloseWheel:$('btnCloseWheel'),
     overDailyCard:$('overDailyCard'), overDailyDesc:$('overDailyDesc'), btnClaimDaily:$('btnClaimDaily'),
-    journeyChip:$('journeyChip'), ovToll:$('ovToll'), tollStation:$('tollStation'), tollTrip:$('tollTrip'), tollPrice:$('tollPrice'), tollMsg:$('tollMsg'), btnTollCash:$('btnTollCash'), btnTollCard:$('btnTollCard'),
+    journeyChip:$('journeyChip'), tollLogo:$('tollLogo'), tollKicker:$('tollKicker'), hudFuel:$('hudFuel'), hudFuelCell:$('hudFuelCell'), ovToll:$('ovToll'), tollStation:$('tollStation'), tollTrip:$('tollTrip'), tollPrice:$('tollPrice'), tollMsg:$('tollMsg'), btnTollCash:$('btnTollCash'), btnTollCard:$('btnTollCard'),
     btnLeft:$('btnLeft'), btnRight:$('btnRight'), btnBoost:$('btnBoost'), btnCam:$('btnCam'), btnPause:$('btnPause'), btnFullscreen:$('btnFullscreen'), btnMusic:$('btnMusic'), bgAudio:$('bgAudio'),
     musicPanel:$('musicPanel'), musicTrackName:$('musicTrackName'), btnMusicPrev:$('btnMusicPrev'), btnMusicToggle:$('btnMusicToggle'), btnMusicNext:$('btnMusicNext'), musicVolume:$('musicVolume'), musicList:$('musicList'),
     musicSeek:$('musicSeek'), musicTimeCur:$('musicTimeCur'), musicTimeDur:$('musicTimeDur'),
@@ -243,6 +243,8 @@
     'autostrada':     { ico:'🇮🇹', grad:'linear-gradient(135deg,#1f8a3a 0%,#f4f4f4 50%,#c8202a 100%)', glow:'#9fe0a0' },
     'provence':       { ico:'💜', grad:'linear-gradient(135deg,#a07ae0,#3a6a3a)', glow:'#c8a8ff' },
     'route66':        { ico:'🌵', grad:'linear-gradient(135deg,#ff9a50,#6a2a14)', glow:'#ffb070' },
+    'a7-france':      { ico:'🇫🇷', grad:'linear-gradient(135deg,#1f4fa8 0%,#f4f4f4 50%,#d8202a 100%)', glow:'#9ab8ff' },
+    'a2-suisse':      { ico:'🇨🇭', grad:'linear-gradient(135deg,#d52b1e,#3a6a26)', glow:'#ff9a90' },
   };
   const DIFF_LVL = { 'Détente':1, 'Standard':2, 'Intense':3 };
   function renderRouteTabs(){
@@ -612,6 +614,11 @@
 
     engine = new DG.GameEngine($('canvasHost'), {
       onHud(d){
+        if(els.hudFuel){
+          const on = d.fuel != null;
+          if(on !== _hud.fOn){ _hud.fOn = on; els.hudFuelCell.style.display = on ? '' : 'none'; }
+          if(on){ const f = Math.round(d.fuel * 100); if(f !== _hud.f){ _hud.f = f; els.hudFuel.style.width = f + '%'; els.hudFuelCell.classList.toggle('low', f < 20); } }
+        }
         const tTxt = d.time.toFixed(1) + 's';
         if(tTxt !== _hud.t){ _hud.t = tTxt; els.hudTime.textContent = tTxt; }
         if(d.score - _lastScore >= 30) replay(els.hudScore, 'bump');
@@ -676,6 +683,10 @@
         else if(kind==='shield') popup('🛡 BOUCLIER !', '#3dffb0', true);
         else if(kind==='shield-hit') popup('🛡 BOUCLIER BRISÉ', '#3dffb0', true);
         else if(kind==='jump') popup('🚀 SAUT ! +100', '#3df0ff', true);
+        else if(kind==='fuel-station') popup('⛽ STATION → voie de droite pour faire le plein', '#ffcc33', true);
+        else if(kind==='fuel-enter') popup('⛽ Arrêt à la pompe…', '#ffcc33');
+        else if(kind==='fuel-low') popup('⚠ RÉSERVE ! Fais le plein à la prochaine station', '#ff5a3d', true);
+        else if(kind==='out-of-fuel') popup('⛽ PANNE SÈCHE…', '#ff5a3d', true);
         else if(kind==='arrival'){ popup('🏁 ARRIVÉE À ' + ((payload && payload.city) || '').toUpperCase() + ' ! +500', '#4ee39a', true); confetti(innerWidth/2, innerHeight*0.35); chimeSound(4); }
       },
       onRecordBroken(){
@@ -704,10 +715,16 @@
 
 
   // Menu du peage : la voiture est arretee a la cabine, on choisit comment payer.
+  const money = (v, cur)=>cur === '$' ? '$' + v.toFixed(2) : v.toFixed(2).replace('.', ',') + ' ' + cur;
   function openToll(info){
+    const fuel = info.kind === 'fuel';
+    els.tollLogo.textContent = fuel ? '⛽' : (info.road || '🛑');
+    els.tollKicker.textContent = info.operator + (fuel ? ' · Faire le plein' : ' · Péage');
     els.tollStation.textContent = info.station;
-    els.tollTrip.textContent = info.from + ' → ' + info.station + ' · ' + info.km + ' km · voie ' + info.lane;
-    els.tollPrice.textContent = info.price.toFixed(2).replace('.', ',') + ' €';
+    els.tollTrip.textContent = fuel
+      ? 'Réservoir ' + info.fuelPct + ' % · ' + info.liters + ' L à ' + money(info.ppl, info.currency) + '/L · pompe ' + info.lane
+      : info.from + ' → ' + info.station + ' · ' + info.km + ' km · voie ' + info.lane;
+    els.tollPrice.textContent = money(info.price, info.currency);
     const canCash = info.coinsHave >= info.coinsNeed;
     els.btnTollCash.disabled = !canCash;
     els.btnTollCash.querySelector('.tl-sub').textContent = info.coinsNeed + ' pièces 🪙 (tu en as ' + info.coinsHave + ')';
@@ -721,11 +738,14 @@
     if(!res.ok){ els.tollMsg.textContent = res.error || 'Paiement refusé'; return; }
     els.ovToll.classList.add('hidden');
     chimeSound(1);
-    popup((method === 'cash' ? '💶 ' : '💳 ') + 'PAYÉ ' + res.price.toFixed(2).replace('.', ',') + ' € — Buon viaggio !', '#4ee39a', true);
+    if(res.kind === 'fuel') popup('⛽ PLEIN FAIT · ' + res.liters + ' L', '#ffcc33', true);
+    else popup((method === 'cash' ? '💶 ' : '💳 ') + 'PAYÉ — Bonne route !', '#4ee39a', true);
   }
 
   function startRun(){
     if(els.ovToll) els.ovToll.classList.add('hidden');
+    const rt = DG.routeById(state.selectedRoute);
+    if(rt && rt.journey && rt.journey.intro) setTimeout(()=>{ if(engine.playing) popup(rt.journey.intro, '#ffffff', true); }, 3600);
     if(els.journeyChip){ els.journeyChip.classList.add('hidden'); els.journeyChip.innerHTML = ''; }
     const car = DG.carById(state.selectedCar);
     els.hudTop.style.display = 'flex'; els.hudBottom.style.display = 'flex';

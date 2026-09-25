@@ -25,6 +25,7 @@
         <div class="cell primary"><div class="l">TEMPS</div><div class="v" id="hudTime">0.0s</div></div>
         <div class="cell primary"><div class="l">SCORE</div><div class="v accent" id="hudScore">0</div><div class="record-chase" id="hudRecordChase"></div></div>
         <div class="cell" id="hudSpeedCell"><div class="l">VITESSE</div><div class="v" id="hudSpeed">0<span style="font-size:10px;color:#8a8f98"> km/h</span></div></div>
+        <div class="cell fuel-cell" id="hudFuelCell" style="display:none"><div class="l">⛽ ESSENCE</div><div class="fuel-gauge"><i id="hudFuel"></i></div></div>
       </div>
     </div>
     <div class="top-actions" style="position:relative">
@@ -175,7 +176,7 @@
 
   <div class="overlay toll-overlay hidden" id="ovToll">
     <div class="toll-panel">
-      <div class="toll-head"><span class="toll-logo">A1</span><div><div class="toll-kicker">Autostrade per l'Italia · Pedaggio</div><div class="toll-station" id="tollStation">—</div></div></div>
+      <div class="toll-head"><span class="toll-logo" id="tollLogo">A1</span><div><div class="toll-kicker" id="tollKicker">Péage</div><div class="toll-station" id="tollStation">—</div></div></div>
       <div class="toll-trip" id="tollTrip">—</div>
       <div class="toll-screen"><span>IMPORTO</span><b id="tollPrice">0,00 €</b></div>
       <div class="toll-actions">
