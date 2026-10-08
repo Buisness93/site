@@ -593,12 +593,40 @@
     prod(3, canP, 0.7, 1.1, -4.92); tag(items[3].label, priceTxt(items[3].price), 0.7, 0.85, -4.88, 0);
     const choP = []; for(let k = 0; k < 6; k++) choP.push({ geo:new T.BoxGeometry(0.14, 0.03, 0.05), pos:[-0.3 + k * 0.12, 0.02, 0], color:[0x6a3a1a, 0x8a2a8a, 0xd8a020][k % 3] });
     prod(4, choP, -0.6, 1.02, 3.2); tag(items[4].label, priceTxt(items[4].price), -0.6, 0.88, 2.84, Math.PI);
+    if(items[5]){
+      // frigo vitre a bieres contre le mur du fond (entre les deux autres frigos)
+      const fr = new T.Mesh(M('geo:beerFridge', ()=>S().merge(T, [
+        { geo:new T.BoxGeometry(0.85, 1.9, 0.7), pos:[0, 0.95, 0], color:0x2a2e34 },
+        { geo:new T.BoxGeometry(0.75, 1.6, 0.02), pos:[0, 1.0, 0.36], color:0x9ab8d0 },
+        { geo:new T.BoxGeometry(0.8, 0.18, 0.02), pos:[0, 1.9, 0.36], color:0xc8a020 },
+      ])), vc('beerFridge')); fr.position.set(-0.35, 0.05, -5.3); g.add(fr);
+      const beerP = []; for(let k = 0; k < 8; k++) beerP.push({ geo:new T.CylinderGeometry(0.035, 0.035, 0.16, 10), pos:[(k % 4) * 0.13 - 0.2, Math.floor(k / 4) * 0.45, 0], color:[0xd8a020, 0x1a6a2a, 0xc8c8c8, 0xb01818][k % 4] });
+      prod(5, beerP, -0.35, 1.0, -4.92); tag(items[5].label, priceTxt(items[5].price), -0.35, 0.85, -4.88, 0);
+    }
+    if(items[6]){
+      // presentoir a tabac (vitrine fermee) derriere le caissier : on demande au comptoir
+      const tab = new T.Mesh(M('geo:tabac', ()=>{ const parts = [{ geo:new T.BoxGeometry(0.3, 1.1, 1.6), pos:[0, 0, 0], color:0x1a1c20 }];
+        for(let k = 0; k < 24; k++) parts.push({ geo:new T.BoxGeometry(0.04, 0.13, 0.09), pos:[-0.16, -0.42 + Math.floor(k / 8) * 0.3, -0.62 + (k % 8) * 0.18], color:[0xf2f2f2, 0xc8141e, 0x1a3a8a, 0xd8c8a0][k % 4] });
+        return S().merge(T, parts); }), vc('tabac')); tab.position.set(3.4, 1.7, 0.6); g.add(tab);
+      tag(items[6].label, priceTxt(items[6].price), 1.42, 1.25, 1.55, -Math.PI / 2);
+    }
     poster(items[0].label.toUpperCase(), priceTxt(items[0].price), '#b01818', W/2 - 0.55, 2.55, -1.6, -Math.PI/2, 1.3);
     poster(items[1].label.split(' ')[0].toUpperCase(), priceTxt(items[1].price), '#1f6ad8', W/2 - 0.55, 2.55, 2.2, -Math.PI/2, 1.3);
     return g;
   }
   // Articles de la boutique, prix reels par pays (monnaie de la route)
+  // Biere (frigo, a consommer au bar... et pas avant de reprendre le volant) et
+  // paquet de cigarettes (on le demande au caissier, comme en vrai) : indices 5 et 6.
   function shopItems(route){
+    const base = shopItemsBase(route), id = route.id, cur = route.currency || '€';
+    const extra = id === 'autostrada' ? [{ ico:'🍺', label:'Birra Moretti', price:2.50, effect:'beer' }, { ico:'🚬', label:'Sigarette (pacchetto)', price:6.50, effect:'cigs' }]
+      : cur === 'CHF' ? [{ ico:'🍺', label:'Bière Feldschlösschen', price:3.90, effect:'beer' }, { ico:'🚬', label:'Paquet de cigarettes', price:9.80, effect:'cigs' }]
+      : cur === '$' ? [{ ico:'🍺', label:'Beer (tallboy)', price:3.49, effect:'beer' }, { ico:'🚬', label:'Pack of cigarettes', price:9.99, effect:'cigs' }]
+      : cur === '¥' ? [{ ico:'🍺', label:'ビール', price:280, effect:'beer' }, { ico:'🚬', label:'タバコ', price:600, effect:'cigs' }]
+      : [{ ico:'🍺', label:'Bière (canette 50 cl)', price:2.90, effect:'beer' }, { ico:'🚬', label:'Paquet de cigarettes', price:12.50, effect:'cigs' }];
+    return base.concat(extra);
+  }
+  function shopItemsBase(route){
     const id = route.id, cur = route.currency || '€';
     if(id === 'autostrada') return [
       { ico:'☕', label:'Caffè espresso', price:1.40, effect:'coffee' }, { ico:'🥪', label:'Panino Camogli', price:6.90, effect:'food', pts:220 },

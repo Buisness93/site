@@ -288,7 +288,7 @@
     const el = document.getElementById('dockSel');
     if(!el) return;
     const car = DG.carById(state.selectedCar), route = DG.routeById(state.selectedRoute);
-    el.innerHTML = '<b>' + (car ? car.brand + ' ' + car.name : '—') + '</b><span>' + (route ? route.name : '') + '</span>';
+    el.innerHTML = '<b>' + (car ? car.brand + ' ' + car.name : '—') + '</b><span>' + (route ? route.name : '') + (state.rp ? ' · 🎭 mode libre' : '') + '</span>';
   }
 
   function statBar(val, color){ return '<div class="stat-bar"><i style="width:' + (val*10) + '%;color:' + color + '"></i></div>'; }
@@ -695,6 +695,7 @@
       onRescue(r){ alerts.rescue = r; renderAlert(); },
       onWalk(kind){ walkSound(kind); },
       onFp(kind, d){ fpEvent(kind, d); },
+      onRp(kind, d){ rpEvent(kind, d); },
       onPickup(kind, payload){
         if(kind==='coin') popup('+10 🪙', '#ffcc00');
         else if(kind==='near-miss'){
@@ -774,7 +775,7 @@
   function openPayment(o){
     // o : { method, amount, currency, pin, label, onDone }
     _pay = Object.assign({ step:0, code:'' }, o);
-    els.pmStage.classList.remove('swipe');
+    els.pmStage.classList.remove('swipe', 'tpe-stage');
     els.payModal.classList.remove('hidden');
     els.payModal.dataset.method = o.method;
     els.pmIcon.textContent = o.method === 'card' ? '💳' : '💶';
@@ -788,138 +789,219 @@
     if(p && p.onDone) p.onDone(ok);
   }
   // --- carte ---
-  // Terminal : 4 voyants sans contact au-dessus de l'ecran, fente en bas.
+  // Terminal realiste : on POSE la carte (ou le telephone) sur l'ecran et on la
+  // maintient le temps que les 4 voyants s'allument (sans contact), ou on
+  // l'INSERE dans le lecteur de puce en bas : code a 4 chiffres, autorisation,
+  // "RETIREZ VOTRE CARTE" (le terminal bipe tant qu'elle est dedans), puis
+  // ticket client. Au-dela du plafond sans contact (ou pour une amende), la
+  // carte doit etre inseree ; le telephone passe toujours (deja deverrouille).
   const NFC_LIMIT = { '€':50, 'CHF':80, '$':100, '¥':15000 };
   const CARD_FACE = '<span class="bc-chip"></span><span class="bc-nfc">)))</span><span class="bc-num">•••• •••• •••• 4821</span><span class="bc-name">PILOTE</span><span class="bc-logo">CB</span>';
-  function terminalHTML(screen, extra, leds, id){
-    return '<div class="tpe"' + (id ? ' id="' + id + '"' : '') + '><div class="tpe-nfc" id="pmNfc"><span class="nfc-leds">' + [0, 1, 2, 3].map(k=>'<i class="' + (k < (leds || 0) ? 'ok' : '') + '"></i>').join('') + '</span><span class="nfc-sym">)))</span></div>' +
-      '<div class="tpe-screen" id="pmScreen">' + screen + '</div>' + (extra || '') + '<div class="tpe-slot" id="pmSlot"></div></div>';
+  const PHONE_FACE = '<span class="ph-cam"></span><span class="ph-scr"><span class="ph-mini"></span><span class="ph-txt">Portefeuille</span></span>';
+  const $id = (id)=>document.getElementById(id);
+  function beep(f, d, delay){ tone({ f:f || 2300, dur:d || 0.09, vol:0.04, type:'square', delay:delay || 0 }); }
+  function tpeScreen(html, leds, cls){
+    const s = $id('pmScreen'); if(!s) return;
+    s.innerHTML = '<span class="tpe2-leds">' + [0, 1, 2, 3].map(k=>'<i class="' + (k < (leds || 0) ? (cls || 'ok') : '') + '"></i>').join('') + '</span>' + html;
   }
+  function setLeds(n, cls){ document.querySelectorAll('#pmScreen .tpe2-leds i').forEach((l, k)=>{ l.className = k < n ? (cls || 'on') : ''; }); }
   function cardStep0(){
-    const p = _pay, lim = NFC_LIMIT[p.currency] || 50;
-    p.needPin = p.pin || p.amount > lim + 1e-6;
-    p.screen0 = '<small>' + money(p.amount, p.currency) + '</small><b>PASSEZ LA CARTE</b><small>⟵ DE DROITE À GAUCHE' + (p.needPin ? '<br>PUIS CODE' : '<br>SANS CONTACT') + '</small>';
-    els.pmStage.classList.add('swipe');
-    els.pmStage.innerHTML = terminalHTML(p.screen0, '<div class="swipe-hint">⟵</div>') + '<div class="pm-card-zone swipe" id="pmCardZone"><div class="pm-bankcard" id="pmCard">' + CARD_FACE + '</div></div>';
-    els.pmFoot.innerHTML = '<span class="pm-hint">🖐 <b>Maintiens</b> la carte et <b>passe-la de droite à gauche</b> sur le terminal (ni trop vite, ni trop lent)' + (p.needPin ? ' · plus de ' + money(lim, p.currency) + ' : code demandé' : '') + ' · <kbd>Entrée</kbd></span><button class="pm-cancel" id="pmCancel">Annuler</button>';
-    document.getElementById('pmCancel').addEventListener('click', ()=>closePayment(false));
-    wireSwipe(p);
+    const p = _pay;
+    p.lim = NFC_LIMIT[p.currency] || 50;
+    p.cardNfc = !p.pin && p.amount <= p.lim + 1e-6;
+    els.pmStage.classList.add('tpe-stage');
+    const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', ''];
+    els.pmStage.innerHTML =
+      '<div class="tpe2" id="pmTpe">' +
+        '<div class="tpe2-top"><span>TPE · ' + (p.merchant || 'PAIEMENT').slice(0, 18) + '</span><span class="tpe2-nfc">)))</span></div>' +
+        '<div class="tpe2-screen" id="pmScreen"></div>' +
+        '<div class="tpe2-keys">' + keys.map(k=>k ? '<button data-k="' + k + '">' + k + '</button>' : '<span></span>').join('') +
+          '<button data-k="X" class="red" title="Annuler">✕</button><button data-k="C" class="yel" title="Correction">←</button><button data-k="OK" class="grn" title="Valider">✓</button></div>' +
+        '<div class="tpe2-slot" id="pmSlot"></div>' +
+      '</div>' +
+      '<div class="pm-wallet" id="pmWallet"><div class="pm-item pm-bankcard" id="pmCard">' + CARD_FACE + '</div><div class="pm-item pm-phone" id="pmPhone">' + PHONE_FACE + '</div></div>';
+    els.pmStage.querySelectorAll('[data-k]').forEach(b=>b.addEventListener('click', ()=>tpeKey(b.dataset.k)));
+    tpeWait();
+    wireWallet(p);
   }
-  function wireSwipe(p){
-    const card = document.getElementById('pmCard'), tpe = els.pmStage.querySelector('.tpe'), scr = document.getElementById('pmScreen');
-    const leds = document.getElementById('pmNfc').querySelectorAll('i');
-    let drag = null, off = { x:0, y:0 }, rd = null, done = false, lastProg = -1;
-    const setLeds = (n, cls)=>leds.forEach((l, k)=>{ l.className = k < n ? (cls || 'on') : ''; });
-    const place = (x, y, r)=>{ off.x = x; off.y = y; card.style.transform = 'translate(' + x + 'px,' + y + 'px) rotate(' + (r || 0) + 'deg)'; };
-    const fail = (msg)=>{
-      rd = null; setLeds(4, 'err'); tone({ f:300, dur:0.22, vol:0.05, type:'square' });
-      scr.innerHTML = '<b class="err">' + msg + '</b><small>RECOMMENCEZ ⟵</small>';
-      setTimeout(()=>{ if(!done && !rd) setLeds(0); }, 550);
+  function tpeWait(msg){
+    const p = _pay; if(!p) return;
+    p.st = 'wait'; p.nfc = null;
+    tpeScreen('<small>MONTANT</small><b class="amt">' + money(p.amount, p.currency) + '</b>' + (msg ? '<em class="err">' + msg + '</em>' : '') +
+      '<small>' + (p.cardNfc ? 'PRÉSENTEZ OU INSÉREZ<br>VOTRE CARTE' : 'INSÉREZ VOTRE CARTE<br><span class="dim">ou présentez votre téléphone</span>') + '</small>');
+    footHint();
+  }
+  function footHint(){
+    const p = _pay; if(!p) return;
+    const H = {
+      wait:(p.cardNfc ? '🖐 <b>Pose la carte sur l’écran</b> et maintiens-la (sans contact jusqu’à ' + money(p.lim, p.currency) + ') · ou ' : '🔒 ' + (p.pin ? 'Code obligatoire' : 'Plus de ' + money(p.lim, p.currency)) + ' : ') +
+        '<b>glisse-la dans la fente</b> en bas (puce + code) · 📱 le téléphone passe aussi · <kbd>Entrée</kbd> auto',
+      chip:'Lecture de la puce… laisse la carte insérée',
+      pin:'Tape ton code à 4 chiffres (pavé ou clavier) puis <b>✓</b> · <b>←</b> corrige',
+      proc:'Autorisation en cours…',
+      remove:'<b>Retire ta carte</b> : clique dessus ou tire-la vers le bas · <kbd>Entrée</kbd>',
+      ticket:'Ticket client ? <b>✓</b> oui (<kbd>Entrée</kbd>) · <b>✕</b> non (<kbd>Échap</kbd>)'
     };
-    // lecture : le centre de la carte doit traverser tout le terminal, de son bord droit a son bord gauche
-    const check = (now)=>{
-      if(done) return;
-      const c = card.getBoundingClientRect(), t = tpe.getBoundingClientRect();
-      const cx = (c.left + c.right) / 2, cy = (c.top + c.bottom) / 2;
-      const inY = cy > t.top + 6 && cy < t.bottom - 6;
-      const prog = (t.right - cx) / t.width;
-      tpe.classList.toggle('hot', inY && prog > -0.25 && prog < 1.1);
-      if(!rd){
-        if(inY && prog >= 0 && prog < 0.4 && lastProg < 0.02){ rd = { t0:now, max:prog }; tone({ f:1400, dur:0.03, vol:0.03 }); scr.innerHTML = '<small>' + money(p.amount, p.currency) + '</small><b>LECTURE…</b><small>CONTINUE ⟵</small>'; }
-      } else {
-        if(!inY) fail('CARTE SORTIE DU LECTEUR');
-        else if(prog < rd.max - 0.3) fail('MAUVAIS SENS');
-        else {
-          rd.max = Math.max(rd.max, prog);
-          const n = Math.max(0, Math.min(4, Math.floor(rd.max * 4 + 0.001)));
-          if(n > leds.length - [...leds].filter(l=>!l.className).length) tone({ f:1000 + n * 150, dur:0.03, vol:0.025 });
-          setLeds(n);
-          if(rd.max >= 1){
-            const dt = (now - rd.t0) / 1000;
-            if(dt < 0.28) fail('TROP RAPIDE');
-            else if(dt > 3.5) fail('TROP LENT');
-            else success();
-          }
-        }
-      }
-      lastProg = prog;
-    };
-    function success(){
-      done = true; rd = null; setLeds(4, 'ok'); tpe.classList.remove('hot');
-      tone({ f:2093, dur:0.18, vol:0.05 });
-      scr.innerHTML = '<b class="ok">✔ CARTE LUE</b><small>' + (p.needPin ? 'SAISISSEZ VOTRE CODE' : 'SANS CONTACT') + '</small>';
-      p.usedNfc = !p.needPin; p.step = 1;
-      drag = null; card.classList.remove('drag'); card.classList.add('away');
-      setTimeout(()=>{ if(_pay === p){ if(p.needPin) cardPin(); else cardProcess(); } }, 700);
+    els.pmFoot.innerHTML = '<span class="pm-hint">' + (H[p.st] || '') + '</span>' + (p.st === 'wait' || p.st === 'pin' ? '<button class="pm-cancel" id="pmCancel">Annuler</button>' : '');
+    const c = $id('pmCancel'); if(c) c.addEventListener('click', ()=>closePayment(false));
+  }
+  function wireWallet(p){
+    [['pmCard', 'card'], ['pmPhone', 'phone']].forEach(([id, kind])=>{
+      const el = $id(id); if(!el) return;
+      let drag = null;
+      el.addEventListener('pointerdown', (e)=>{
+        if(_pay !== p) return;
+        if(p.st === 'remove' && el.classList.contains('inserted')){ e.preventDefault(); drag = { remove:true, y0:e.clientY }; return; }
+        if(p.st !== 'wait') return;
+        e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch(err){}
+        drag = { x0:e.clientX, y0:e.clientY }; el.classList.add('drag');
+      });
+      el.addEventListener('pointermove', (e)=>{
+        if(!drag) return;
+        if(drag.remove){ if(e.clientY - drag.y0 > 24){ drag = null; removeCard(); } return; }
+        const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+        el.style.transform = 'translate(' + dx + 'px,' + dy + 'px) rotate(' + Math.max(-8, Math.min(8, dx * 0.04)) + 'deg)';
+        nfcTrack(p, el, kind);
+        if(kind === 'card'){ const s = $id('pmSlot'); if(s) s.classList.toggle('hot', overSlot(el)); }
+      });
+      const up = ()=>{
+        if(!drag) return;
+        const wasRemove = drag.remove; drag = null;
+        if(wasRemove){ removeCard(); return; }
+        el.classList.remove('drag');
+        const s = $id('pmSlot'); if(s) s.classList.remove('hot');
+        if(_pay !== p || p.st !== 'wait') return;
+        if(kind === 'card' && overSlot(el)){ insertCard(p, el); return; }
+        if(p.nfc && p.nfc.el === el) nfcAbort(p, 'CARTE RETIRÉE TROP TÔT');
+        el.style.transform = '';
+      };
+      el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+    });
+  }
+  function nfcZone(){ const s = $id('pmScreen'); return s && s.getBoundingClientRect(); }
+  function overSlot(el){
+    const s = $id('pmSlot'); if(!s) return false;
+    const r = s.getBoundingClientRect(), c = el.getBoundingClientRect(), cx = (c.left + c.right) / 2;
+    return c.top < r.bottom + 10 && c.top > r.top - 70 && cx > r.left - 20 && cx < r.right + 20;
+  }
+  function nfcTrack(p, el, kind){
+    if(p.st !== 'wait') return;
+    const z = nfcZone(); if(!z) return;
+    const c = el.getBoundingClientRect(), cx = (c.left + c.right) / 2, cy = (c.top + c.bottom) / 2;
+    const over = cx > z.left - 24 && cx < z.right + 24 && cy > z.top - 34 && cy < z.bottom + 14;
+    const t = $id('pmTpe'); if(t) t.classList.toggle('hot', over);
+    if(over && !p.nfc){ p.nfc = { el, kind, t0:performance.now(), n:0 }; nfcLoop(p); }
+    else if(!over && p.nfc && p.nfc.el === el) nfcAbort(p, 'LECTURE INTERROMPUE');
+  }
+  function nfcLoop(p){
+    const r = p.nfc; if(!r || _pay !== p || p.st !== 'wait') return;
+    const el = performance.now() - r.t0, n = Math.min(4, Math.floor(el / 160) + 1);
+    if(n !== r.n){ r.n = n; setLeds(n); tone({ f:1400 + n * 110, dur:0.025, vol:0.018 }); }
+    if(el >= 660){ nfcDone(p); return; }
+    requestAnimationFrame(()=>nfcLoop(p));
+  }
+  function nfcAbort(p, msg){
+    p.nfc = null; beep(380, 0.25);
+    const t = $id('pmTpe'); if(t) t.classList.remove('hot');
+    tpeWait(msg); setLeds(4, 'err');
+  }
+  function nfcDone(p){
+    const r = p.nfc; p.nfc = null;
+    const el = r.el; el.classList.remove('drag');
+    const t = $id('pmTpe'); if(t) t.classList.remove('hot');
+    if(r.kind === 'card' && !p.cardNfc){
+      el.style.transform = '';
+      beep(380, 0.3); tpeWait(p.pin ? 'CODE OBLIGATOIRE' : 'PLAFOND SANS CONTACT'); setLeds(4, 'err');
+      return;
     }
-    card.addEventListener('pointerdown', (e)=>{
-      if(done || drag) return;
-      e.preventDefault(); try { card.setPointerCapture(e.pointerId); } catch(err){}
-      drag = { x0:e.clientX - off.x, y0:e.clientY - off.y }; card.classList.add('drag');
-    });
-    card.addEventListener('pointermove', (e)=>{
-      if(!drag || drag.auto || done) return;
-      const x = e.clientX - drag.x0, y = e.clientY - drag.y0;
-      place(x, y, Math.max(-6, Math.min(6, (e.movementX || 0) * 0.4)));
-      check(performance.now());
-    });
-    const up = ()=>{
-      if(!drag || drag.auto || done) return;
-      drag = null; card.classList.remove('drag'); tpe.classList.remove('hot');
-      if(rd) fail('PASSAGE INCOMPLET');
-      card.style.transform = ''; off.x = off.y = 0; lastProg = -1; // la carte revient dans la main
-    };
-    card.addEventListener('pointerup', up); card.addEventListener('pointercancel', up);
-    // Entree : la carte est passee toute seule
-    p.autoCard = ()=>{
-      if(done || drag) return;
-      const c = card.getBoundingClientRect(), t = tpe.getBoundingClientRect();
-      const y = off.y + ((t.top + t.bottom) / 2 - (c.top + c.bottom) / 2);
-      const cx = (c.left + c.right) / 2, x0 = off.x + (t.right + 12 - cx), x1 = off.x + (t.left - 16 - cx);
-      drag = { auto:true }; card.classList.add('drag'); lastProg = -1;
-      place(x0, y, -3); check(performance.now());
-      const t0 = performance.now(), N = 14; let k = 0;
-      const stepA = ()=>{ if(done || _pay !== p) return; k++; place(x0 + (x1 - x0) * k / N, y, -3); check(t0 + k * 65); if(k < N) setTimeout(stepA, 50); else if(!done){ drag = null; card.classList.remove('drag'); card.style.transform = ''; } };
-      setTimeout(stepA, 150);
-    };
+    beep(2600, 0.12); // bip unique : carte lue
+    p.via = r.kind === 'phone' ? 'phone' : 'nfc';
+    if(r.kind === 'phone') el.classList.add('auth');
+    setTimeout(()=>{ el.style.transform = ''; }, r.kind === 'phone' ? 700 : 250);
+    tpeProcess(p);
   }
-  function cardInsert(){ if(_pay && _pay.autoCard) _pay.autoCard(); }
-  function cardPin(){
-    const p = _pay;
-    const dots = ()=>'<span class="pin-dots">' + [0, 1, 2, 3].map(i=>'<i class="' + (i < p.code.length ? 'on' : '') + '"></i>').join('') + '</span>';
-    const keys = ['1','2','3','4','5','6','7','8','9','✕','0','✔'];
-    const render = ()=>{
-      els.pmStage.innerHTML = terminalHTML('<small>' + money(p.amount, p.currency) + '</small><b>CODE</b>' + dots(),
-        '<div class="tpe-keys">' + keys.map(k=>'<button data-k="' + k + '" class="' + (k === '✕' ? 'red' : k === '✔' ? 'green' : '') + '">' + k + '</button>').join('') + '</div>', 4);
-      els.pmStage.querySelectorAll('[data-k]').forEach(b=>b.addEventListener('click', ()=>pinKey(b.dataset.k)));
-    };
-    p.renderPin = render; render();
-    els.pmFoot.innerHTML = '<span class="pm-hint">Tape ton code à 4 chiffres (clavier ou pavé) puis ✔</span>';
+  function insertCard(p, el){
+    p.st = 'chip'; p.via = 'chip';
+    el.style.transform = ''; el.classList.remove('drag'); el.classList.add('inserted');
+    $id('pmSlot').appendChild(el);
+    $id('pmWallet').classList.add('busy');
+    tone({ f:700, dur:0.06, vol:0.03 }); tone({ f:520, dur:0.05, vol:0.025, delay:0.08 }); // la carte glisse et se verrouille
+    tpeScreen('<small>MONTANT</small><b class="amt">' + money(p.amount, p.currency) + '</b><small>LECTURE DE LA PUCE<span class="dots"><i></i><i></i><i></i></span></small>');
+    footHint();
+    setTimeout(()=>{ if(_pay !== p) return; beep(2400, 0.08); p.st = 'pin'; p.code = ''; renderPin(p); footHint(); }, 900);
   }
-  function pinKey(k){
-    const p = _pay; if(!p || !p.renderPin) return;
-    if(k === '✕'){ p.code = p.code.slice(0, -1); }
-    else if(k === '✔'){ if(p.code.length === 4){ p.renderPin = null; cardProcess(); return; } }
-    else if(p.code.length < 4) p.code += k;
-    tone({ f:k === '✔' ? 1320 : 1040, dur:0.05, vol:0.035 });
-    p.renderPin();
-    if(p.code.length === 4 && k !== '✕') setTimeout(()=>{ if(_pay === p && p.renderPin){ p.renderPin = null; cardProcess(); } }, 350);
+  function renderPin(p, err){
+    tpeScreen('<small>' + money(p.amount, p.currency) + '</small><b>SAISISSEZ<br>VOTRE CODE</b><span class="pin-stars">' + [0, 1, 2, 3].map(i=>'<i>' + (i < p.code.length ? '✱' : '_') + '</i>').join('') + '</span>' + (err ? '<em class="err">' + err + '</em>' : '<small>PUIS VALIDEZ ✓</small>'));
   }
-  function cardProcess(){
-    const p = _pay;
-    els.pmStage.classList.remove('swipe');
-    els.pmStage.innerHTML = terminalHTML('<small>' + money(p.amount, p.currency) + '</small><b class="proc">' + (p.usedNfc ? 'SANS CONTACT' : 'AUTORISATION') + '<span class="dots"><i></i><i></i><i></i></span></b>', '', 4);
-    els.pmFoot.innerHTML = '';
+  function tpeKey(k){
+    const p = _pay; if(!p || p.method !== 'card') return;
+    tone({ f:k === 'OK' ? 1320 : k === 'X' ? 620 : 1040, dur:0.05, vol:0.035 });
+    if(k === 'X'){ if(p.st === 'wait' || p.st === 'pin') closePayment(false); else if(p.st === 'ticket') ticket(p, false); return; }
+    if(p.st === 'ticket'){ if(k === 'OK') ticket(p, true); return; }
+    if(p.st !== 'pin') return;
+    if(k === 'C') p.code = p.code.slice(0, -1);
+    else if(k === 'OK'){ if(p.code.length === 4) return tpeProcess(p); beep(380, 0.2); return renderPin(p, '4 CHIFFRES'); }
+    else if(/^[0-9]$/.test(k) && p.code.length < 4) p.code += k;
+    renderPin(p);
+  }
+  // Entree : la carte part toute seule (sans contact si possible, sinon dans la fente)
+  function autoPay(p){
+    const el = $id('pmCard'), z = nfcZone(); if(!el || !z) return;
+    const c = el.getBoundingClientRect();
+    el.classList.add('auto');
+    if(p.cardNfc){
+      el.style.transform = 'translate(' + ((z.left + z.right) / 2 - (c.left + c.right) / 2) + 'px,' + ((z.top + z.bottom) / 2 - (c.top + c.bottom) / 2) + 'px) rotate(-4deg)';
+      setTimeout(()=>{ if(_pay !== p || p.st !== 'wait') return; el.classList.remove('auto'); const t = $id('pmTpe'); if(t) t.classList.add('hot'); p.nfc = { el, kind:'card', t0:performance.now(), n:0 }; nfcLoop(p); }, 430);
+    } else {
+      const s = $id('pmSlot').getBoundingClientRect();
+      el.style.transform = 'translate(' + ((s.left + s.right) / 2 - (c.left + c.right) / 2) + 'px,' + (s.top - c.top) + 'px)';
+      setTimeout(()=>{ if(_pay !== p || p.st !== 'wait') return; el.classList.remove('auto'); insertCard(p, el); }, 430);
+    }
+  }
+  function tpeProcess(p){
+    p.st = 'proc'; footHint();
+    const ld = p.via === 'chip' ? 0 : 4;
+    tpeScreen('<small>' + money(p.amount, p.currency) + '</small><b class="proc">' + (p.via === 'chip' ? 'CODE BON' : p.via === 'phone' ? 'VALIDÉ SUR<br>LE TÉLÉPHONE' : 'SANS CONTACT') + '</b><small>AUTORISATION<span class="dots"><i></i><i></i><i></i></span></small>', ld);
     setTimeout(()=>{
       if(_pay !== p) return;
-      tone({ f:1568, dur:0.12, vol:0.05 }); tone({ f:2093, dur:0.16, vol:0.05, delay:0.12 });
-      const d = new Date();
-      els.pmStage.innerHTML = terminalHTML('<b class="ok">✔ PAIEMENT ACCEPTÉ</b><small>MERCI, BONNE ROUTE</small>', '', 4) +
-        '<div class="receipt"><b>' + (p.merchant || 'REÇU') + '</b><span>' + d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }) + '</span>' +
-        (p.lines || []).map(l=>'<span class="rl"><em>' + l[0] + '</em><em>' + l[1] + '</em></span>').join('') +
-        '<span class="rl tot"><em>TOTAL</em><em>' + money(p.amount, p.currency) + '</em></span><span>CARTE •••• 4821' + (p.usedNfc ? ' · SANS CONTACT' : ' · CODE OK') + '</span></div>';
-      setTimeout(()=>{ if(_pay === p) closePayment(true); }, 1700);
-    }, 1300);
+      beep(2100, 0.09); beep(2100, 0.09, 0.15); // double bip : accepte
+      tpeScreen('<b class="ok">PAIEMENT<br>ACCEPTÉ</b><small>' + money(p.amount, p.currency) + '</small>', ld);
+      setTimeout(()=>{ if(_pay !== p) return; if(p.via === 'chip') tpeRemove(p); else tpeTicket(p); }, 950);
+    }, 1100 + Math.random() * 600);
+  }
+  function tpeRemove(p){
+    p.st = 'remove'; footHint();
+    tpeScreen('<b>RETIREZ<br>VOTRE CARTE</b>');
+    const nag = ()=>{ if(_pay === p && p.st === 'remove'){ beep(2700, 0.05); p.nagT = setTimeout(nag, 650); } };
+    nag();
+  }
+  function removeCard(){
+    const p = _pay; if(!p || p.st !== 'remove') return;
+    clearTimeout(p.nagT);
+    const el = $id('pmCard'), w = $id('pmWallet');
+    if(el && w){ el.classList.remove('inserted'); w.insertBefore(el, w.firstChild); w.classList.remove('busy'); }
+    tone({ f:520, dur:0.05, vol:0.025 });
+    tpeTicket(p);
+  }
+  function tpeTicket(p){
+    p.st = 'ticket'; footHint();
+    tpeScreen('<b>TICKET<br>CLIENT ?</b><small>✓ OUI &nbsp;·&nbsp; ✕ NON</small>');
+  }
+  function ticket(p, yes){
+    p.st = 'done'; footHint();
+    if(!yes){ tpeScreen('<b class="ok">MERCI</b><small>BONNE ROUTE</small>'); setTimeout(()=>{ if(_pay === p) closePayment(true); }, 900); return; }
+    tpeScreen('<b>IMPRESSION…</b>');
+    for(let k = 0; k < 12; k++) tone({ f:180 + (k % 2) * 40, dur:0.05, vol:0.02, type:'sawtooth', delay:k * 0.1 }); // imprimante thermique
+    const d = new Date(), auth = Math.random().toString(16).slice(2, 8).toUpperCase();
+    const how = p.via === 'phone' ? 'MOBILE SANS CONTACT' : p.via === 'nfc' ? 'CB SANS CONTACT' : 'CB CODE VÉRIFIÉ';
+    const r = document.createElement('div'); r.className = 'receipt print';
+    r.innerHTML = '<b>' + (p.merchant || 'REÇU') + '</b><span>' + d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }) + '</span>' +
+      (p.lines || []).map(l=>'<span class="rl"><em>' + l[0] + '</em><em>' + l[1] + '</em></span>').join('') +
+      '<span class="rl tot"><em>TOTAL</em><em>' + money(p.amount, p.currency) + '</em></span>' +
+      '<span>' + how + '</span><span>CARTE ●●●● 4821 · AUTO ' + auth + '</span><span>TRANSACTION ACCEPTÉE</span><span class="rc">TICKET CLIENT — À CONSERVER</span>';
+    $id('pmTpe').appendChild(r);
+    setTimeout(()=>{ if(_pay === p) tpeScreen('<b class="ok">MERCI</b><small>BONNE ROUTE</small>'); }, 1300);
+    setTimeout(()=>{ if(_pay === p) closePayment(true); }, 2600);
   }
   // --- especes ---
   function cashStep0(){
@@ -969,11 +1051,15 @@
   window.addEventListener('keydown', (e)=>{
     if(!_pay) return;
     e.stopImmediatePropagation(); // pendant un paiement, les autres raccourcis sont ignores
-    if(_pay.renderPin && /^[0-9]$/.test(e.key)){ e.preventDefault(); pinKey(e.key); }
-    else if(_pay.renderPin && e.key === 'Backspace'){ e.preventDefault(); pinKey('✕'); }
-    else if(_pay.renderPin && e.key === 'Enter'){ e.preventDefault(); pinKey('✔'); }
-    else if(_pay.method === 'card' && _pay.step === 0 && e.key === 'Enter'){ e.preventDefault(); cardInsert(); }
-    else if(e.key === 'Escape' && (_pay.step === 0 || _pay.renderCash)){ e.preventDefault(); closePayment(false); }
+    const p = _pay;
+    if(p.method === 'card'){
+      if(p.st === 'pin'){ if(/^[0-9]$/.test(e.key)){ e.preventDefault(); tpeKey(e.key); } else if(e.key === 'Backspace'){ e.preventDefault(); tpeKey('C'); } else if(e.key === 'Enter'){ e.preventDefault(); tpeKey('OK'); } else if(e.key === 'Escape'){ e.preventDefault(); tpeKey('X'); } }
+      else if(p.st === 'wait'){ if(e.key === 'Enter'){ e.preventDefault(); autoPay(p); } else if(e.key === 'Escape'){ e.preventDefault(); closePayment(false); } }
+      else if(p.st === 'remove' && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); removeCard(); }
+      else if(p.st === 'ticket'){ if(e.key === 'Enter'){ e.preventDefault(); ticket(p, true); } else if(e.key === 'Escape'){ e.preventDefault(); ticket(p, false); } }
+      return;
+    }
+    if(e.key === 'Escape' && p.renderCash){ e.preventDefault(); closePayment(false); }
   }, true);
 
   // ======== Peage / amende ========
@@ -1157,6 +1243,219 @@
       popup('🚗 Accélère ▲ et rejoins l\'autoroute par la voie d\'insertion ◀', '#4ee39a', true);
     }
   }
+  // ======== Vie reelle (RP) : controle routier, ethylotest, cigarette, accrochages ========
+  const rpEls = {};
+  (function buildRpUi(){
+    const cp = document.createElement('div'); cp.className = 'cp-panel hidden'; cp.id = 'cpPanel';
+    cp.innerHTML = '<div class="cp-head"><span class="cp-badge">👮</span><div class="cp-who"><small id="cpForce">GENDARMERIE</small><b>Contrôle routier</b></div><span class="cp-step" id="cpStep"></span></div>' +
+      '<div class="cp-line" id="cpLine"></div><div class="cp-tool hidden" id="cpTool"></div><div class="cp-choices" id="cpChoices"></div>';
+    document.body.appendChild(cp);
+    const chip = document.createElement('button'); chip.className = 'smoke-chip hidden'; chip.id = 'smokeChip'; chip.title = 'Fumer une cigarette (F)';
+    document.body.appendChild(chip);
+    Object.assign(rpEls, { cp, line:cp.querySelector('#cpLine'), choices:cp.querySelector('#cpChoices'), tool:cp.querySelector('#cpTool'), force:cp.querySelector('#cpForce'), step:cp.querySelector('#cpStep'), chip });
+    chip.addEventListener('click', ()=>toggleSmoke());
+  })();
+  function rpOpen(){ return !rpEls.cp.classList.contains('hidden'); }
+
+  // --- cigarette ---
+  function toggleSmoke(){
+    if(!engine || !engine.playing || engine.paused || !engine.toggleSmoke) return;
+    const r = engine.toggleSmoke();
+    if(!r.ok){ popup('🚬 ' + r.error, '#ff9a3d', true); return; }
+    if(r.off){ popup('🚬 Cigarette éteinte', '#cfd6df'); return; }
+    // briquet : pierre + flamme
+    tone({ f:2600, to:1800, glide:0.03, dur:0.05, vol:0.03, type:'square' }); tone({ f:180, dur:0.35, vol:0.02, type:'sawtooth', delay:0.08 });
+    popup('🚬 Tu allumes une cigarette · ' + r.left + ' dans le paquet', '#e8dcc8');
+  }
+  function refreshSmokeChip(){
+    if(!engine) return;
+    const n = engine._cigs || 0, on = !!engine._smoke, show = engine.playing && (n > 0 || on);
+    rpEls.chip.classList.toggle('hidden', !show);
+    rpEls.chip.classList.toggle('on', on);
+    if(show) rpEls.chip.textContent = (on ? '🚬 ' : '🚬 ') + n;
+  }
+
+  // --- controle routier : dialogue ---
+  let _cp = null;
+  function cpType(text, done){
+    clearInterval(_cp && _cp.typeT);
+    rpEls.line.textContent = '';
+    let i = 0;
+    const tick = ()=>{
+      i += 2; rpEls.line.textContent = text.slice(0, i);
+      if(i % 6 === 0) tone({ f:180 + Math.random() * 60, dur:0.03, vol:0.012, type:'triangle' });
+      if(i >= text.length){ clearInterval(_cp.typeT); rpEls.line.textContent = text; if(done) done(); }
+    };
+    _cp.typeT = setInterval(tick, 22);
+    _cp.skip = ()=>{ clearInterval(_cp.typeT); rpEls.line.textContent = text; if(done) done(); _cp.skip = null; };
+  }
+  function cpSay(text, choices){
+    rpEls.choices.innerHTML = '';
+    cpType(text, ()=>{ if(_cp) _cp.skip = null; cpChoices(choices); });
+  }
+  function cpChoices(choices){
+    _cp.choices = choices || [];
+    rpEls.choices.innerHTML = _cp.choices.map((c, k)=>'<button data-c="' + k + '"><kbd>' + (k + 1) + '</kbd>' + c[0] + '</button>').join('');
+    rpEls.choices.querySelectorAll('[data-c]').forEach(b=>b.addEventListener('click', ()=>cpPick(+b.dataset.c)));
+  }
+  function cpPick(k){
+    if(!_cp || _cp.busy) return;
+    const c = _cp.choices[k]; if(!c) return;
+    clickSound();
+    rpEls.choices.innerHTML = '<div class="cp-me">« ' + c[0] + ' »</div>';
+    _cp.choices = [];
+    setTimeout(()=>{ if(_cp) c[1](); }, 650);
+  }
+  function cpStart(info){
+    _cp = { info, polite:0, rude:0, lied:false, fines:[], pts:0 };
+    rpEls.force.textContent = (info.police || 'Police').toUpperCase();
+    rpEls.cp.classList.remove('hidden'); rpEls.tool.classList.add('hidden');
+    rpEls.step.textContent = '';
+    clickSound(true);
+    const smokeTxt = info.smoking ? ' Et éteignez votre cigarette, s’il vous plaît.' : '';
+    cpSay('Bonjour. ' + info.police + ', contrôle routier. Coupez le moteur et baissez votre vitre, s’il vous plaît.' + smokeTxt, [
+      ['Bonjour monsieur l’agent.', ()=>{ _cp.polite++; cpPapers(); }],
+      ['Il y a un problème ?', ()=>cpPapers()],
+      ['Faites vite, je suis pressé.', ()=>{ _cp.rude++; cpPapers(); }],
+    ]);
+    if(info.smoking) _cp.smokeOut = true;
+  }
+  function cpPapers(){
+    const i = _cp.info;
+    const pre = i.speeding ? 'Vous êtes passé un peu vite devant le radar tout à l’heure… ' : _cp.rude ? 'On va prendre le temps qu’il faut. ' : 'Simple contrôle de routine. ';
+    cpSay(pre + 'Permis de conduire, certificat d’immatriculation et attestation d’assurance, s’il vous plaît.', [
+      ['Tenez, voilà mes papiers.', ()=>cpGivePapers(true)],
+      ['Je crois que j’ai oublié mon permis…', ()=>{ _cp.fines.push(['Défaut de présentation du permis', 11]); cpGivePapers(false); }],
+      ['Pourquoi vous m’arrêtez, moi ?', ()=>{ _cp.rude++; cpSay('Contrôle aléatoire. Vos papiers, maintenant.', [['D’accord… les voilà.', ()=>cpGivePapers(true)]]); }],
+    ]);
+  }
+  function cpGivePapers(all){
+    rpEls.tool.classList.remove('hidden');
+    rpEls.tool.innerHTML = '<div class="cp-docs">' + (all ? '<span class="doc d1"><b>PERMIS DE CONDUIRE</b><i>B · ' + (state.username || 'PILOTE').toUpperCase() + '</i></span>' : '') +
+      '<span class="doc d2"><b>CERTIFICAT D’IMMATRICULATION</b><i>' + plate() + '</i></span><span class="doc d3"><b>ASSURANCE</b><i>Carte verte · valide</i></span></div>';
+    tone({ f:420, dur:0.08, vol:0.02, type:'triangle' }); tone({ f:380, dur:0.08, vol:0.02, type:'triangle', delay:0.25 });
+    const txt = all ? 'Merci… (il examine les documents à la lampe) C’est en règle. ' : 'Je vous dresse une contravention de 11 € : vous aurez 5 jours pour présenter votre permis à la gendarmerie. ';
+    setTimeout(()=>{
+      if(!_cp) return;
+      rpEls.tool.classList.add('hidden');
+      cpSay(txt + 'Avez-vous consommé de l’alcool aujourd’hui ?', [
+        ['Non, rien du tout.', ()=>{ if(_cp.info.bac > 0.05) _cp.lied = true; cpBlowIntro(); }],
+        ['Juste une bière…', ()=>cpBlowIntro()],
+        ['Je ne suis pas obligé de répondre.', ()=>{ _cp.rude++; cpBlowIntro(); }],
+      ]);
+    }, 1500);
+  }
+  function plate(){ const L = 'ABCDEFGHJKLMNPRSTVWXYZ'; const r = (n)=>Array.from({ length:n }, ()=>L[Math.floor(Math.random() * L.length)]).join(''); return r(2) + '-' + (100 + Math.floor(Math.random() * 900)) + '-' + r(2); }
+  // --- ethylotest : maintenir Espace (ou le bouton) ~3 s sans s'arreter ---
+  function cpBlowIntro(){
+    cpSay('Bien. Vous allez souffler dans l’éthylotest : longuement, sans vous arrêter, jusqu’au bip.', [['(Prendre l’appareil)', ()=>cpBlow()]]);
+  }
+  function cpBlow(){
+    rpEls.tool.classList.remove('hidden');
+    rpEls.tool.innerHTML = '<div class="breath"><div class="br-dev"><div class="br-scr" id="brScr">SOUFFLEZ</div><div class="br-bar"><i id="brBar"></i></div></div>' +
+      '<button class="br-btn" id="brBtn">🌬 Maintiens pour souffler <kbd>Espace</kbd></button></div>';
+    rpEls.line.textContent = 'Soufflez… continuez… continuez…';
+    _cp.blow = { v:0, on:false };
+    const btn = document.getElementById('brBtn');
+    const set = (on)=>{ if(_cp && _cp.blow) _cp.blow.on = on; };
+    btn.addEventListener('pointerdown', (e)=>{ e.preventDefault(); set(true); });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(t=>btn.addEventListener(t, ()=>set(false)));
+    let last = performance.now(), hum = 0;
+    (function loop(now){
+      if(!_cp || !_cp.blow) return;
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      const b = _cp.blow;
+      if(b.on){ b.v = Math.min(1, b.v + dt / 3); hum -= dt; if(hum <= 0){ hum = 0.12; tone({ f:220 + b.v * 120, dur:0.13, vol:0.012, type:'sawtooth' }); } }
+      else if(b.v > 0 && b.v < 1){ b.v = 0; document.getElementById('brScr').textContent = 'RECOMMENCEZ'; rpEls.line.textContent = 'Non, il faut souffler plus longtemps. Recommencez.'; tone({ f:300, dur:0.2, vol:0.03, type:'square' }); }
+      const bar = document.getElementById('brBar'); if(bar) bar.style.width = (b.v * 100) + '%';
+      if(b.v >= 1){ _cp.blow = null; cpBreathResult(); return; }
+      requestAnimationFrame(loop);
+    })(last);
+  }
+  function cpBreathResult(){
+    tone({ f:2000, dur:0.25, vol:0.04 });
+    const scr = document.getElementById('brScr'), i = _cp.info, us = i.style === 'us';
+    scr.textContent = 'ANALYSE…';
+    setTimeout(()=>{
+      if(!_cp) return;
+      const mg = engine.cpBreath(), bac = mg * 2, lim = i.limitBac;
+      scr.textContent = us ? 'BAC ' + (bac / 10).toFixed(3) + '%' : mg.toFixed(2).replace('.', ',') + ' mg/L';
+      scr.classList.toggle('bad', bac >= lim);
+      tone({ f:bac >= lim ? 440 : 1500, dur:0.18, vol:0.04, type:bac >= lim ? 'square' : 'sine' });
+      const val = us ? (bac / 10).toFixed(3) + ' %' : mg.toFixed(2).replace('.', ',') + ' mg/L';
+      if(bac >= (us ? lim : lim * 1.6)){ // (delit : 0,8 g/L en France, DUI des la limite aux USA)
+        _cp.arrest = true;
+        cpSay(val + '. C’est un délit : conduite en état alcoolique. Votre permis est retenu sur-le-champ et le véhicule est immobilisé. Vous allez nous suivre.', [['(Descendre du véhicule)', ()=>cpEnd()]]);
+      } else if(bac >= lim){
+        _cp.fines.push(['Alcoolémie au-dessus de la limite', i.currency === 'CHF' ? 600 : i.currency === '$' ? 1000 : 135]);
+        _cp.sober = true;
+        cpSay(val + '. C’est au-dessus de la limite légale. Contravention et retrait de points. Vous ne repartirez pas tant que vous n’êtes pas redescendu sous le seuil.', [['(Attendre sur le bas-côté…)', ()=>cpWait()]]);
+      } else {
+        const lie = _cp.lied && bac > 0.1 ? 'Vous m’aviez dit « rien du tout »… Bon, c’est sous la limite. ' : '';
+        cpSay(val + '. ' + (lie || (bac > 0.1 ? 'C’est sous la limite, mais restez prudent. ' : 'Parfait. ')) + cpOutro(), cpBye());
+      }
+    }, 1100);
+  }
+  function cpWait(){
+    rpEls.tool.innerHTML = '<div class="cp-wait">⏳ Une heure plus tard…</div>';
+    setTimeout(()=>{ if(_cp) cpSay('Contrôle refait : c’est bon cette fois. Vous pouvez repartir, et ne recommencez pas.', cpBye()); }, 2200);
+  }
+  function cpOutro(){
+    if(_cp.rude >= 2) return 'Vu votre attitude, on va quand même jeter un œil au coffre.';
+    return _cp.polite && !_cp.fines.length ? 'Merci de votre coopération, tout est en règle. Bonne route !' : 'C’est bon pour cette fois. Bonne route.';
+  }
+  function cpBye(){
+    if(_cp.rude >= 2 && !_cp.searched) return [['(Ouvrir le coffre)', ()=>{
+      _cp.searched = true; rpEls.tool.classList.remove('hidden'); rpEls.tool.innerHTML = '<div class="cp-wait">🔦 Fouille du véhicule…</div>';
+      setTimeout(()=>{ if(_cp) cpSay('Rien à signaler. Restez courtois la prochaine fois. Bonne route.', [['Au revoir.', ()=>cpEnd()]]); }, 2400);
+    }]];
+    return [['Merci, bonne journée.', ()=>cpEnd()], ['Au revoir.', ()=>cpEnd()]];
+  }
+  function cpEnd(){
+    const c = _cp; if(!c) return;
+    clearInterval(c.typeT);
+    const i = c.info, coinV = i.coinValue || 1;
+    const total = c.fines.reduce((a, f)=>a + f[1], 0), pts = Math.round(total / coinV * 0.6);
+    rpEls.cp.classList.add('hidden'); _cp = null;
+    c.fines.forEach(f=>popup('🧾 ' + f[0] + ' : ' + money(f[1], i.currency), '#ff5a3d', true));
+    if(pts) popup('−' + pts + ' points', '#ff5a3d');
+    engine.cpFinish({ pts, arrest:!!c.arrest, sober:!!c.sober, smokeOut:!!c.smokeOut });
+    if(!c.arrest){ popup('🚗 Remets ton clignotant ◀ et réinsère-toi dans la circulation', '#4ee39a', true); }
+  }
+  window.addEventListener('keydown', (e)=>{
+    if(!_cp) return;
+    e.stopImmediatePropagation();
+    if(e.key === ' '){ e.preventDefault(); if(_cp.blow){ if(!e.repeat) _cp.blow.on = true; } else if(_cp.skip) _cp.skip(); return; }
+    if(/^[1-3]$/.test(e.key)){ e.preventDefault(); if(_cp.skip) _cp.skip(); cpPick(+e.key - 1); }
+    else if(e.key === 'Enter'){ e.preventDefault(); if(_cp.skip) _cp.skip(); else if(_cp.choices && _cp.choices.length === 1) cpPick(0); }
+  }, true);
+  window.addEventListener('keyup', (e)=>{ if(_cp && _cp.blow && e.key === ' ') _cp.blow.on = false; }, true);
+
+  function rpEvent(kind, d){
+    if(kind === 'cp-ahead'){
+      if(d.selected){ popup('🚓 CONTRÔLE ROUTIER — le gendarme te fait signe : range-toi à droite ▶ sur la bande d’arrêt d’urgence et arrête-toi à sa hauteur', '#7aa8ff', true); sirenTick && sirenTick(); }
+      else popup('🚓 Contrôle routier : le gendarme te fait signe de passer ✓ (reste sur ta voie)', '#9ab8ff', true);
+    }
+    else if(kind === 'cp-talk'){ cpStart(d); }
+    else if(kind === 'cp-refuse'){ popup('🚨 REFUS D’OBTEMPÉRER ! ' + d.police + ' te prend en chasse', '#ff5a3d', true); }
+    else if(kind === 'crash'){
+      popup('💥 ACCROCHAGE ! Constat amiable avec l’autre conducteur · franchise ' + money(d.franchise, d.currency) + ' (−' + d.pts + ' pts) · ' + d.n + '/' + d.max, '#ff5a3d', true);
+      replay(els.crashFlash, 'play'); replay(els.stage, 'shake');
+      if(d.n >= d.max) popup('🛻 Voiture hors d’usage : la dépanneuse l’emmène', '#ff9a3d', true);
+    }
+    else if(kind === 'puff') tone({ f:900, to:300, glide:0.5, dur:0.6, vol:0.006, type:'sawtooth' });
+    else if(kind === 'smoke-end') popup('🚬 Cigarette terminée', '#cfd6df');
+  }
+  // vision troublee quand on a trop bu + pastille cigarettes
+  setInterval(()=>{
+    if(!engine) return;
+    refreshSmokeChip();
+    const cv = document.querySelector('#canvasHost canvas'); if(!cv) return;
+    const b = engine.playing ? (engine._bac || 0) : 0;
+    const f = b > 0.3 ? 'blur(' + Math.min(1.6, (b - 0.3) * 1.6).toFixed(2) + 'px) saturate(' + (1 + Math.min(0.4, b - 0.3)).toFixed(2) + ')' : '';
+    if(cv.style.filter !== f) cv.style.filter = f;
+  }, 300);
+
   // remet a zero toute l'interface de la station (nouvelle partie, quitter, fin de partie)
   function resetStopUi(){
     if(els.fpHelp) els.fpHelp.classList.add('hidden'); if(els.fpPrompt) els.fpPrompt.classList.add('hidden'); hideEat();
@@ -1164,25 +1463,58 @@
     if(els.payModal){ els.payModal.classList.add('hidden'); _pay = null; }
     if(els.ovToll) els.ovToll.classList.add('hidden');
     _pump = null; document.body.classList.remove('dg-paused');
+    if(rpEls.cp){ rpEls.cp.classList.add('hidden'); if(_cp) clearInterval(_cp.typeT); _cp = null; }
   }
   function stopPanelOpen(){ return [els.ovShop, els.eatPanel, els.pumpPanel, els.payModal].some(el=>el && !el.classList.contains('hidden')); }
+
+  // ---------- Souris : verrouillee a pied, cachee en conduisant, libre dans les menus ----------
+  // A pied, la vue suit la souris (curseur cache, reticule au centre, clic = agir) ;
+  // des qu'un menu s'ouvre (pompe, caisse, paiement, pause...) la souris est
+  // liberee. En conduite (clavier), le curseur disparait apres 1,5 s sans bouger.
+  let _mouseT = 0;
+  document.addEventListener('mousemove', ()=>{ _mouseT = performance.now(); });
+  const fpLook = document.createElement('div'); fpLook.className = 'fp-look hidden'; fpLook.innerHTML = '🖱 <b>Clique</b> pour regarder autour · <kbd>Échap</kbd> libère la souris';
+  const fpCross = document.createElement('div'); fpCross.className = 'fp-cross';
+  document.body.appendChild(fpLook); document.body.appendChild(fpCross);
+  function menuOpen(){
+    return stopPanelOpen() || rpOpen() || (engine && engine.paused) || (els.ovToll && !els.ovToll.classList.contains('hidden')) ||
+      (els.musicPanel && !els.musicPanel.classList.contains('hidden')) || ['ovChoosing', 'ovOver', 'ovBoard', 'ovNaming', 'ovPaused'].some(k=>els[k] && !els[k].classList.contains('hidden'));
+  }
+  setInterval(()=>{
+    if(!engine) return;
+    const fp = !!engine._fp, menu = menuOpen();
+    if(menu && engine.mouseLocked()) engine.lockMouse(false);
+    const locked = engine.mouseLocked();
+    document.body.classList.toggle('dg-fplock', fp && locked);
+    fpLook.classList.toggle('hidden', !(fp && !locked && !menu && matchMedia('(pointer:fine)').matches));
+    const driving = engine.playing && !fp && !engine._walk && !menu;
+    document.body.classList.toggle('dg-hidecur', driving && performance.now() - _mouseT > 1500);
+  }, 150);
+  document.getElementById('canvasHost').addEventListener('pointerdown', (e)=>{
+    if(e.pointerType === 'mouse' && engine && engine._fp && !menuOpen() && !engine.mouseLocked()) engine.lockMouse(true);
+  });
   // Bar : on mange / boit ce qu'on a achete (petite animation de bouchees)
   let _eatList = [];
   function showEat(){ if(!els.eatPanel) return; els.eatPanel.classList.remove('hidden'); renderEat(); }
   function hideEat(){ if(els.eatPanel) els.eatPanel.classList.add('hidden'); }
   function renderEat(){
     const left = _eatList.filter(it=>!it.eaten);
-    els.eatList.innerHTML = left.length ? left.map(it=>'<button class="eat-item" data-e="' + _eatList.indexOf(it) + '"><span class="ei-ico">' + it.ico + '</span><span>' + (it.effect === 'drink' || it.effect === 'coffee' ? 'Boire' : 'Manger') + ' : ' + it.label + '</span></button>').join('')
+    els.eatList.innerHTML = left.length ? left.map(it=>'<button class="eat-item" data-e="' + _eatList.indexOf(it) + '"><span class="ei-ico">' + it.ico + '</span><span>' + (it.effect === 'drink' || it.effect === 'coffee' || it.effect === 'beer' ? 'Boire' : 'Manger') + ' : ' + it.label + '</span></button>').join('')
       : '<div class="shop-empty">' + (_eatList.length ? '😋 Tout est fini ! Retourne à la voiture quand tu veux.' : 'Rien à manger : prends des articles en rayon (E) et paie-les à la caisse.') + '</div>';
     els.eatList.querySelectorAll('[data-e]').forEach(b=>b.addEventListener('click', ()=>eatItem(+b.dataset.e)));
   }
   function eatItem(i){
     const it = _eatList[i]; if(!it || it.eaten || it.eating) return;
     it.eating = true;
-    const drink = it.effect === 'drink' || it.effect === 'coffee';
+    const drink = it.effect === 'drink' || it.effect === 'coffee' || it.effect === 'beer';
     const big = document.createElement('div'); big.className = 'eat-anim' + (drink ? ' drink' : ''); big.textContent = it.ico; els.eatPanel.appendChild(big);
     [0, 0.45, 0.9].forEach((dl, k)=>tone(drink ? { f:320 + k * 30, to:210, glide:0.2, dur:0.24, vol:0.03, delay:dl } : { f:170 + k * 25, dur:0.07, vol:0.05, type:'square', delay:dl }));
-    setTimeout(()=>{ big.remove(); it.eaten = true; it.eating = false; engine.fpEat(); popup((drink ? '🥤 Glou glou ! ' : '😋 Miam ! ') + it.label + ' (+30)', '#4ee39a'); renderEat(); }, 1400);
+    setTimeout(()=>{
+      big.remove(); it.eaten = true; it.eating = false;
+      if(it.effect === 'beer'){ engine.drinkAlcohol(0.25); const b = engine._bac || 0; popup('🍺 ' + it.label + ' bue · alcoolémie ≈ ' + b.toFixed(2).replace('.', ',') + ' g/L' + (b >= 0.5 ? ' — AU-DESSUS de la limite (0,5) : ne conduis pas !' : ' (limite 0,5 g/L)'), b >= 0.5 ? '#ff5a3d' : '#ffcc33', true); }
+      else { engine.fpEat(); popup((drink ? '🥤 Glou glou ! ' : '😋 Miam ! ') + it.label + ' (+30)', '#4ee39a'); }
+      renderEat();
+    }, 1400);
   }
   function pumpSkip(){
     const p = _pump; if(!p || p.done || p.liters > 0) return;
@@ -1206,7 +1538,7 @@
     else if(kind === 'cardoor'){ tone({ f:90, dur:0.08, vol:0.06, type:'square' }); tone({ f:60, dur:0.12, vol:0.05, type:'square', delay:0.06 }); }
     else if(kind === 'door'){ tone({ f:260, to:420, glide:0.45, dur:0.5, vol:0.018 }); tone({ f:1319, dur:0.35, vol:0.03, delay:0.25 }); tone({ f:988, dur:0.5, vol:0.03, delay:0.55 }); }
   }
-  const EFFECT_TXT = { coffee:'Nitro plein + gains ×1,5 (10 s)', drink:'Nitro +50 %', food:'Aimant à pièces (8 s)' };
+  const EFFECT_TXT = { coffee:'Nitro plein + gains ×1,5 (10 s)', drink:'Nitro +50 %', food:'Aimant à pièces (8 s)', beer:'Alcool (~0,25 g/L) : à boire au bar… et pas avant de conduire', cigs:'20 cigarettes · touche F (ou 🚬) pour fumer' };
   let _shopItems = [], _fuelPaid = false, _basket = [];
   function openCounter(info){
     const route = curRoute();
@@ -1255,7 +1587,7 @@
         const got = [], failed = [];
         _basket.forEach(i=>{ const r = engine.buyItem(_shopItems[i], method); if(r.ok){ got.push(i); popup(_shopItems[i].ico + ' ' + EFFECT_TXT[_shopItems[i].effect], '#ffcc33'); } else failed.push(_shopItems[i].label + (r.error ? ' (' + r.error + ')' : '')); });
         _fuelPaid = true;
-        _eatList = _eatList.concat(got.map(i=>Object.assign({}, _shopItems[i])));
+        _eatList = _eatList.concat(got.filter(i=>_shopItems[i].effect !== 'cigs').map(i=>Object.assign({}, _shopItems[i])));
         if(failed.length) popup('⚠ Non acheté : ' + failed.join(', '), '#ff9a3d', true);
         els.shopCounter.classList.add('paid');
         els.btnShopLeave.disabled = false;
@@ -1347,9 +1679,15 @@
     for(const k in _hud) delete _hud[k];
     els.countdown.innerHTML = '';
     els.draftBadge.classList.remove('show');
-    engine.start(car, state.selectedRoute, state.personalBest);
+    engine.start(car, state.selectedRoute, state.personalBest, { rp:!!state.rp });
+    if(state.rp) setTimeout(()=>{ if(engine.playing) popup('🎭 MODE LIBRE · pas de chrono ni de classement : roule, arrête-toi aux stations, fume (F), respecte les gendarmes… un accrochage ne termine pas la balade (3 max)', '#c8b8ff', true); }, 3800);
   }
   els.btnStart.addEventListener('click', startRun);
+  // Mode libre (RP) : memorise d'une partie a l'autre
+  try { state.rp = localStorage.getItem('dg_rp') === '1'; } catch(e){}
+  const btnRp = document.getElementById('btnModeRp');
+  function paintRp(){ if(!btnRp) return; btnRp.classList.toggle('on', !!state.rp); btnRp.querySelector('.lbl').textContent = state.rp ? 'Mode libre ✓' : 'Mode libre'; updateDock(); }
+  if(btnRp){ btnRp.addEventListener('click', ()=>{ state.rp = !state.rp; try { localStorage.setItem('dg_rp', state.rp ? '1' : '0'); } catch(e){} paintRp(); popup(state.rp ? '🎭 Mode libre activé : pas de chrono ni de classement, un accrochage ne termine pas la balade' : '🏁 Mode course : score et classement', state.rp ? '#c8b8ff' : '#ffcc00', true); }); paintRp(); }
   if(els.dailyCard){
     els.dailyCard.addEventListener('click', selectDailyChallenge);
     els.dailyCard.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); selectDailyChallenge(); } });
@@ -1362,8 +1700,25 @@
   if(els.btnCloseWheel) els.btnCloseWheel.addEventListener('click', closeWheel);
 
   let lastResult = null;
+  const END_TXT = { arrest:'🚓 Permis retenu et véhicule immobilisé : conduite en état alcoolique', wreck:'🛻 Voiture hors d’usage après 3 accrochages', fuel:'⛽ Panne sèche sur la voie : percuté par l’arrière' };
   async function handleGameOver(result){
     resetStopUi();
+    let why = document.getElementById('overReason');
+    if(!why && els.overScore && els.overScore.parentNode){ why = document.createElement('div'); why.id = 'overReason'; why.className = 'over-reason'; els.overScore.parentNode.insertBefore(why, els.overScore.nextSibling); }
+    if(why){ why.textContent = END_TXT[result.reason] || ''; why.classList.toggle('hidden', !END_TXT[result.reason]); }
+    if(result.rp){
+      // mode libre : pas de classement ni de credits (sinon une balade sans fin rapporterait a l'infini)
+      els.hudTop.style.display = 'none'; els.hudBottom.style.display = 'none';
+      lastResult = result;
+      els.ovRecordBadge.style.display = 'none';
+      els.overScore.textContent = Math.round(result.score).toLocaleString('fr-FR');
+      els.overTime.textContent = result.time.toFixed(1) + 's';
+      els.overCredits.textContent = 'mode libre';
+      els.overBoard.innerHTML = '<div style="text-align:center;color:#8a8f98;padding:16px">🎭 Balade en mode libre : pas de classement.</div>';
+      if(els.overDailyCard) els.overDailyCard.classList.add('hidden');
+      show('ovOver'); flashOverScreen(result.carId); startOverCarSpin(result.carId);
+      return;
+    }
     els.hudTop.style.display = 'none'; els.hudBottom.style.display = 'none';
     lastResult = result;
     recordDailyRun(result);
@@ -1473,6 +1828,7 @@
       if(k===' '||k==='Shift'){ engine.setBoostHeld(true); if(engine.playing) e.preventDefault(); }
       if(k==='ArrowUp'||k==='w'||k==='W'||k==='z'||k==='Z'){ engine.setThrottle(true); if(engine.playing) e.preventDefault(); }
       if(k==='c'||k==='C'){ engine.cycleCam(); }
+      if((k==='f'||k==='F') && !e.repeat && engine.playing && !engine.paused){ toggleSmoke(); }
       if((k==='p'||k==='P') && engine.playing){ engine.paused ? engine.resume() : engine.pause(); }
       if(k==='Escape' && engine.playing && !engine.paused && !stopPanelOpen()){ engine.pause(); } // Echap ferme d'abord les panneaux de la station
     });
