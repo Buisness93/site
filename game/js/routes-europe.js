@@ -99,6 +99,34 @@
     ]));
   }
 
+  // Semi-remorque simplifie (sens inverse) : tracteur + remorque baches
+  function simpleTruckGeo(T, key, cab, box){
+    return M('geo:simpletruck:' + key, ()=>S().merge(T, [
+      { geo:new T.BoxGeometry(2.3, 2.5, 2.2), pos:[0, 1.65, -5.4], color:cab },
+      { geo:new T.BoxGeometry(2.1, 0.9, 0.05), pos:[0, 2.2, -6.52], color:0x1e2630 },
+      { geo:new T.BoxGeometry(2.45, 2.9, 9.6), pos:[0, 2.05, 0.9], color:box },
+      ...[[-1.0, -5.2], [1.0, -5.2], [-1.0, 3.4], [1.0, 3.4], [-1.0, 4.6], [1.0, 4.6]].map(([x, z])=>({ geo:new T.CylinderGeometry(0.48, 0.48, 0.4, 10), pos:[x, 0.48, z], rot:[0, 0, Math.PI/2], color:0x141414 })),
+      { geo:new T.BoxGeometry(1.9, 0.16, 0.05), pos:[0, 1.0, -6.52], color:0xfff6d8 },
+    ]));
+  }
+  // Trafic du sens inverse : voitures sur toutes les voies, camions sur la
+  // voie lente (la plus a l'exterieur), plus lents. n selon la densite de la route.
+  function oppFleet(T, ctx, cols, lanes, n){
+    const opp = [], truckCols = [[0xe8e8e8, 0xe8e8e8], [0xb01818, 0xd8d8d8], [0x1a3a8a, 0x2a5aa8], [0xe8e8e8, 0x2a6a3a], [0xd89a10, 0xe8e8e8]];
+    const slow = lanes[lanes.length - 1];
+    for(let k = 0; k < n; k++){
+      const truck = k % 4 === 1, x = truck ? slow : lanes[k % lanes.length];
+      const tc = truckCols[k % truckCols.length];
+      const geo = truck ? simpleTruckGeo(T, 't' + (k % truckCols.length), tc[0], tc[1]) : simpleCarGeo(T, 'c' + (k % cols.length), cols[k % cols.length]);
+      const car = ctx.add(new T.Mesh(geo, vcStd('opp', 0.35)));
+      car.rotation.y = Math.PI; car.position.set(x, 0, -30 - k * (230 / n)); car.castShadow = true;
+      const vb = truck ? [20, 25] : x === slow ? [27, 34] : [32, 46];
+      opp.push({ car, vb, v:vb[0] + Math.random() * (vb[1] - vb[0]) });
+    }
+    return opp;
+  }
+  const oppReset = (o)=>{ o.car.position.z = -190 - Math.random()*40; o.v = o.vb ? o.vb[0] + Math.random() * (o.vb[1] - o.vb[0]) : 30 + Math.random()*14; };
+
   // Ciel de jour : cumulus epars (sprites) sur l'horizon
   function dayClouds(T, ctx, list, tint){
     list.forEach(([x, y, w, op])=>{
@@ -163,70 +191,110 @@
       return S().merge(T, parts);
     });
   }
-  // Barriere de peage : la chaussee s'elargit vers la droite (8 voies de
-  // cabines), grand auvent au nom de la gare, ilots et cabines, panneau par
-  // voie (telepeage / carte / especes), barrieres a bras rayes. Les voies du
-  // joueur (x = -3.3 .. 3.3) ont les bras "arm0..arm3" ; les voies en plus
-  // (userData.queueLanes) recoivent des voitures qui font la queue (moteur).
-  // Type de chaque voie de cabine : telepeage (T), carte (CB), especes + carte (€)
-  const LANE_TYPES = ['cash', 't', 'cb', 'cash', 'cb', 't', 'cash', 'cb'];
-  function tollPlaza(T, stop, style){
-    const st = Object.assign({ bg:'#0a3a7a', fg:'#ffffff', accent:'#ffcc00', left:'T', right:'€', title:null }, style || {});
-    const g = new T.Group();
-    const concrete = M('std:tollConcrete', ()=>new T.MeshStandardMaterial({ color:0xb0aaa0, roughness:0.9 }));
-    const white = M('std:tollWhite', ()=>new T.MeshStandardMaterial({ color:0xe8eaec, roughness:0.5, metalness:0.2 }));
-    const asph = M('std:tollApron', ()=>new T.MeshStandardMaterial({ color:0x333336, roughness:0.85 }));
-    const LN = [-3.3, -1.1, 1.1, 3.3, 5.5, 7.7, 9.9, 12.1];
-    // elargissement : trapeze d'asphalte (4.6 -> 13.4) puis zone des cabines
+  // Barriere de peage, construite directement en coordonnees du monde (pas
+  // elargie par le shader) : la chaussee s'evase vers la droite sur ~120 m
+  // jusqu'a une vraie gare a 10-16 cabines comme les barrieres italiennes ou
+  // francaises. Les cabines dans l'axe des voies gardent l'abscisse de la voie
+  // (on peut aller tout droit) ; les autres s'ajoutent a droite tous les 3,4.
+  // Telepeage a gauche (voies jaunes en Italie), cartes au milieu, especes a
+  // droite. Chaque cabine : ilot, guerite, barriere "arm<k>", panneau du type
+  // de paiement, fleche verte. userData.queueLanes : les cabines ;
+  // userData.apron : profil de la zone elargie (bord droit selon z) pour le moteur.
+  function tollPlaza(T, stop, style, L){
+    const st = Object.assign({ bg:'#0a3a7a', fg:'#ffffff', accent:'#ffcc00', left:'T', right:'€', title:null, gantry:null }, style || {});
+    L = L || { lanes:[-5.28, -1.76, 1.76, 5.28], edge:7.1, shoulder:3 };
+    const g = new T.Group(), lanes = L.lanes, nRoad = lanes.length, last = lanes[nRoad - 1];
+    const n = Math.max(nRoad + 3, stop.booths || st.booths || nRoad + 6);
+    const B = []; for(let k = 0; k < n; k++) B.push(k < nRoad ? lanes[k] : last + (k - nRoad + 1) * 3.4);
+    const nT = Math.max(1, Math.round(n * 0.22)), nCb = Math.round(n * 0.36);
+    const types = B.map((_, k)=>k < nT ? 't' : k < nT + nCb ? 'cb' : k === n - 1 ? 't' : 'cash');
+    const isl = B.map((x, k)=>k === 0 ? x - 1.9 : (B[k - 1] + x) / 2); isl.push(B[n - 1] + 1.9);
+    const xL = lanes[0] - 2.1, xR = isl[n] + 0.9, roadR = L.edge + L.shoulder;
+    const Z_NEAR = 165, Z_FULL = 44, Z_EXIT = -24, Z_END = -140; // (sortie : on se rabat en douceur)
+    const mat = (k, f)=>M('tw:' + k, f);
+    const concrete = mat('concrete', ()=>new T.MeshStandardMaterial({ color:0xb4aea4, roughness:0.9 }));
+    const white = mat('white', ()=>new T.MeshStandardMaterial({ color:0xe8eaec, roughness:0.5, metalness:0.2 }));
+    const asph = mat('apron', ()=>new T.MeshStandardMaterial({ color:0x2e2e31, roughness:0.85 }));
+    const lineMat = mat('line', ()=>new T.MeshBasicMaterial({ color:0xe8e6de }));
+    const gantryMat = mat('gantry', ()=>new T.MeshStandardMaterial({ color:0x8a8e94, metalness:0.6, roughness:0.4 }));
+    const flat = (w, l, x, z, m, y)=>{ const p = new T.Mesh(new T.PlaneGeometry(w, l), m); p.rotation.x = -Math.PI / 2; p.position.set(x, y || 0.03, z); g.add(p); return p; };
+    // evasement : trapeze d'asphalte (forme en x / -z)
     const sh = new T.Shape();
-    sh.moveTo(-4.6, -60); sh.lineTo(4.6, -60); sh.lineTo(13.4, -26); sh.lineTo(13.4, 20); sh.lineTo(4.6, 60); sh.lineTo(-4.6, 60); sh.closePath();
-    const apron = new T.Mesh(new T.ShapeGeometry(sh), asph);
-    apron.rotation.x = -Math.PI/2; apron.position.y = 0.012; apron.receiveShadow = true; g.add(apron);
-    const lineMat = M('bas:line', ()=>new T.MeshBasicMaterial({ color:0xe8e6de }));
-    // marquages des voies de cabines + ligne d'arret
-    for(let k = 0; k < LN.length - 1; k++){ const x = (LN[k] + LN[k + 1]) / 2; for(let z = 8; z < 30; z += 4){ const m = new T.Mesh(M('geo:dash', ()=>new T.PlaneGeometry(0.12, 2)), lineMat); m.rotation.x = -Math.PI/2; m.position.set(x, 0.03, z); g.add(m); } }
-    const stopLine = new T.Mesh(new T.PlaneGeometry(17.6, 0.4), lineMat); stopLine.rotation.x = -Math.PI/2; stopLine.position.set(4.4, 0.03, 5.6); g.add(stopLine);
+    sh.moveTo(xL, -Z_NEAR); sh.lineTo(roadR, -Z_NEAR); sh.lineTo(xR, -Z_FULL); sh.lineTo(xR, -Z_EXIT); sh.lineTo(roadR, -Z_END); sh.lineTo(xL, -Z_END); sh.closePath();
+    const apron = new T.Mesh(new T.ShapeGeometry(sh), asph); apron.rotation.x = -Math.PI / 2; apron.position.y = 0.014; apron.receiveShadow = true; g.add(apron);
+    // bordures en beton qui suivent l'evasement
+    const curb = (x1, z1, x2, z2)=>{ const len = Math.hypot(x2 - x1, z2 - z1), c = new T.Mesh(new T.BoxGeometry(0.35, 0.25, len), concrete); c.position.set((x1 + x2) / 2 + 0.2, 0.12, (z1 + z2) / 2); c.rotation.y = Math.atan2(x2 - x1, z2 - z1); g.add(c); };
+    curb(roadR, Z_NEAR, xR, Z_FULL); curb(xR, Z_FULL, xR, Z_EXIT); curb(xR, Z_EXIT, roadR, Z_END);
+    // marquages : tirets entre les cabines, ligne d'arret, voies telepeage peintes
+    for(let k = 1; k < n; k++) for(let z = 8; z < 42; z += 4.5) flat(0.14, 2.2, isl[k], z, lineMat);
+    flat(xR - xL, 0.4, (xL + xR) / 2, 5.6, lineMat);
+    const tMat = mat('tLane' + st.accent, ()=>new T.MeshBasicMaterial({ color:new T.Color(st.accent), transparent:true, opacity:0.55 }));
+    B.forEach((x, k)=>{ if(types[k] === 't'){ flat(0.3, 36, x - 1.05, 24, tMat, 0.032); flat(0.3, 36, x + 1.05, 24, tMat, 0.032); } });
     // auvent + bandeau au nom de la gare
-    const roof = new T.Mesh(new T.BoxGeometry(20.5, 0.9, 13), white); roof.position.set(4.4, 6.6, 0); g.add(roof);
-    const roofEdge = new T.Mesh(new T.BoxGeometry(20.6, 0.3, 13.1), M('std:tollEdge' + st.bg, ()=>new T.MeshStandardMaterial({ color:new T.Color(st.bg), roughness:0.5 }))); roofEdge.position.set(4.4, 6.05, 0); g.add(roofEdge);
-    [-5.6, 14.4].forEach(x=>{ const p = new T.Mesh(new T.BoxGeometry(0.8, 6.2, 0.8), concrete); p.position.set(x, 3.1, 0); g.add(p); });
-    const band = new T.Mesh(new T.PlaneGeometry(19.6, 1.5), new T.MeshBasicMaterial({ map:(()=>{
-      const c = document.createElement('canvas'); c.width = 1024; c.height = 78; const x = c.getContext('2d');
-      x.fillStyle = st.bg; x.fillRect(0, 0, 1024, 78);
-      x.fillStyle = st.fg; x.font = '900 46px Arial'; x.textBaseline = 'middle'; x.textAlign = 'center';
-      const nm = stop.name.toUpperCase();
-      x.fillText((st.title && nm.indexOf(st.title) !== 0 ? st.title + '  ' : '') + nm, 512, 41);
-      x.fillStyle = st.accent; x.fillRect(16, 14, 50, 50); x.fillStyle = st.bg; x.font = '900 30px Arial'; x.fillText(st.left, 41, 41);
-      x.fillStyle = st.accent; x.fillRect(958, 14, 50, 50); x.fillStyle = st.bg; x.fillText(st.right, 983, 41);
-      const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = 4; return t; })() }));
-    band.position.set(4.4, 6.6, 6.52); g.add(band);
-    for(let k = 0; k < 4; k++){ const l = new T.Mesh(new T.BoxGeometry(18, 0.05, 0.3), M('bas:tollLight', ()=>new T.MeshBasicMaterial({ color:0xfff6e0 }))); l.position.set(4.4, 6.12, -4.5 + k*3); g.add(l); }
-    // panneau au-dessus de chaque voie : type de paiement
-    const laneSign = (kind)=>M('mat:laneSign:' + kind + st.accent, ()=>{
-      const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
-      const col = kind === 't' ? st.accent : kind === 'cb' ? '#1f6ad8' : '#1a9a4a';
-      x.fillStyle = '#111'; x.fillRect(0, 0, 64, 64); x.fillStyle = col; x.fillRect(4, 4, 56, 56);
-      x.fillStyle = kind === 't' ? st.bg : '#fff'; x.font = '900 ' + (kind === 'cb' ? 24 : 34) + 'px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle';
-      x.fillText(kind === 't' ? st.left : kind === 'cb' ? 'CB' : st.right, 32, 34);
-      const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return new T.MeshBasicMaterial({ map:t });
+    const rx1 = isl[0] - 1.2, rx2 = isl[n] + 1.2, rw = rx2 - rx1, rc = (rx1 + rx2) / 2;
+    const roof = new T.Mesh(new T.BoxGeometry(rw, 0.9, 13), white); roof.position.set(rc, 6.6, 0); g.add(roof);
+    const roofEdge = new T.Mesh(new T.BoxGeometry(rw + 0.1, 0.3, 13.1), mat('edge' + st.bg, ()=>new T.MeshStandardMaterial({ color:new T.Color(st.bg), roughness:0.5 }))); roofEdge.position.set(rc, 6.05, 0); g.add(roofEdge);
+    for(let k = 0; k < n; k += 4){ const p = new T.Mesh(new T.BoxGeometry(0.7, 6.2, 0.7), concrete); p.position.set(isl[k], 3.1, -4.8); g.add(p); }
+    const p2 = new T.Mesh(new T.BoxGeometry(0.7, 6.2, 0.7), concrete); p2.position.set(isl[n], 3.1, -4.8); g.add(p2);
+    const nm = stop.name.toUpperCase(), label = (st.title && nm.indexOf(st.title) !== 0 ? st.title + '  ' : '') + nm;
+    const canvasTex = (w, h, draw)=>{ const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = 4; return t; };
+    const reps = Math.max(1, Math.round(rw / 26));
+    const bandTex = canvasTex(2048, 72, (x, w, h)=>{
+      x.fillStyle = st.bg; x.fillRect(0, 0, w, h);
+      x.fillStyle = st.fg; x.font = '900 44px Arial'; x.textBaseline = 'middle'; x.textAlign = 'center';
+      for(let r = 0; r < reps; r++) x.fillText(label, (r + 0.5) * w / reps, h / 2 + 2);
     });
-    const stripeTex = M('tex:barrierStripe', ()=>{ const c = document.createElement('canvas'); c.width = 64; c.height = 8; const x = c.getContext('2d'); for(let i = 0; i < 8; i++){ x.fillStyle = i % 2 ? '#fff' : '#d0141e'; x.fillRect(i*8, 0, 8, 8); } const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return t; });
-    const boothMat = M('std:booth', ()=>new T.MeshStandardMaterial({ color:0x9ac0d0, roughness:0.1, metalness:0.5, emissive:0x1a2a30 }));
-    const bollardMat = M('std:bollard', ()=>new T.MeshStandardMaterial({ color:0xffc21a, roughness:0.5 }));
-    LN.forEach((lane, k)=>{
-      const ix = lane - 1.1; // ilot a gauche de la voie
-      const island = new T.Mesh(M('geo:island', ()=>new T.BoxGeometry(0.9, 0.3, 11)), concrete); island.position.set(ix, 0.15, 0); g.add(island);
-      const booth = new T.Mesh(M('geo:booth', ()=>new T.BoxGeometry(0.8, 2.3, 2.0)), boothMat); booth.position.set(ix, 1.45, -1); g.add(booth);
-      const cap = new T.Mesh(M('geo:boothCap', ()=>new T.BoxGeometry(1.0, 0.2, 2.3)), white); cap.position.set(ix, 2.7, -1); g.add(cap);
-      const bollard = new T.Mesh(M('geo:bollard', ()=>new T.CylinderGeometry(0.2, 0.2, 1.0, 10)), bollardMat); bollard.position.set(ix, 0.8, 5.2); g.add(bollard);
-      const type = LANE_TYPES[k % LANE_TYPES.length];
-      const sign = new T.Mesh(M('geo:laneSign', ()=>new T.PlaneGeometry(0.9, 0.9)), laneSign(type)); sign.position.set(lane, 5.4, 6.25); g.add(sign);
-      const pivot = new T.Group(); pivot.name = 'arm' + k; pivot.position.set(lane - 1.0, 1.0, 4.4);
-      const arm = new T.Mesh(M('geo:arm', ()=>new T.BoxGeometry(1.95, 0.12, 0.12)), M('mat:arm', ()=>new T.MeshLambertMaterial({ map:stripeTex })));
-      arm.position.x = 0.98; pivot.add(arm); g.add(pivot);
+    const band = new T.Mesh(new T.PlaneGeometry(rw - 0.6, 1.4), new T.MeshBasicMaterial({ map:bandTex })); band.position.set(rc, 6.6, 6.52); g.add(band);
+    for(let k = 0; k < 4; k++){ const l = new T.Mesh(new T.BoxGeometry(rw - 2, 0.05, 0.3), mat('light', ()=>new T.MeshBasicMaterial({ color:0xfff6e0 }))); l.position.set(rc, 6.12, -4.5 + k * 3); g.add(l); }
+    const laneSign = (kind)=>mat('laneSign:' + kind + st.accent + st.left + st.right + st.bg, ()=>{
+      const t = canvasTex(64, 64, (x)=>{
+        const col = kind === 't' ? st.accent : kind === 'cb' ? '#1f6ad8' : '#f2f2f2';
+        x.fillStyle = '#111'; x.fillRect(0, 0, 64, 64); x.fillStyle = col; x.fillRect(4, 4, 56, 56);
+        x.fillStyle = kind === 't' ? st.bg : kind === 'cb' ? '#fff' : '#1a9a4a'; x.font = '900 ' + (kind === 'cb' ? 24 : 34) + 'px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle';
+        x.fillText(kind === 't' ? st.left : kind === 'cb' ? 'CB' : st.right, 32, 34);
+      });
+      return new T.MeshBasicMaterial({ map:t });
     });
-    const lastIsland = new T.Mesh(M('geo:island', ()=>new T.BoxGeometry(0.9, 0.3, 11)), concrete); lastIsland.position.set(13.2, 0.15, 0); g.add(lastIsland);
-    g.userData.queueLanes = LN.map((x, k)=>({ x, k, arm:'arm' + k, type:LANE_TYPES[k % LANE_TYPES.length] }));
+    const okMat = mat('okLight', ()=>new T.MeshBasicMaterial({ toneMapped:false, map:canvasTex(32, 32, (x)=>{ x.fillStyle = '#080808'; x.fillRect(0, 0, 32, 32); x.fillStyle = '#3dff6a'; x.beginPath(); x.moveTo(16, 5); x.lineTo(27, 18); x.lineTo(20, 18); x.lineTo(20, 27); x.lineTo(12, 27); x.lineTo(12, 18); x.lineTo(5, 18); x.closePath(); x.fill(); }) }));
+    const stripeTex = M('tex:barrierStripe', ()=>canvasTex(64, 8, (x)=>{ for(let i = 0; i < 8; i++){ x.fillStyle = i % 2 ? '#fff' : '#d0141e'; x.fillRect(i * 8, 0, 8, 8); } }));
+    const boothMat = mat('booth', ()=>new T.MeshStandardMaterial({ color:0x9ac0d0, roughness:0.1, metalness:0.5, emissive:0x1a2a30 }));
+    const bollardMat = mat('bollard', ()=>new T.MeshStandardMaterial({ color:0xffc21a, roughness:0.5 }));
+    const armMat = mat('arm', ()=>new T.MeshLambertMaterial({ map:stripeTex }));
+    const islandGeo = M('geo:tw:island', ()=>new T.BoxGeometry(1.1, 0.3, 12));
+    const noseGeo = M('geo:tw:nose', ()=>new T.CylinderGeometry(0.55, 0.55, 0.3, 12));
+    const bolGeo = M('geo:tw:bollard', ()=>new T.CylinderGeometry(0.2, 0.2, 1.0, 10));
+    isl.forEach((x)=>{
+      const i = new T.Mesh(islandGeo, concrete); i.position.set(x, 0.15, 0); g.add(i);
+      const nose = new T.Mesh(noseGeo, concrete); nose.position.set(x, 0.15, 6); g.add(nose);
+      const bol = new T.Mesh(bolGeo, bollardMat); bol.position.set(x, 0.8, 5.7); g.add(bol);
+    });
+    B.forEach((lane, k)=>{
+      const ix = isl[k];
+      const booth = new T.Mesh(M('geo:tw:booth', ()=>new T.BoxGeometry(0.9, 2.3, 2.0)), boothMat); booth.position.set(ix, 1.45, -1); g.add(booth);
+      const cap = new T.Mesh(M('geo:tw:boothCap', ()=>new T.BoxGeometry(1.1, 0.2, 2.3)), white); cap.position.set(ix, 2.7, -1); g.add(cap);
+      const sign = new T.Mesh(M('geo:tw:laneSign', ()=>new T.PlaneGeometry(1.1, 1.1)), laneSign(types[k])); sign.position.set(lane - 0.45, 5.35, 6.3); g.add(sign);
+      const ok = new T.Mesh(M('geo:tw:ok', ()=>new T.PlaneGeometry(0.55, 0.55)), okMat); ok.position.set(lane + 0.5, 5.35, 6.3); g.add(ok);
+      const span = (isl[k + 1] - ix) - 0.75;
+      const pivot = new T.Group(); pivot.name = 'arm' + k; pivot.position.set(ix + 0.45, 1.0, 4.4);
+      const arm = new T.Mesh(new T.BoxGeometry(span, 0.12, 0.12), armMat); arm.position.x = span / 2; pivot.add(arm); g.add(pivot);
+    });
+    // portique de presignalisation en amont : nom de la gare + types de voies
+    const gz = 128, gx1 = xL - 0.3, gx2 = roadR + 0.6, gw = gx2 - gx1;
+    [gx1, gx2].forEach(x=>{ const p = new T.Mesh(new T.BoxGeometry(0.35, 7.4, 0.35), gantryMat); p.position.set(x, 3.7, gz); g.add(p); });
+    const beam = new T.Mesh(new T.BoxGeometry(gw, 0.35, 0.35), gantryMat); beam.position.set((gx1 + gx2) / 2, 6.6, gz); g.add(beam);
+    const pre = canvasTex(1024, 220, (x, w, h)=>{
+      x.fillStyle = st.gantry || st.bg; x.fillRect(0, 0, w, h); x.strokeStyle = '#fff'; x.lineWidth = 6; x.strokeRect(8, 8, w - 16, h - 16);
+      x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = '900 ' + (label.length > 22 ? 48 : 62) + 'px Arial'; x.fillText(label, w / 2, 66);
+      [['t', st.left, st.accent], ['cb', 'CB', '#1f6ad8'], ['cash', st.right, '#f2f2f2']].forEach((c, i)=>{
+        const cx = w / 2 + (i - 1) * 200; x.fillStyle = c[2]; x.fillRect(cx - 44, 120, 88, 76);
+        x.fillStyle = c[0] === 't' ? st.bg : c[0] === 'cb' ? '#fff' : '#1a9a4a'; x.font = '900 46px Arial'; x.fillText(c[1], cx, 160);
+      });
+    });
+    const pw = Math.min(gw - 1, 11);
+    const panel = new T.Mesh(new T.PlaneGeometry(pw, pw * 220 / 1024), new T.MeshBasicMaterial({ map:pre })); panel.position.set((gx1 + gx2) / 2, 7.6, gz + 0.2); g.add(panel);
+    g.userData.queueLanes = B.map((x, k)=>({ x, k, arm:'arm' + k, type:types[k] }));
+    g.userData.apron = { zNear:Z_NEAR, zFull:Z_FULL, zExit:Z_EXIT, zEnd:Z_END, xR:xR - 1.6, roadR };
+    g.userData.world = true;
     return g;
   }
 
@@ -780,21 +848,16 @@
   // ---------- Outils autoroute (A7 France, A2 Suisse) ----------
   // Terre-plein central gazonne avec double glissiere, chaussee opposee et
   // trafic qui croise (voitures simplifiees, vues de loin).
-  function motorwayOpposite(T, ctx, cols){
+  function motorwayOpposite(T, ctx, cols, n){
     ctx.add(longStrip(T, 2.2, 0.04, 300, 0x2e4a22, -6.0, 0.02, M('lam:median', ()=>new T.MeshLambertMaterial({ color:0x2e4a22 }))));
     const rail = M('std:railMedian', ()=>new T.MeshStandardMaterial({ color:0x8a949c, metalness:0.75, roughness:0.35 }));
     [-5.0, -7.0].forEach(x=>ctx.add(longStrip(T, 0.08, 0.3, 300, 0x8a949c, x, 0.62, rail)));
     ctx.add(longStrip(T, 8.4, 0.02, 300, 0x2a2a2e, -11.3, 0.005, M('std:oppRoad', ()=>new T.MeshStandardMaterial({ color:0x2e2e32, roughness:0.8 }))));
     [-7.4, -15.2].forEach(x=>ctx.add(longStrip(T, 0.14, 0.02, 300, 0xf4f2ea, x, 0.02, M('bas:line', ()=>new T.MeshBasicMaterial({ color:0xe8e6de })))));
-    const opp = [];
-    for(let k = 0; k < 8; k++){
-      const car = ctx.add(new T.Mesh(simpleCarGeo(T, 'c' + (k % cols.length), cols[k % cols.length]), vcStd('opp', 0.35)));
-      car.rotation.y = Math.PI; car.position.set(k % 2 ? -9.4 : -13.2, 0, -30 - k*26); car.castShadow = true;
-      opp.push({ car, v:30 + Math.random()*14 });
-    }
+    const opp = oppFleet(T, ctx, cols, [-9.4, -13.2], n || 12);
     ctx.tick((dt)=>{
       const sc = ctx.scroll();
-      for(const o of opp){ o.car.position.z += sc + o.v * dt; if(o.car.position.z > 30){ o.car.position.z = -190 - Math.random()*40; o.v = 30 + Math.random()*14; } }
+      for(const o of opp){ o.car.position.z += sc + o.v * dt; if(o.car.position.z > 30) oppReset(o); }
     });
   }
   // Portique a 2 panneaux dont le texte suit le trajet reel (destination +
@@ -916,6 +979,7 @@
     // voie CFF (train rouge qui croise), villages vignerons et vignes du Jura.
     {
       id:'lac-neuchatel', name:'Lac de Neuchâtel', difficulty:'Détente', spacing:9,
+      traffic:{ density:0.95, trucks:0.14 },
       currency:'CHF', coinValue:0.95, fuelPrices:[1.86, 1.97, 1.91], fuelLabels:['BLEIFREI 95', 'BLEIFREI 98', 'DIESEL'], fuelColor:0xc8101e, fuelColor2:0xf4f4f4, fuelBrand:'Station-service', fuelStationName:'Station du Littoral',
       radars:{ limit:80, style:'ch', police:'Police neuchâteloise', policeStyle:'ch', chaseOver:30, every:1500, fine:(o)=> o <= 5 ? 40 : o <= 10 ? 100 : o <= 15 ? 160 : o <= 20 ? 240 : 600 },
       fog:0xbcd2e2, fogNear:40, fogFar:190, ground:0x3f6a2c, exposure:0.9,
@@ -1036,6 +1100,7 @@
     // distances, et 3 barrieres de peage ou il faut s'arreter et payer.
     {
       id:'autostrada', name:'A1 Bologna → Milano', difficulty:'Intense', spacing:9, lanes:5, // 2x5 voies comme sur les troncons elargis de l'A1
+      traffic:{ density:1.45, trucks:0.38, toll:1.45 }, // A1 : tres chargee, beaucoup de camions a droite
       fog:0xdcd2bc, fogNear:40, fogFar:185, ground:0x5a6a2e, exposure:0.9,
       road:0x2a2a2e, stripe:0xf4f2ea, edge:0x6a6a6e, edgeEmissive:0x000000,
       sky:{ top:0x123e8a, mid:0x5a8ac8, bottom:0xe8dcc0, glow:0xffd090, glowI:0.55, band:0.08 },
@@ -1050,14 +1115,14 @@
         road:'A1', lang:'it', from:'Bologna', to:'Milano', unitsPerKm:22, pricePerKm:0.078, operator:"Autostrade per l'Italia",
         stops:[
           { name:'Modena Nord', km:39 },
-          { name:'Casello di Parma', km:92, toll:true, price:7.30 },
+          { name:'Casello di Parma', km:92, toll:true, price:7.30, booths:12 },
           { name:'Fiorenzuola', km:125 },
-          { name:'Piacenza Sud', km:150, toll:true, price:4.10 },
+          { name:'Piacenza Sud', km:150, toll:true, price:4.10, booths:11 },
           { name:'Lodi', km:180 },
-          { name:'Barriera di Milano Sud', km:205, toll:true, price:5.20 }
+          { name:'Barriera di Milano Sud', km:205, toll:true, price:5.20, booths:17 }
         ]
       },
-      tollPlaza(T, stop){ return tollPlaza(T, stop); },
+      tollStyle:{ bg:'#1a6a3a', accent:'#ffcc00', left:'T', right:'€', gantry:'#1a6a3a', booths:14 }, // casello : Telepass (voies jaunes) a gauche, carte, biglietto
       extras(T, ctx){
         const Sc = S(), fog = this.fog, ap = Sc.fbm(8), alps = Sc.ridged(5);
         // Apennins bas et bleutes a gauche (sud), Alpes lointaines a droite (nord)
@@ -1090,13 +1155,7 @@
         ctx.add(longStrip(T, 9, 0.02, 300, 0x2a2a2e, -11.4, 0.005, M('std:oppRoad', ()=>new T.MeshStandardMaterial({ color:0x2e2e32, roughness:0.8 }))));
         [-7.5, -15.3].forEach(x=>ctx.add(longStrip(T, 0.14, 0.02, 300, 0xf4f2ea, x, 0.02, M('bas:line', ()=>new T.MeshBasicMaterial({ color:0xe8e6de })))));
         const cols = [0xa01414, 0xe8e8e8, 0x14286a, 0x1e1e1e, 0x707880, 0xb08a20, 0x2a4a2a];
-        const opp = [];
-        for(let k = 0; k < 8; k++){
-          const car = ctx.add(new T.Mesh(simpleCarGeo(T, 'c' + (k % cols.length), cols[k % cols.length]), vcStd('opp', 0.35)));
-          car.rotation.y = Math.PI; car.position.set(k % 2 ? -9.5 : -13.3, 0, -30 - k*26);
-          car.castShadow = true;
-          opp.push({ car, v:30 + Math.random()*14 });
-        }
+        const opp = oppFleet(T, ctx, cols, [-8.6, -11.4, -14.2], 20); // A1 : 3 voies chargees en face, camions a droite
         // Ligne a grande vitesse sur viaduc, a droite, avec un Frecciarossa qui passe
         const VX = 34;
         const deck = ctx.add(longStrip(T, 7, 1.0, 300, 0xbab4a8, VX, 7.2));
@@ -1117,7 +1176,7 @@
           const sc = ctx.scroll();
           for(const o of opp){
             o.car.position.z += sc + o.v * dt;
-            if(o.car.position.z > 30){ o.car.position.z = -190 - Math.random()*40; o.v = 30 + Math.random()*14; }
+            if(o.car.position.z > 30) oppReset(o);
           }
           if(trn.wait > 0){ trn.wait -= dt; if(trn.wait <= 0) fr.position.z = -300; }
           else { fr.position.z += sc + 70 * dt; if(fr.position.z > 60){ trn.wait = 12 + Math.random()*10; fr.position.z = -420; } }
@@ -1196,6 +1255,7 @@
     // blasons 66 peints sur la chaussee, epaves rouillees et virevoltants.
     {
       id:'route66', name:'Route 66', difficulty:'Détente', spacing:9,
+      traffic:{ density:0.75, trucks:0.45 }, // peu de monde, mais des semi-remorques
       fog:0xe0a878, fogNear:45, fogFar:200, ground:0x8a4a22, exposure:0.95,
       road:0x2e2a28, stripe:0xf0c030, edge:0x6a5040, edgeEmissive:0x000000,
       sky:{ top:0x1a3a8a, mid:0x6a8ac8, bottom:0xffb070, glow:0xffa050, glowI:0.7, band:0.08 },
@@ -1289,6 +1349,7 @@
     // kilometriques, et le Mont Ventoux a la cime blanche au loin.
     {
       id:'provence', name:'Route de Provence', difficulty:'Standard', spacing:9,
+      traffic:{ density:0.8, trucks:0.08 }, // route de campagne
       fuelPrices:[1.79, 1.89, 1.99], fuelLabels:['GAZOLE', 'SP95-E10', 'SP98'], fuelDefault:1, fuelColor:0x1a4fa8, fuelColor2:0xff7a00, fuelStationName:'Station du village',
       radars:{ limit:80, style:'fr', police:'Gendarmerie', policeStyle:'fr', chaseOver:50, every:1500, fine:(o)=> o < 20 ? 68 : o < 50 ? 135 : 1500 },
       fog:0xd4e0ea, fogNear:40, fogFar:190, ground:0x7a6a42, exposure:0.9,
@@ -1359,6 +1420,7 @@
     // loin, lavande en approchant de la Provence. Peages de Vienne et Lancon.
     {
       id:'a7-france', name:'A7 Lyon → Marseille', difficulty:'Standard', spacing:9,
+      traffic:{ density:1.25, trucks:0.32, toll:1.25 }, // A7 : autoroute du soleil, dense
       fog:0xd8dce2, fogNear:40, fogFar:190, ground:0x6a6a34, exposure:0.9,
       road:0x2a2a2e, stripe:0xf4f4ee, edge:0x6a6a6e, edgeEmissive:0x000000,
       sky:{ top:0x0e3c96, mid:0x4a8ad8, bottom:0xd8e4f0, glow:0xfff0d0, glowI:0.45, band:0.07 },
@@ -1373,12 +1435,12 @@
       journey:{
         road:'A7', lang:'fr', from:'Lyon', to:'Marseille', unitsPerKm:20, pricePerKm:0.095, operator:'Autoroutes du Sud',
         stops:[
-          { name:'Péage de Vienne-Reventin', km:34, toll:true, price:3.40 },
+          { name:'Péage de Vienne-Reventin', km:34, toll:true, price:3.40, booths:14 },
           { name:'Valence Nord', km:98 },
           { name:'Montélimar Sud', km:152 },
           { name:'Orange', km:204 },
           { name:'Avignon Nord', km:226 },
-          { name:'Péage de Lançon', km:288, toll:true, price:27.90 },
+          { name:'Péage de Lançon', km:288, toll:true, price:27.90, booths:16 },
           { name:'Marseille', km:318 }
         ]
       },
@@ -1402,7 +1464,7 @@
           }
         }));
         dayClouds(T, ctx, [[-110, 60, 70, .5], [-20, 76, 80, .4], [70, 56, 60, .5], [140, 68, 70, .4]]);
-        motorwayOpposite(T, ctx, [0xb01818, 0xe8e8e8, 0x1a2a6a, 0x1e1e1e, 0x707880, 0x3a6a8a, 0xd8d0c0]);
+        motorwayOpposite(T, ctx, [0xb01818, 0xe8e8e8, 0x1a2a6a, 0x1e1e1e, 0x707880, 0x3a6a8a, 0xd8d0c0], 16);
         // centrale du Tricastin au loin sur la droite
         coolingTower(T, ctx, 70, -150, 1); coolingTower(T, ctx, 92, -168, 0.95);
       },
@@ -1437,6 +1499,7 @@
     // chalets a geraniums, lac, et des tunnels eclaires au sodium.
     {
       id:'a2-suisse', name:'A2 Basel → Lugano', difficulty:'Standard', spacing:9,
+      traffic:{ density:1.1, trucks:0.36 }, // axe du Gothard : camions
       fog:0xc8d6e2, fogNear:40, fogFar:190, ground:0x3a6a26, exposure:0.9,
       road:0x2a2a2e, stripe:0xf4f4ee, edge:0x6a6a6e, edgeEmissive:0x000000,
       sky:{ top:0x0a3478, mid:0x3a7ac8, bottom:0xc8dcef, glow:0xfff4e0, glowI:0.45, band:0.07 },
@@ -1470,7 +1533,7 @@
           }
         }));
         dayClouds(T, ctx, [[-100, 80, 70, .55], [10, 96, 80, .45], [90, 84, 60, .55]]);
-        motorwayOpposite(T, ctx, [0xd8d8d8, 0x1e1e1e, 0x8a0e14, 0x2a3a6a, 0x6a7078, 0xf0f0f0]);
+        motorwayOpposite(T, ctx, [0xd8d8d8, 0x1e1e1e, 0x8a0e14, 0x2a3a6a, 0x6a7078, 0xf0f0f0], 13);
         // lac (Lac des Quatre-Cantons) a droite, loin derriere les alpages
         const lake = new T.Mesh(new T.PlaneGeometry(200, 400, 10, 80), new T.MeshBasicMaterial({ map:waterTex(T, [[0, '#4a9aa8'], [0.1, '#2a6a8a'], [1, '#5a8aa8']]) }));
         lake.rotation.x = -Math.PI/2; lake.position.set(70 + 100, 0.004, -150); ctx.add(lake);

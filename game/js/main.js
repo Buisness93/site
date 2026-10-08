@@ -967,7 +967,7 @@
       beep(2100, 0.09); beep(2100, 0.09, 0.15); // double bip : accepte
       tpeScreen('<b class="ok">PAIEMENT<br>ACCEPTÉ</b><small>' + money(p.amount, p.currency) + '</small>', ld);
       setTimeout(()=>{ if(_pay !== p) return; if(p.via === 'chip') tpeRemove(p); else tpeTicket(p); }, 950);
-    }, 1100 + Math.random() * 600);
+    }, p.quick ? 550 + Math.random() * 300 : 1100 + Math.random() * 600);
   }
   function tpeRemove(p){
     p.st = 'remove'; footHint();
@@ -984,12 +984,13 @@
     tpeTicket(p);
   }
   function tpeTicket(p){
+    if(p.quick){ ticket(p, false); return; } // peage : pas de ticket, la barriere se leve tout de suite
     p.st = 'ticket'; footHint();
     tpeScreen('<b>TICKET<br>CLIENT ?</b><small>✓ OUI &nbsp;·&nbsp; ✕ NON</small>');
   }
   function ticket(p, yes){
     p.st = 'done'; footHint();
-    if(!yes){ tpeScreen('<b class="ok">MERCI</b><small>BONNE ROUTE</small>'); setTimeout(()=>{ if(_pay === p) closePayment(true); }, 900); return; }
+    if(!yes){ tpeScreen('<b class="ok">MERCI</b><small>BONNE ROUTE</small>'); setTimeout(()=>{ if(_pay === p) closePayment(true); }, p.quick ? 450 : 900); return; }
     tpeScreen('<b>IMPRESSION…</b>');
     for(let k = 0; k < 12; k++) tone({ f:180 + (k % 2) * 40, dur:0.05, vol:0.02, type:'sawtooth', delay:k * 0.1 }); // imprimante thermique
     const d = new Date(), auth = Math.random().toString(16).slice(2, 8).toUpperCase();
@@ -1046,7 +1047,7 @@
       '<div class="cash-change"><small>MONNAIE RENDUE</small><div class="change-notes">' + back.map((v, k)=>'<span style="animation-delay:' + (0.15 + k * 0.12) + 's">' + noteHTML(v, cur, true) + '</span>').join('') + '</div><b>' + money(change, cur) + '</b></div>';
     els.pmFoot.innerHTML = '<span class="pm-hint">Merci et bonne route !</span>';
     back.forEach((_, k)=>tone({ f:1800 + k * 60, dur:0.04, vol:0.025, delay:0.15 + k * 0.12 }));
-    setTimeout(()=>{ if(_pay === p) closePayment(true); }, 1400 + back.length * 120);
+    setTimeout(()=>{ if(_pay === p) closePayment(true); }, (p.quick ? 800 : 1400) + back.length * (p.quick ? 70 : 120));
   }
   window.addEventListener('keydown', (e)=>{
     if(!_pay) return;
@@ -1094,7 +1095,7 @@
     const info = _stopInfo, police = info.kind === 'police', assist = info.kind === 'assist';
     if(method === 'cash' && els.btnTollCash.disabled) return;
     els.ovToll.classList.add('hidden');
-    openPayment({ method, amount:info.price, currency:info.currency, pin:police || assist, label:police ? info.operator + ' · amende' : assist ? info.operator : info.station,
+    openPayment({ method, quick:!police && !assist, amount:info.price, currency:info.currency, pin:police || assist, label:police ? info.operator + ' · amende' : assist ? info.operator : info.station,
       merchant:police || assist ? info.operator.toUpperCase() : info.station.toUpperCase(),
       lines:assist ? [['Carburant 10 L', money(info.fuelPrice, info.currency)], ['Déplacement', money(info.fee, info.currency)]] : [[police ? 'Amende' : 'Péage', money(info.price, info.currency)]],
       onDone:(ok)=>{
@@ -1526,8 +1527,10 @@
     const el = els.laneStrip; if(!el) return;
     if(!t){ el.classList.add('hidden'); return; }
     el.classList.remove('hidden');
-    el.innerHTML = '<div class="ls-head">🛑 PÉAGE à ' + Math.round(t.dist) + ' m · ' + (t.locked ? 'voie choisie 🔒' : 'choisis ta voie ◀ ▶') + (t.queue ? ' · <b>voiture à la cabine : attends ton tour</b>' : '') + '</div>' +
-      '<div class="ls-lanes">' + t.types.map((ty, k)=>'<span class="ls-l ' + ty + (k === t.lane ? ' me' : '') + '"><i>' + LANE_ICO[ty][0] + '</i><small>' + LANE_ICO[ty][1] + '</small>' + (k === t.lane ? '<em>▲ toi</em>' : '') + '</span>').join('') + '</div>';
+    const q = t.q || [];
+    el.innerHTML = '<div class="ls-head">🛑 PÉAGE à ' + Math.round(t.dist) + ' m · ' + (t.locked ? 'cabine ' + (t.lane + 1) + ' 🔒' : 'choisis ta cabine ◀ ▶ (la barrière s’élargit à droite)') + (t.queue ? ' · <b>file devant toi : attends ton tour</b>' : '') + '</div>' +
+      '<div class="ls-lanes">' + t.types.map((ty, k)=>'<span class="ls-l ' + ty + (k === t.lane ? ' me' : '') + '"><i>' + LANE_ICO[ty][0] + '</i><small>' + (q[k] ? '🚗'.repeat(Math.min(3, q[k])) + (q[k] > 3 ? '+' : '') : 'libre') + '</small>' + (k === t.lane ? '<em>▲</em>' : '') + '</span>').join('') + '</div>' +
+      '<div class="ls-leg"><span class="t">Ⓣ télépéage</span><span class="cb">💳 CB seule</span><span class="cash">💶 espèces + CB</span></div>';
   }
   // Bruits a pied : pas, portiere, portes automatiques (+ carillon de la boutique)
   function walkSound(kind){

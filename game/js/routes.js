@@ -818,6 +818,7 @@
   const ROUTES = [
     {
       id:'autoroute-nuit', name:'Autoroute Nocturne', difficulty:'Standard', spacing:9,
+      traffic:{ density:0.9, trucks:0.45 }, // la nuit : surtout des poids lourds
       fuelPrices:[1.86, 1.96, 2.06], fuelLabels:['GAZOLE', 'SP95-E10', 'SP98'], fuelDefault:1, fuelColor:0x1a4fa8, fuelColor2:0xff7a00, fuelStationName:'Aire de service',
       fuelStationModel:'../uploads/gas-station.glb',
       radars:{ limit:130, style:'fr', police:'Gendarmerie nationale', policeStyle:'fr', chaseOver:50, every:1600, fine:(o)=> o < 20 ? 68 : o < 50 ? 135 : 1500 },
@@ -1010,6 +1011,7 @@
     },
     {
       id:'cote-sunset', name:'Côte au Coucher du Soleil', difficulty:'Détente', spacing:8,
+      traffic:{ density:0.9, trucks:0.1 },
       fuelPrices:[1.79, 1.89, 1.99], fuelLabels:['GAZOLE', 'SP95-E10', 'SP98'], fuelDefault:1, fuelColor:0x1a4fa8, fuelColor2:0xff7a00, fuelStationName:'Station de la corniche',
       radars:{ limit:90, style:'fr', police:'Police nationale', policeStyle:'fr', chaseOver:50, every:1600, fine:(o)=> o < 20 ? 68 : o < 50 ? 135 : 1500 },
       fog:0x8a4446, fogNear:34, fogFar:175, ground:0x9c6d44, exposure:1.02,
@@ -1196,6 +1198,7 @@
     },
     {
       id:'centre-neon', name:'Centre-Ville Néon', difficulty:'Intense', spacing:8,
+      traffic:{ density:1.25, trucks:0.06 }, // centre-ville : beaucoup de voitures, peu de camions
       currency:'¥', coinValue:160, fuelPrices:[175, 186, 155], fuelLabels:['レギュラー', 'ハイオク', '軽油'], fuelColor:0xd8102a, fuelColor2:0xffe23d, fuelBrand:'ガソリンスタンド', fuelStationName:'Station 24H',
       bend:{ x:0.7, y:0.5 }, // rues de ville : virages plus doux qu'en campagne
       fog:0x12061d, fogNear:20, fogFar:112, ground:0x050309, exposure:1.1,
@@ -1357,6 +1360,7 @@
     },
     {
       id:'japon-sakura', name:'Japon · Sakura', difficulty:'Standard', spacing:9,
+      traffic:{ density:1.05, trucks:0.18 },
       currency:'¥', coinValue:160, fuelPrices:[174, 185, 154], fuelLabels:['レギュラー', 'ハイオク', '軽油'], fuelColor:0x1a7a3a, fuelColor2:0xffffff, fuelBrand:'ガソリンスタンド', fuelStationName:'Station de Kyoto',
       fog:0xc98aa2, fogNear:28, fogFar:160, ground:0x2a3a1e, exposure:1.0,
       road:0x1b1a20, stripe:0xf4ece6, edge:0x4a4048, edgeEmissive:0x5a2038,
