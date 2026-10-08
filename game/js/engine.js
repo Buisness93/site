@@ -2645,8 +2645,8 @@
   };
 
   // ---------- A pied, librement, a la station ----------
-  // ▲/▼ (W/S, pedales) avancer/reculer, ◀/▶ tourner, Shift/boost courir,
-  // clic-glisse pour regarder, E pour interagir : trappe a essence, pistolet,
+  // ▲/▼ (Z/S, W/S) avancer/reculer, ◀/▶ (Q/D, A/D) pas de cote a la souris
+  // (tourner au tactile), Shift/boost courir, souris (ou glisser) pour regarder, E pour interagir : trappe a essence, pistolet,
   // articles en rayon, caisse, tabourets du bar, portiere. Repere de la station.
   // (5 : frigo a bieres ; 6 : cigarettes, demandees au comptoir)
   const FP_SHELF = [[19.3, 1.25, 4.9], [16.6, 1.3, 2.1], [19.3, 1.4, 9.1], [18.7, 1.3, 2.1], [17.4, 1.05, 10.1], [17.65, 1.3, 2.1], [19.2, 1.25, 8.55]];
@@ -2740,17 +2740,24 @@
     if(fp.phase === 'exit'){ blend = sm(fp.t / 1.1); if(fp.t >= 1.1){ fp.phase = 'walk'; fp.t = 0; } }
     else if(fp.phase === 'enter'){ blend = 1 - sm(fp.t / 1.0); if(fp.t >= 1.0){ this._fpEnd(); return; } }
     if(fp.phase === 'walk'){
-      fp.yaw += (this._steerIn || 0) * 2.1 * dt;
+      // souris (ordinateur) : seule la souris tourne la tete, ◀▶ = pas de cote ;
+      // tactile : ◀▶ tournent (on peut aussi glisser le doigt pour regarder)
+      const mouse = this._fineMouse !== undefined ? this._fineMouse : (this._fineMouse = !!(window.matchMedia && matchMedia('(hover:hover) and (pointer:fine)').matches));
+      const side = this._steerIn || 0;
+      if(!mouse) fp.yaw += side * 2.1 * dt;
       if(!fp.sit){
-        const mv = (this._throttle ? 1 : 0) - (this._brake ? 1 : 0);
-        const spd = mv * (this._boostHeld ? 5.2 : 2.8) * (mv < 0 ? 0.6 : 1);
-        let nx = fp.x + Math.sin(fp.yaw) * spd * dt, nz = fp.z - Math.cos(fp.yaw) * spd * dt;
+        const mv = (this._throttle ? 1 : 0) - (this._brake ? 1 : 0), st = mouse ? (side > 0.1 ? 1 : side < -0.1 ? -1 : 0) : 0;
+        const run = this._boostHeld ? 5.2 : 2.8, nrm = mv && st ? Math.SQRT1_2 : 1;
+        const fwd = mv * run * (mv < 0 ? 0.6 : 1) * nrm, lat = st * run * 0.8 * nrm;
+        const spd = Math.hypot(fwd, lat);
+        const sy = Math.sin(fp.yaw), cy = Math.cos(fp.yaw);
+        let nx = fp.x + (sy * fwd + cy * lat) * dt, nz = fp.z + (-cy * fwd + sy * lat) * dt;
         if(tl.nozIn){ const F = tl.fillerL, dx = nx - F.x, dz = nz - F.z, dd = Math.hypot(dx, dz); if(dd > 2.4){ nx = F.x + dx / dd * 2.4; nz = F.z + dz / dd * 2.4; } } // le tuyau nous retient
         [nx, nz] = this._fpCollide(tl, nx, nz);
         moving = Math.abs(nx - fp.x) + Math.abs(nz - fp.z) > 1e-4;
         fp.x = nx; fp.z = nz;
         if(moving){ fp.bob += dt * Math.abs(spd) * Math.PI / 0.75; fp.step -= dt * Math.abs(spd); if(fp.step <= 0){ fp.step = 0.75; if(this.cb.onWalk) this.cb.onWalk('step'); } }
-      } else if(this._throttle || this._brake){ this._fpStand(); }
+      } else if(this._throttle || this._brake || (mouse && Math.abs(side) > 0.1)){ this._fpStand(); }
       // cible d'interaction : la plus proche devant nous
       const px = fp.sit ? fp.sit.x : fp.x, pz = fp.sit ? fp.sit.z : fp.z;
       const fx = Math.sin(fp.yaw), fz = -Math.cos(fp.yaw);
