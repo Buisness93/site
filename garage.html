@@ -74,11 +74,11 @@
  .viewer-head h3{font-size:24px;margin:2px 0 0;line-height:1}
  .viewer-close{background:var(--glass);border:1px solid var(--line-2);color:var(--text-1);border-radius:12px;width:42px;height:42px;cursor:pointer;font-size:16px;flex:0 0 auto}
  .viewer-close:hover{background:rgba(255,90,90,.14);border-color:rgba(255,90,90,.5)}
- #viewerCanvasHost{flex:1;position:relative;touch-action:none}
+ #viewerCanvasHost{flex:1;min-height:0;position:relative;touch-action:none}
  #viewerCanvasHost canvas{display:block}
  #viewerLoading{position:absolute;inset:0;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;color:var(--text-3);font-size:11px;letter-spacing:.2em;text-transform:uppercase}
  #viewerLoading::before{content:'';width:34px;height:34px;border-radius:50%;border:2px solid rgba(var(--line-rgb),.12);border-top-color:var(--accent);animation:dgSpin .8s linear infinite}
- .viewer-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:14px 20px;border-top:1px solid var(--line)}
+ .viewer-controls{flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:14px 20px;border-top:1px solid var(--line)}
  .viewer-btn{display:inline-flex;align-items:center;gap:8px;height:40px;background:var(--glass);border:1px solid var(--line-2);color:var(--text-2);border-radius:11px;padding:0 16px;font-family:inherit;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
  .viewer-btn:hover{border-color:rgba(var(--accent-rgb),.5);color:var(--text-1)}
  .viewer-btn.active{background:linear-gradient(180deg,var(--accent-light) -40%,var(--accent));border-color:transparent;color:var(--on-accent)}

@@ -139,7 +139,9 @@
     t.mapping = T.EquirectangularReflectionMapping; t.encoding = T.sRGBEncoding;
     return t;
   }
-  const NEAR_MISS_GAP = 2.2; // (voies elargies)
+  // Frole = vraiment pres : il faut se decaler vers le vehicule (avant : 2,2, soit
+  // toute voiture de la voie voisine comptait meme bien centre dans sa voie)
+  const NEAR_MISS_GAP = 1.15;
   // Vraies voitures/camions de trafic (couleurs d'origine du modele, pas de teinte).
   // len = longueur cible (memes unites que les voitures jouables) : chaque type de
   // vehicule est mis a une taille realiste au lieu d'etre tous normalises pareil.
@@ -152,16 +154,16 @@
     { file:'../uploads/traffic-sedan-maroon.glb', len:3.9 },
     { file:'../uploads/traffic-sedan-white.glb', len:3.9 },
     { file:'../uploads/traffic-wagon-dark.glb', len:4.0 },
-    { file:'../uploads/traffic-suv-dark.gltf', len:4.2 },
+    { file:'../uploads/traffic-suv-dark.glb', len:4.2 },
     { file:'../uploads/traffic-suv-grey.glb', len:4.3 },
     { file:'../uploads/traffic-van-orange.glb', len:4.6 },
     { file:'../uploads/traffic-van-white.glb', len:4.6 },
     { file:'../uploads/traffic-van-maroon.glb', len:4.6 },
-    { file:'../uploads/traffic-van-red.gltf', len:4.6 },
-    { file:'../uploads/traffic-bus-grey.gltf', len:8.0 },
+    { file:'../uploads/traffic-van-red.glb', len:4.6 },
+    { file:'../uploads/traffic-bus-grey.glb', len:8.0 },
     { file:'../uploads/traffic-bus-white.glb', len:9.0 },
     { file:'../uploads/traffic-truck-semi.glb', len:10.0 },
-    { file:'../uploads/traffic-truck-flatbed.gltf', len:11.5 },
+    { file:'../uploads/traffic-truck-flatbed.glb', len:11.5 },
   ];
 
 
@@ -678,7 +680,7 @@
     this._pickups.forEach(p=>this.scene.remove(p.mesh)); this._pickups = [];
     this._ramps.forEach(r=>this.scene.remove(r.mesh)); this._ramps = [];
 
-    const model = await DG.Loader.loadModel('../' + car.model);
+    const model = await DG.Loader.loadModel('../' + (car.gameModel || car.model));
     this._player = model ? DG.Loader.normalizeModel(T, model, 3.4, Math.PI - (car.rotY||0)) : DG.Loader.makeFallbackCar(T, { body:car.body, emissive:0x0a0e16 });
     this._player.position.set(0,0,0);
     this._carLook(this._player);
@@ -962,7 +964,8 @@
   // Regulierement, une station-service apparait sur la droite : si on est
   // dans la voie de droite en arrivant, on s'y arrete pour faire le plein
   // (menu de paiement). Reservoir vide = la voiture s'arrete : panne seche.
-  const FUEL_PER_UNIT = 1 / 2600, FUEL_GAP = 1700;
+  // ~2 min 30 a fond avec un plein (avant ~1 min : arret obligatoire a chaque station)
+  const FUEL_PER_UNIT = 1 / 6500, FUEL_GAP = 2600;
   GameEngine.prototype._journeyReset = function(){
     const j = this.route && this.route.journey;
     this._jr = j ? { stops:j.stops.slice(), from:j.from, to:j.to, idx:0, base:0, lap:1, lastTollKm:0 } : null;
@@ -1305,7 +1308,14 @@
         if(over > 5){
           const fl = rd.mesh.getObjectByName('radarFlash'); if(fl){ fl.material.opacity = 1; rd.flashT = 0.18; }
           let photo = null;
-          try { this.renderer.render(this.scene, this.camera); photo = this.renderer.domElement.toDataURL('image/jpeg', 0.6); } catch(e){}
+          // (photo reduite : encoder tout l'ecran en JPEG figeait le jeu ~0,1 s au flash)
+          try {
+            this.renderer.render(this.scene, this.camera);
+            const src = this.renderer.domElement, pc = this._photoCv || (this._photoCv = document.createElement('canvas'));
+            pc.width = 360; pc.height = Math.round(360 * src.height / Math.max(1, src.width));
+            pc.getContext('2d').drawImage(src, 0, 0, pc.width, pc.height);
+            photo = pc.toDataURL('image/jpeg', 0.7);
+          } catch(e){}
           const fine = R.fine(over);
           const pts = Math.round(fine / (this.route.coinValue || 1) * 0.6); // amende en points : dissuasive sans ruiner la partie
           this._obstacleBonus -= pts;
@@ -1612,7 +1622,7 @@
     return true;
   };
   // temps de paiement a la cabine (especes plus lent que la carte, telepeage quasi immediat)
-  GameEngine.prototype._tollPayTime = function(ln){ return ln.type === 't' ? 0.5 + Math.random() * 0.4 : ln.type === 'cb' ? 2.2 + Math.random() * 1.8 : 3 + Math.random() * 2.5; };
+  GameEngine.prototype._tollPayTime = function(ln){ return ln.type === 't' ? 0.4 + Math.random() * 0.3 : ln.type === 'cb' ? 1.2 + Math.random() * 1.0 : 1.8 + Math.random() * 1.4; }; // (plus court : on attendait ~15 s a l'arret)
   GameEngine.prototype.setThrottle = function(v){ this._throttle = !!v; };
   // position monde (voies elargies) d'une abscisse du repere du decor
   GameEngine.prototype._wx = function(x){ const W = WIDE.value, a = Math.abs(x); return Math.sign(x) * (a <= W.x ? a * W.y : a + W.z); };
@@ -1892,7 +1902,10 @@
 
   GameEngine.prototype._loop = function(now){
     this._raf = requestAnimationFrame((t)=>this._loop(t));
-    const raw = now - this._last;
+    // (l'horodatage de rAF peut etre anterieur a _last, remis a performance.now()
+    // apres un long start()/resume() : sans plancher, dt devenait negatif — le
+    // decompte remontait et le volant partait tout seul a droite au depart)
+    const raw = Math.max(0, now - this._last);
     // Hors course (menus opaques par-dessus) : 30 fps suffisent largement.
     const active = this.playing || this._crash;
     if(!active && raw < 30) return;
@@ -1917,7 +1930,7 @@
   // qu'apres ~8 s confortables, et jamais juste apres une baisse. Chaque
   // changement redimensionne le canvas (petite saccade) : il faut qu'ils soient rares.
   GameEngine.prototype._adaptResolution = function(frameMs){
-    if(frameMs > 100) return; // onglet en arriere-plan, pas representatif
+    if(frameMs > 100 || frameMs < 1) return; // onglet en arriere-plan / image fantome, pas representatif
     this._frameAvg += (frameMs - this._frameAvg) * 0.04;
     // Cadence de reference = meilleure moyenne observee (intervalle de l'ecran)
     this._frameBase = this._frameBase ? Math.min(this._frameBase + 0.002, Math.max(6, this._frameAvg)) : Math.max(6, frameMs);
@@ -1960,10 +1973,14 @@
       const bz = (this.playing && this._boostActive) ? -1.0 : 0;
       const shake = (this.playing && this._boostActive) ? Math.sin(now*0.05)*0.07 : 0;
       const ck = 1 - Math.pow(0.93, dt * 60);
-      this.camera.position.x += (cp.pos[0] + (this._playerX || 0) * 0.4 + shake - this.camera.position.x)*ck;
-      this.camera.position.y += (cp.pos[1] - this.camera.position.y)*ck;
-      this.camera.position.z += (cp.pos[2]+bz - this.camera.position.z)*ck;
-      this._look.x += (cp.look[0] + (this._playerX || 0) * 0.3 - this._look.x)*ck;
+      // Ecran en hauteur (telephone) : le champ horizontal est etroit, la camera
+      // suit donc davantage la voiture et prend un peu de recul — sinon, sur une
+      // voie exterieure, la voiture du joueur sortait carrement de l'ecran.
+      const pk = this._portraitK = Math.max(0, Math.min(1, (1.25 - this.camera.aspect) / 0.75));
+      this.camera.position.x += (cp.pos[0] + (this._playerX || 0) * (0.4 + 0.5 * pk) + shake - this.camera.position.x)*ck;
+      this.camera.position.y += (cp.pos[1] + 1.3 * pk - this.camera.position.y)*ck;
+      this.camera.position.z += (cp.pos[2] + 2.6 * pk + bz - this.camera.position.z)*ck;
+      this._look.x += (cp.look[0] + (this._playerX || 0) * (0.3 + 0.55 * pk) - this._look.x)*ck;
       this._look.y += (cp.look[1]-this._look.y)*ck;
       this._look.z += (cp.look[2]-this._look.z)*ck;
       this.camera.position.y += (this._jumpY || 0) * 0.45 * ck;
@@ -1975,7 +1992,7 @@
       else this._camSaved = null;
       const sh = this.fx ? this.fx.shake : 0;
       if(sh){ this.camera.position.x += (Math.random()-.5)*sh; this.camera.position.y += (Math.random()-.5)*sh*0.7; }
-      const fovT = (this._walk || this._fp) ? 50 + 22 * this._walkBlend : 50 + this._fovKick();
+      const fovT = (this._walk || this._fp) ? 50 + 22 * this._walkBlend : 50 + 12 * (this._portraitK || 0) + this._fovKick();
       this.camera.fov += (fovT - this.camera.fov) * Math.min(1, dt*6);
       this.camera.updateProjectionMatrix();
       if(this._camLight) this._camLight.intensity += (0 - this._camLight.intensity) * Math.min(1, dt*6);
@@ -2142,12 +2159,14 @@
       if(!(this._accident && this._accident.li === nl)) this._openLane = nl;
     }
     const open = this._openLane, acc = this._accident ? this._accident.li : -1;
-    const interval = Math.max(0.42, 1.0 - this._time*0.022);
+    // Montee en difficulte progressive : cadence maxi vers 1 min (avant : des
+    // 26 s, le trafic triplait d'un coup et on n'atteignait jamais les arrets).
+    const interval = Math.max(0.45, 1.05 - this._time*0.0095);
     if(this._spawnT <= 0 && this._tollLock) this._spawnT = 0.4;
     if(this._spawnT <= 0){
       this._spawnT = interval;
-      const tripleChance = this._time > 45 ? Math.min(0.14, (this._time-45)*0.004) : 0;
-      const doubleChance = this._time > 10 ? Math.min(0.42, (this._time-10)*0.015) : 0;
+      const tripleChance = this._time > 75 ? Math.min(0.12, (this._time-75)*0.003) : 0;
+      const doubleChance = this._time > 15 ? Math.min(0.38, (this._time-15)*0.008) : 0;
       const roll = Math.random();
       if(roll < tripleChance){
         allLanes().filter(l=>l!==open && l!==acc).forEach(l=>this._spawnObstacle(l));
@@ -2221,10 +2240,11 @@
         this._obstacleBonus += 50 * this._multiplier;
         if(gap >= 0 && gap < NEAR_MISS_GAP){
           this._nearMissStreak++;
-          const streakBonus = Math.min(5, this._nearMissStreak) * 10;
-          this._nearMissBonus += (30 + streakBonus) * this._multiplier;
+          // (un vrai frole demande maintenant de se rapprocher : il rapporte plus)
+          const pts = Math.round((60 + Math.min(5, this._nearMissStreak) * 20) * this._multiplier);
+          this._nearMissBonus += pts;
           if(this.fx) this.fx.nearMiss(o.mesh.position.x, this._playerX, this._nearMissStreak);
-          if(this.cb.onPickup) this.cb.onPickup('near-miss', { streak: this._nearMissStreak, side: o.mesh.position.x < this._playerX ? -1 : 1 });
+          if(this.cb.onPickup) this.cb.onPickup('near-miss', { pts, streak: this._nearMissStreak, side: o.mesh.position.x < this._playerX ? -1 : 1 });
         } else {
           this._nearMissStreak = 0;
         }

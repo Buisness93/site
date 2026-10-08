@@ -61,6 +61,13 @@
 /* Popups de score plus "arcade" */
 .popup{font-size:17px;letter-spacing:.03em;text-shadow:0 0 14px currentColor,0 2px 8px rgba(0,0,0,.7);animation:popupFloat2 1.05s var(--ease-out) forwards}
 .popup.big{font-size:clamp(24px,4vw,34px);font-weight:900;left:50%!important;top:30%!important;transform:translateX(-50%);animation:popupBig 1.1s var(--ease-out) forwards}
+/* Messages importants : empiles au centre (plus de chevauchement), affiches le
+   temps de les lire ; les consignes longues passent en bandeau lisible. */
+.pop-stack{position:fixed;left:50%;top:21%;transform:translateX(-50%);z-index:16;display:flex;flex-direction:column;align-items:center;gap:8px;width:min(92vw,760px);pointer-events:none}
+.pop-stack .popup.big{position:relative;left:auto!important;top:auto!important;transform:none;max-width:100%;text-align:center;line-height:1.05;animation:popupStack var(--pop-dur,1.6s) var(--ease-out) forwards}
+.pop-stack .popup.big.long{font-size:clamp(14px,1.9vw,19px);font-weight:700;letter-spacing:.02em;line-height:1.3;padding:8px 16px;border-radius:12px;background:rgba(8,10,16,.72);border:1px solid color-mix(in srgb,currentColor 35%,transparent);backdrop-filter:blur(8px);text-shadow:0 1px 4px rgba(0,0,0,.6)}
+@keyframes popupStack{0%{opacity:0;transform:translateY(10px) scale(.85)}8%{opacity:1;transform:translateY(0) scale(1.04)}14%{transform:scale(1)}85%{opacity:1}100%{opacity:0;transform:translateY(-14px)}}
+@media (prefers-reduced-motion:reduce){.pop-stack .popup.big{animation:popupFade var(--pop-dur,1.6s) linear forwards}@keyframes popupFade{0%,90%{opacity:1}100%{opacity:0}}}
 @keyframes popupFloat2{0%{opacity:0;transform:translateY(8px) scale(.6)}18%{opacity:1;transform:translateY(-8px) scale(1.12)}100%{opacity:0;transform:translateY(-60px) scale(.95)}}
 @keyframes popupBig{0%{opacity:0;transform:translateX(-50%) scale(.4) rotate(-6deg)}20%{opacity:1;transform:translateX(-50%) scale(1.15) rotate(2deg)}35%{transform:translateX(-50%) scale(1) rotate(0)}80%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-30px) scale(1.05)}}
 

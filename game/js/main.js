@@ -207,7 +207,7 @@
     const rig = new T.Group(); scene.add(rig);
     const state = { raf:0, renderer, scene };
     _overSpin = state;
-    const model = await DG.Loader.loadModel('../' + car.model);
+    const model = await DG.Loader.loadModel('../' + (car.gameModel || car.model));
     if(_overSpin !== state) { renderer.dispose(); return; } // ecran quitte pendant le chargement
     // Cible plus grande (4.2, comme le garage) qu'au premier jet (2.4) : la voiture
     // restait minuscule au milieu de son cadre agrandi ("on ne voit rien").
@@ -221,15 +221,31 @@
     })();
   }
 
+  // Gros messages : pile centree (3 max), duree selon la longueur du texte, et un
+  // meme message n'est pas repete tant qu'il est encore a l'ecran (avant : ils se
+  // chevauchaient, debordaient a droite et disparaissaient avant d'etre lus).
+  let _popStack = null;
   function popup(text, cls, big){
     const el = document.createElement('div');
     el.className = 'popup' + (big ? ' big' : '');
     el.textContent = text;
     if(cls) el.style.color = cls;
-    el.style.left = (44 + Math.random()*12) + '%';
-    el.style.top = '58%';
-    els.popups.appendChild(el);
-    setTimeout(()=>el.remove(), 1150);
+    if(!big){
+      el.style.left = (44 + Math.random()*12) + '%';
+      el.style.top = '58%';
+      els.popups.appendChild(el);
+      setTimeout(()=>el.remove(), 1150);
+      return;
+    }
+    if(!_popStack){ _popStack = document.createElement('div'); _popStack.className = 'pop-stack'; document.body.appendChild(_popStack); }
+    for(const c of _popStack.children) if(c.textContent === text) return;
+    const long = text.length > 34;
+    if(long) el.classList.add('long');
+    const dur = long ? Math.min(5200, 1800 + text.length * 32) : 1600;
+    el.style.setProperty('--pop-dur', dur + 'ms');
+    _popStack.appendChild(el);
+    while(_popStack.children.length > 3) _popStack.firstElementChild.remove();
+    setTimeout(()=>el.remove(), dur + 50);
   }
 
   function loadUsername(){
@@ -686,8 +702,9 @@
           const edge = payload && payload.side < 0 ? els.edgeFlashL : els.edgeFlashR;
           edge.classList.toggle('hot', streak >= 3);
           replay(edge, 'play');
-          if(streak >= 3) popup('FRÔLÉ x' + streak + ' 🔥', '#ff5a3d', true);
-          else popup('FRÔLÉ ! +30', '#ff9090');
+          const pts = (payload && payload.pts) || 60;
+          if(streak >= 3) popup('FRÔLÉ x' + streak + ' 🔥 +' + pts, '#ff5a3d', true);
+          else popup('FRÔLÉ ! +' + pts, '#ff9090');
         }
         else if(kind==='nitro') popup('⚡ NITRO PLEIN !', '#3df0ff', true);
         else if(kind==='multiplier') popup('×2 GAINS !', '#ff5ad1', true);
@@ -974,6 +991,8 @@
       : info.from + ' → ' + info.station + ' · ' + info.km + ' km · voie ' + info.lane + ' · ' + (LANE_TXT[info.laneType] || '');
     els.tollFill.classList.add('hidden'); els.tollAfter.classList.add('hidden'); els.tollActions.classList.remove('hidden');
     els.tollPrice.textContent = money(info.price, info.currency); els.tollPrice.dataset.cur = info.currency;
+    const scrLbl = document.getElementById('tollScreenLbl');
+    if(scrLbl) scrLbl.textContent = police || assist ? 'TOTAL' : ({ it:'IMPORTO', de:'BETRAG', en:'AMOUNT' }[info.lang] || (info.currency === '$' ? 'AMOUNT' : 'MONTANT'));
     const cbOnly = !police && !assist && info.laneType === 'cb';
     const canCash = !cbOnly && walletCash() + 1e-6 >= info.price;
     els.btnTollCash.disabled = !canCash;
