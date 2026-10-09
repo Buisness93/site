@@ -765,8 +765,8 @@ grant execute on function public.has_claimed_daily_challenge() to authenticated;
 
 -- ============================================================
 -- 9bis. TIRAGE QUOTIDIEN (caisse gratuite, 1x/jour)
--- Lots par rarete : Commun 200 (50%), Rare 400 (30%), Epique 900 (13%),
--- Legendaire 2000 (5%), Jackpot = une voiture rare non possedee (2%).
+-- Lots par rarete : Commun 1000 (45%), Rare 2500 (30%), Epique 6000 (15%),
+-- Legendaire 15000 (6%), Jackpot = une voiture rare non possedee (4%).
 -- Serie : chaque jour consecutif ajoute +10% aux credits (max +50% des le 6e
 -- jour), et chaque 7e jour de serie garantit au moins un lot Epique.
 -- Tout est tire ici, cote serveur : le client ne fait que mettre en scene.
@@ -813,9 +813,10 @@ declare
   v_base integer := 0;
   v_credits integer := 0;
   v_car_id text;
-  -- Lot "voiture rare" : sportives/hypercars de 26k a 95k credits.
+  -- Lot "voiture rare" : sportives/hypercars de 26k a 135k credits.
   v_jackpot_ids text[] := array['rs6-abt','porsche-911','huracan-performante','gt3-rs','aston-one77',
-                                'huayra-roadster','812-competizione','pagani-huayra-r','aventador-svj','veyron-ettore'];
+                                'huayra-roadster','812-competizione','pagani-huayra-r','aventador-svj','veyron-ettore',
+                                'chiron','centenario','huayra-bc'];
 begin
   if v_uid is null then raise exception 'Connecte-toi pour tenter le tirage du jour.'; end if;
   if exists (select 1 from public.daily_draw_claims where user_id = v_uid and draw_day = v_days) then
@@ -825,19 +826,19 @@ begin
   v_day_n := public._draw_streak(v_uid, v_days - 1) + 1;
   v_mult := 1 + least(v_day_n - 1, 5) * 0.1;
   v_weekly := v_day_n % 7 = 0;
-  -- 7e jour : le tirage se fait uniquement dans les 20% du haut (Epique ou mieux)
-  if v_weekly then v_roll := v_roll * 0.20; end if;
+  -- 7e jour : le tirage se fait uniquement dans les 25% du haut (Epique ou mieux)
+  if v_weekly then v_roll := v_roll * 0.25; end if;
 
-  if v_roll < 0.02 then
+  if v_roll < 0.04 then
     v_rarity := 'jackpot';
     select id into v_car_id from unnest(v_jackpot_ids) as id
       where id not in (select car_id from public.player_cars where user_id = v_uid)
       order by random() limit 1;
-    if v_car_id is null then v_base := 8000; end if; -- tout deja debloque : gros bonus a la place
-  elsif v_roll < 0.07 then v_rarity := 'legendaire'; v_base := 2000;
-  elsif v_roll < 0.20 then v_rarity := 'epique';     v_base := 900;
-  elsif v_roll < 0.50 then v_rarity := 'rare';       v_base := 400;
-  else                     v_rarity := 'commun';     v_base := 200;
+    if v_car_id is null then v_base := 40000; end if; -- tout deja debloque : gros bonus a la place
+  elsif v_roll < 0.10 then v_rarity := 'legendaire'; v_base := 15000;
+  elsif v_roll < 0.25 then v_rarity := 'epique';     v_base := 6000;
+  elsif v_roll < 0.55 then v_rarity := 'rare';       v_base := 2500;
+  else                     v_rarity := 'commun';     v_base := 1000;
   end if;
 
   v_credits := round(v_base * v_mult)::integer;

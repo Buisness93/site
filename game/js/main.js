@@ -428,24 +428,24 @@
   }
 
   // Tirage du jour : contrairement au defi (qui demande d'atteindre un score),
-  // c'est une action immediate — des credits a coup sur, et 2% de chance de
+  // c'est une action immediate — des credits a coup sur, et 4% de chance de
   // gagner une voiture rare. Tirage, probabilites et bonus de serie (+10%/jour,
   // max +50%, Epique garanti le 7e jour) : claim_daily_draw() (SQL).
   const LOOT = [
-    { key:'commun',     credits:200,  rarity:'Commun',     color:'#8fa3b8', ico:'🪙', w:50 },
-    { key:'rare',       credits:400,  rarity:'Rare',       color:'#3d8bff', ico:'💰', w:30 },
-    { key:'epique',     credits:900,  rarity:'Épique',     color:'#b14dff', ico:'💎', w:13 },
-    { key:'legendaire', credits:2000, rarity:'Légendaire', color:'#ffb020', ico:'👑', w:5 },
-    { key:'jackpot', jackpot:true, rarity:'Jackpot',       color:'#ff3d6e', ico:'🏆', w:2 }
+    { key:'commun',     credits:1000,  rarity:'Commun',     color:'#8fa3b8', ico:'🪙', w:45 },
+    { key:'rare',       credits:2500,  rarity:'Rare',       color:'#3d8bff', ico:'💰', w:30 },
+    { key:'epique',     credits:6000,  rarity:'Épique',     color:'#b14dff', ico:'💎', w:15 },
+    { key:'legendaire', credits:15000, rarity:'Légendaire', color:'#ffb020', ico:'👑', w:6 },
+    { key:'jackpot', jackpot:true, rarity:'Jackpot',        color:'#ff3d6e', ico:'🏆', w:4 }
   ];
   // Lot renvoye par le serveur -> rarete. `rarity` est fourni par la version
   // actuelle de claim_daily_draw() ; les seuils ne servent que de repli pour
-  // l'ancienne version (120 / 300 / 700 / 1500, et 5000 si tout est debloque).
+  // l'ancienne version (seuils = montants de base, et 40000 si tout est debloque).
   function lootFor(res){
     const byKey = res.rarity && LOOT.find(l=>l.key === res.rarity);
     if(byKey) return byKey;
-    if(res.carId || res.credits >= 5000) return LOOT[4];
-    return res.credits >= 1500 ? LOOT[3] : res.credits >= 700 ? LOOT[2] : res.credits >= 300 ? LOOT[1] : LOOT[0];
+    if(res.carId || res.credits >= 40000) return LOOT[4];
+    return res.credits >= 15000 ? LOOT[3] : res.credits >= 6000 ? LOOT[2] : res.credits >= 2500 ? LOOT[1] : LOOT[0];
   }
   const pctBonus = (mult)=>Math.round(((mult || 1) - 1) * 100);
   function updateDrawCta(claimed){
@@ -463,7 +463,7 @@
     els.drawDesc.textContent = claimed
       ? 'Reviens demain : ta série continue et le bonus grimpe.'
       : st && st.weekly ? 'Coffre du 7e jour : Épique ou mieux garanti !'
-      : 'Crédits garantis, et 2% de chance de gagner une voiture rare.';
+      : 'Crédits garantis, et 4% de chance de gagner une voiture rare.';
     // Serie : jour en cours et bonus (fournis par le serveur si la fonction SQL
     // daily_draw_status() est installee, sinon la pastille reste cachee)
     const streak = st ? st.streak : 0, bonus = pctBonus(st && st.mult);
