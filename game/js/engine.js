@@ -719,6 +719,7 @@
     this._fp = null; this._walk = null; this._shopCam = false; this._camSaved = null;
     this._journeyReset();
     if(this._rpReset) this._rpReset(opts); // alcool, cigarette, controles routiers, mode libre (rp.js)
+    if(this._gfReset) this._gfReset(opts); // go fast : livraison chronometree, police (gofast.js)
     // bulle du bouclier autour de la voiture (visible quand il est actif)
     if(!this._shieldFx){
       this._shieldFx = new T.Mesh(new T.SphereGeometry(2.3, 24, 16), new T.MeshBasicMaterial({ color:0x3dffb0, transparent:true, opacity:.16, blending:T.AdditiveBlending, depthWrite:false }));
@@ -894,6 +895,7 @@
     if(this._police){ this.scene.remove(this._police.mesh); this._police = null; }
     this._tollHold = false; this._tollLock = false; this._jr = null; this._ghost = false;
     if(this._cp){ this.scene.remove(this._cp.mesh); this._cp = null; } this._smoke = null;
+    if(this._gf){ if(this._gf.cop) this.scene.remove(this._gf.cop.mesh); this._gf = null; }
   };
 
   GameEngine.prototype.setBrake = function(v){ this._brake = !!v; };
@@ -2171,6 +2173,7 @@
     this._radarUpdate(dt, scroll);
     this._rescueUpdate(dt);
     if(this._rpUpdate) this._rpUpdate(dt, scroll);
+    if(this._gfUpdate) this._gfUpdate(dt, scroll);
     if(this._toll) this._toll.mesh.position.z += scroll;
     if(this._toll && this._toll.kind === 'police' && this._toll.state === 'open' && !this._tollHold && this._toll.mesh.position.z > 14){ this.scene.remove(this._toll.mesh); this._toll = null; }
     if(this._tollHold){
@@ -2994,9 +2997,14 @@
     this.playing = false;
     const score = this.currentScore();
     const carId = this.car.id, routeId = this.route.id;
-    const result = { score, time:this._time, carId, routeId, reason:this._endReason || null, rp:!!this._rpMode };
+    const gf = this._gf;
+    const result = { score, time:this._time, carId, routeId, reason:this._endReason || null, rp:!!this._rpMode,
+      gofast:gf ? { level:gf.level, delivered:gf.level - (gf.pause > 0 ? 0 : 1), earned:gf.earned, lost:gf.lost, seized:this._gfSeized || 0 } : null };
+    this._gfSeized = 0;
     if(this.cb.onGameOver) this.cb.onGameOver(result);
   };
 
   DG.GameEngine = GameEngine;
+  // (pour les modules branches sur le moteur : rp.js, gofast.js)
+  GameEngine.bend = bendScene; GameEngine.own = ownMaterials;
 })();

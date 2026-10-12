@@ -191,6 +191,31 @@
 #ovOver .over-stat-value{text-shadow:0 0 14px rgba(143,208,255,.55)}
 #ovRecordBadge{animation:gaRecord 1.4s ease-in-out infinite!important}
 
+/* ================= Go fast : panneau de mission ================= */
+.btn-side.mode-gf.on{border-color:rgba(255,204,0,.85);box-shadow:0 0 22px -6px rgba(255,204,0,.9);color:#fff3c4}
+.gf-hud{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 104px);transform:translateX(-50%);z-index:19;width:min(420px,92vw);padding:10px 14px 12px;border-radius:16px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(20,16,4,.86),rgba(8,8,12,.9));border:1px solid rgba(255,204,0,.45);backdrop-filter:blur(10px);
+  box-shadow:0 0 26px -8px rgba(255,204,0,.7),0 16px 40px -20px #000;font-family:'Saira',sans-serif;color:#fff;animation:gfIn .6s cubic-bezier(.16,1,.3,1) both}
+.gf-hud.hidden{display:none}
+@keyframes gfIn{from{opacity:0;transform:translate(-50%,-12px) scale(.94)}to{opacity:1;transform:translateX(-50%)}}
+.gf-top{display:flex;align-items:center;gap:10px}
+.gf-tag{font-family:'Saira Condensed',sans-serif;font-weight:900;font-size:12px;letter-spacing:.14em;color:#ffcc00;text-shadow:0 0 10px rgba(255,204,0,.6)}
+.gf-time{font-family:'Saira Condensed',sans-serif;font-weight:900;font-size:22px;line-height:1;margin-left:auto;font-variant-numeric:tabular-nums}
+.gf-stars{font-size:14px;letter-spacing:1px;color:#ff5a3d;text-shadow:0 0 8px rgba(255,90,61,.8)}
+.gf-stars i{font-style:normal;color:rgba(255,255,255,.18);text-shadow:none}
+.gf-earn{margin-left:auto;font-family:'Saira Condensed',sans-serif;font-weight:900;font-size:18px;color:#4ee39a;text-shadow:0 0 10px rgba(78,227,154,.6)}
+.gf-sub{display:flex;gap:14px;margin-top:6px;font-size:12px;color:#c9ccd4}
+.gf-sub b{color:#ffe066}
+.gf-bar{position:relative;height:5px;margin-top:8px;border-radius:5px;background:rgba(255,255,255,.1);overflow:hidden}
+.gf-bar i{position:absolute;left:0;top:0;bottom:0;width:var(--p,0%);border-radius:inherit;background:linear-gradient(90deg,#ff9500,#ffcc00,#fff3c4);box-shadow:0 0 10px #ffcc00;transition:width .2s linear}
+.gf-hud.hurry{border-color:rgba(255,90,61,.8);animation:gfHurry .6s ease-in-out infinite alternate}
+.gf-hud.hurry .gf-time{color:#ff5a3d;text-shadow:0 0 12px #ff5a3d}
+@keyframes gfHurry{from{box-shadow:0 0 18px -8px rgba(255,90,61,.6),0 16px 40px -20px #000}to{box-shadow:0 0 34px -4px rgba(255,90,61,1),0 16px 40px -20px #000}}
+.gf-hud.chased::after{content:'';position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;border:1px solid transparent;
+  animation:gfSiren .5s steps(1,end) infinite}
+@keyframes gfSiren{0%{box-shadow:-10px 0 22px -8px #ff2a2a}50%{box-shadow:10px 0 22px -8px #2a6aff}}
+@media (max-width:640px){ .gf-hud{top:calc(env(safe-area-inset-top,0px) + 120px);padding:8px 12px 10px} .gf-time{font-size:19px} }
+
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
   .speed-fx::before,.overlay::before,.overlay::after,.ga-warp{display:none}

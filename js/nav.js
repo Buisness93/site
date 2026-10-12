@@ -28,6 +28,7 @@
     { href:'garage.html', label:'Garage', icon:'key' },
     { href:'classement.html', label:'Classement', icon:'trophy' },
     { href:'radio.html', label:'Radio', icon:'radio' },
+    { href:'casino.html', label:'Casino', icon:'coin' },
     { href:'compte.html', label:'Compte', icon:'user' },
   ];
 

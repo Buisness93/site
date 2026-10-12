@@ -288,7 +288,7 @@
     const el = document.getElementById('dockSel');
     if(!el) return;
     const car = DG.carById(state.selectedCar), route = DG.routeById(state.selectedRoute);
-    el.innerHTML = '<b>' + (car ? car.brand + ' ' + car.name : '—') + '</b><span>' + (route ? route.name : '') + (state.rp ? ' · 🎭 mode libre' : '') + '</span>';
+    el.innerHTML = '<b>' + (car ? car.brand + ' ' + car.name : '—') + '</b><span>' + (route ? route.name : '') + (state.rp ? ' · 🎭 mode libre' : '') + (state.gofast && !state.rp ? ' · 📦 go fast' : '') + '</span>';
   }
 
   function statBar(val, color){ return '<div class="stat-bar"><i style="width:' + (val*10) + '%;color:' + color + '"></i></div>'; }
@@ -688,6 +688,11 @@
       onStation(s){ alerts.station = s; renderAlert(); },
       onRadar(r){ alerts.radar = r; renderAlert(); },
       onPolice(p){ alerts.police = p; renderAlert(); if(p && !_siren){ sirenTick(); _siren = setInterval(sirenTick, 560); } },
+      onGoFast(g){
+        renderGoFast(g);
+        const p = g && g.cop && !g.cop.busted ? { gap:g.cop.gap, state:'chase' } : null;
+        if(!!p !== !!alerts.police || p){ this.onPolice(p); }
+      },
       onTollApproach(stop){ popup('🛑 PÉAGE · ' + stop.name + ' — ralentis', '#ffcc00', true); },
       onToll(info){ openToll(info); },
       onTollLanes(t){ renderLaneStrip(t); },
@@ -730,6 +735,12 @@
         else if(kind==='radar-ok') popup('📸 Radar : ' + speedTxt(payload.kmh, payload.unitLabel) + ' ✓', '#4ee39a');
         else if(kind==='police-chase') popup('🚓 LA POLICE TE POURSUIT ! Nitro pour la semer', '#5a8aff', true);
         else if(kind==='police-lost'){ popup('🚓 Police semée ! +200', '#4ee39a', true); chimeSound(2); }
+        else if(kind==='gf-contract'){ popup('📦 CONTRAT ' + payload.level + ' · ' + payload.km.toFixed(1) + ' km en ' + payload.secs + ' s · prime ' + payload.reward.toLocaleString('fr-FR') + ' pts', '#ffcc00', true); tone({ f:520, to:880, glide:0.18, dur:0.25, vol:0.03 }); }
+        else if(kind==='gf-cop') popup('🚨 BAC EN APPROCHE ' + '★'.repeat(payload.heat) + ' · reste au-dessus de la vitesse ou nitro !', '#5a8aff', true);
+        else if(kind==='gf-lost'){ popup('😎 BAC SEMÉE à ' + payload.kmh + ' km/h · +' + payload.bonus.toLocaleString('fr-FR'), '#4ee39a', true); chimeSound(2); }
+        else if(kind==='gf-delivered'){ popup('💰 LIVRÉ ! +' + payload.pay.toLocaleString('fr-FR') + ' pts' + (payload.bonusT ? ' (dont ' + payload.bonusT.toLocaleString('fr-FR') + ' d\'avance)' : ''), '#4ee39a', true); confetti(innerWidth/2, innerHeight*0.32); chimeSound(4); }
+        else if(kind==='gf-busted'){ popup('🚔 INTERPELLÉ ! Le colis est saisi', '#ff5a3d', true); }
+        else if(kind==='gf-late') popup('⌛ TROP TARD : le contrat est perdu', '#ff5a3d', true);
         else if(kind==='fuel-enter') popup('↘ Voie de sortie · ralentis à 30 km/h et gare-toi dans le cadre 🅿', '#ffcc33', true);
         else if(kind==='fuel-low') popup('⚠ RÉSERVE ! Fais le plein à la prochaine station', '#ff5a3d', true);
         else if(kind==='out-of-fuel') popup('⛽ PANNE SÈCHE ! Range-toi à droite ▶ sur la bande d\'arrêt d\'urgence', '#ff5a3d', true);
@@ -1682,7 +1693,9 @@
     for(const k in _hud) delete _hud[k];
     els.countdown.innerHTML = '';
     els.draftBadge.classList.remove('show');
-    engine.start(car, state.selectedRoute, state.personalBest, { rp:!!state.rp });
+    engine.start(car, state.selectedRoute, state.personalBest, { rp:!!state.rp, gofast:!!state.gofast && !state.rp });
+    renderGoFast(null);
+    if(state.gofast && !state.rp) setTimeout(()=>{ if(engine.playing) popup('📦 GO FAST · livre le colis avant la fin du chrono. La BAC te colle : roule vite, nitro pour la semer. Chaque livraison enchaîne un contrat mieux payé.', '#ffcc00', true); }, 3800);
     if(state.rp) setTimeout(()=>{ if(engine.playing) popup('🎭 MODE LIBRE · pas de chrono ni de classement : roule, arrête-toi aux stations, fume (F), respecte les gendarmes… un accrochage ne termine pas la balade (3 max)', '#c8b8ff', true); }, 3800);
   }
   els.btnStart.addEventListener('click', startRun);
@@ -1690,7 +1703,39 @@
   try { state.rp = localStorage.getItem('dg_rp') === '1'; } catch(e){}
   const btnRp = document.getElementById('btnModeRp');
   function paintRp(){ if(!btnRp) return; btnRp.classList.toggle('on', !!state.rp); btnRp.querySelector('.lbl').textContent = state.rp ? 'Mode libre ✓' : 'Mode libre'; updateDock(); }
-  if(btnRp){ btnRp.addEventListener('click', ()=>{ state.rp = !state.rp; try { localStorage.setItem('dg_rp', state.rp ? '1' : '0'); } catch(e){} paintRp(); popup(state.rp ? '🎭 Mode libre activé : pas de chrono ni de classement, un accrochage ne termine pas la balade' : '🏁 Mode course : score et classement', state.rp ? '#c8b8ff' : '#ffcc00', true); }); paintRp(); }
+  if(btnRp){ btnRp.addEventListener('click', ()=>{ state.rp = !state.rp; if(state.rp && state.gofast){ state.gofast = false; try { localStorage.setItem('dg_gofast', '0'); } catch(e){} paintGf(); } try { localStorage.setItem('dg_rp', state.rp ? '1' : '0'); } catch(e){} paintRp(); popup(state.rp ? '🎭 Mode libre activé : pas de chrono ni de classement, un accrochage ne termine pas la balade' : '🏁 Mode course : score et classement', state.rp ? '#c8b8ff' : '#ffcc00', true); }); paintRp(); }
+  // Go fast : livraisons chronometrees avec la police aux trousses (gofast.js)
+  try { state.gofast = localStorage.getItem('dg_gofast') === '1'; } catch(e){}
+  const btnGf = document.getElementById('btnModeGf');
+  function paintGf(){ if(!btnGf) return; btnGf.classList.toggle('on', !!state.gofast); btnGf.querySelector('.lbl').textContent = state.gofast ? 'Go fast ✓' : 'Go fast'; updateDock(); }
+  if(btnGf){ btnGf.addEventListener('click', ()=>{
+    state.gofast = !state.gofast;
+    try { localStorage.setItem('dg_gofast', state.gofast ? '1' : '0'); } catch(e){}
+    if(state.gofast && state.rp){ state.rp = false; try { localStorage.setItem('dg_rp', '0'); } catch(e){} paintRp(); }
+    paintGf();
+    popup(state.gofast ? '📦 Go fast activé : livraisons chronométrées, police aux trousses, grosses primes' : '🏁 Mode course classique', state.gofast ? '#ffcc00' : '#ffcc00', true);
+  }); paintGf(); }
+
+  // Panneau de mission go fast (cree a la volee)
+  let _gfEl = null, _gfKey = '';
+  function renderGoFast(g){
+    if(!g){ if(_gfEl){ _gfEl.classList.add('hidden'); _gfKey = ''; } return; }
+    if(!_gfEl){ _gfEl = document.createElement('div'); _gfEl.className = 'gf-hud'; _gfEl.id = 'gfHud'; document.getElementById('stage').appendChild(_gfEl); }
+    _gfEl.classList.remove('hidden');
+    const stars = Math.floor(g.heat), t = Math.ceil(g.time);
+    const key = [g.level, stars, t, g.km.toFixed(1), g.pause, g.earned].join('|');
+    _gfEl.classList.toggle('hurry', !g.pause && g.time < 12);
+    _gfEl.classList.toggle('chased', !!g.cop);
+    _gfEl.style.setProperty('--p', (g.progress * 100).toFixed(1) + '%');
+    if(key === _gfKey) return;
+    _gfKey = key;
+    const mm = Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
+    _gfEl.innerHTML = g.pause
+      ? '<div class="gf-top"><span class="gf-tag">📦 GO FAST</span><b>LIVRÉ ✓</b><span class="gf-earn">💰 ' + g.earned.toLocaleString('fr-FR') + '</span></div><div class="gf-sub">Nouveau contrat en préparation…</div><div class="gf-bar"><i></i></div>'
+      : '<div class="gf-top"><span class="gf-tag">📦 CONTRAT ' + g.level + '</span><b class="gf-time">⏱ ' + mm + '</b><span class="gf-stars">' + '★'.repeat(stars) + '<i>' + '★'.repeat(5 - stars) + '</i></span></div>' +
+        '<div class="gf-sub"><span>📍 ' + g.km.toFixed(1) + ' km</span><span>prime <b>' + g.reward.toLocaleString('fr-FR') + '</b></span>' + (g.earned ? '<span>💰 ' + g.earned.toLocaleString('fr-FR') + '</span>' : '') + '</div><div class="gf-bar"><i></i></div>';
+  }
+
   if(els.dailyCard){
     els.dailyCard.addEventListener('click', selectDailyChallenge);
     els.dailyCard.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); selectDailyChallenge(); } });
@@ -1703,12 +1748,18 @@
   if(els.btnCloseWheel) els.btnCloseWheel.addEventListener('click', closeWheel);
 
   let lastResult = null;
-  const END_TXT = { arrest:'🚓 Permis retenu et véhicule immobilisé : conduite en état alcoolique', wreck:'🛻 Voiture hors d’usage après 3 accrochages', fuel:'⛽ Panne sèche sur la voie : percuté par l’arrière' };
+  const END_TXT = { arrest:'🚓 Permis retenu et véhicule immobilisé : conduite en état alcoolique', wreck:'🛻 Voiture hors d’usage après 3 accrochages', fuel:'⛽ Panne sèche sur la voie : percuté par l’arrière', 'gofast-busted':'🚔 Interpellé par la BAC : colis saisi, la moitié des primes confisquée', 'gofast-late':'⌛ Livraison en retard : contrat perdu' };
   async function handleGameOver(result){
     resetStopUi();
     let why = document.getElementById('overReason');
     if(!why && els.overScore && els.overScore.parentNode){ why = document.createElement('div'); why.id = 'overReason'; why.className = 'over-reason'; els.overScore.parentNode.insertBefore(why, els.overScore.nextSibling); }
-    if(why){ why.textContent = END_TXT[result.reason] || ''; why.classList.toggle('hidden', !END_TXT[result.reason]); }
+    renderGoFast(null);
+    let whyTxt = END_TXT[result.reason] || '';
+    if(result.gofast){
+      const g = result.gofast;
+      whyTxt += (whyTxt ? ' · ' : '') + '📦 Go fast : ' + g.delivered + ' livraison' + (g.delivered > 1 ? 's' : '') + ', ' + g.lost + ' poursuite' + (g.lost > 1 ? 's' : '') + ' semée' + (g.lost > 1 ? 's' : '') + ', primes ' + (g.earned - g.seized).toLocaleString('fr-FR') + ' pts' + (g.seized ? ' (−' + g.seized.toLocaleString('fr-FR') + ' saisis)' : '');
+    }
+    if(why){ why.textContent = whyTxt; why.classList.toggle('hidden', !whyTxt); }
     if(result.rp){
       // mode libre : pas de classement ni de credits (sinon une balade sans fin rapporterait a l'infini)
       els.hudTop.style.display = 'none'; els.hudBottom.style.display = 'none';

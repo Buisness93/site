@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Casino — Deylo Garage</title>
+<link rel="icon" type="image/svg+xml" href="img/logo.svg">
+<meta name="theme-color" content="#040408">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://uzzlhtaeoybonwljjgge.supabase.co" crossorigin>
+<link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Saira:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="css/fx.css">
+<style>
+ .cz-note{display:flex;align-items:center;gap:10px;margin-top:16px;padding:10px 14px;border-radius:12px;font-size:12.5px;color:var(--text-3);background:rgba(var(--line-rgb),.035);border:1px solid var(--line);max-width:640px}
+ .cz-bal{display:flex;align-items:center;gap:12px;padding:12px 18px;border-radius:16px;border:1px solid rgba(255,204,0,.3);background:linear-gradient(180deg,rgba(255,204,0,.1),rgba(255,204,0,.02));font-family:'Saira Condensed';font-weight:900;font-size:26px;font-variant-numeric:tabular-nums;box-shadow:0 0 30px -12px rgba(255,204,0,.6)}
+ .cz-bal .coin{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff2a8,#ffcc00 45%,#b07d00);box-shadow:0 0 14px -2px rgba(255,204,0,.8)}
+ .cz-bal small{display:block;font-family:'Saira';font-weight:500;font-size:10px;letter-spacing:.2em;color:var(--text-3);text-transform:uppercase}
+ .cz-bal.up{animation:czUp .7s cubic-bezier(.16,1,.3,1)}
+ .cz-bal.down{animation:czDown .5s ease}
+ @keyframes czUp{30%{transform:scale(1.08);box-shadow:0 0 40px -4px #4ee39a;border-color:#4ee39a}}
+ @keyframes czDown{30%{transform:translateX(-4px);border-color:#ff5a5a}60%{transform:translateX(4px)}}
+
+ .cz-tabs{margin-top:26px}
+ .cz-game{display:grid;grid-template-columns:300px minmax(0,1fr);gap:0;margin-top:16px;border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--line);background:linear-gradient(180deg,var(--card-1),var(--card-2))}
+ @media (max-width:860px){ .cz-game{grid-template-columns:minmax(0,1fr)} .cz-side{order:2} }
+ .cz-side{padding:20px;background:rgba(0,0,0,.25);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+ .cz-board{position:relative;min-height:440px;display:flex;align-items:center;justify-content:center;padding:20px;overflow:hidden}
+ .cz-panel[hidden]{display:none}
+ .bet-row{display:flex;gap:6px}
+ .bet-row input{flex:1;min-width:0}
+ .bet-row button{flex:0 0 auto;width:46px;height:50px;border-radius:12px;border:1px solid var(--line-2);background:var(--glass);color:var(--text-2);font-weight:700}
+ .bet-row button:hover{border-color:rgba(var(--accent-rgb),.55);color:var(--text-1)}
+ .cz-stat{display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-3);margin:2px 0 10px}
+ .cz-stat b{color:var(--text-1);font-variant-numeric:tabular-nums}
+ .cz-play{margin-top:8px}
+ .cz-msg{min-height:22px;margin-top:10px;font-size:13px;text-align:center}
+ .cz-msg.win{color:var(--good);text-shadow:0 0 12px rgba(78,227,154,.6)}
+ .cz-msg.lose{color:#ff8f8f}
+ .toggle2{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:rgba(0,0,0,.35);border:1px solid var(--line-2);margin-bottom:16px}
+ .toggle2 button{height:40px;border:0;border-radius:9px;background:transparent;color:var(--text-3);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:12px}
+ .toggle2 button.on{background:linear-gradient(120deg,rgba(var(--accent-rgb),.35),rgba(var(--accent-2-rgb),.15));color:var(--text-1);box-shadow:inset 0 0 0 1px rgba(var(--accent-rgb),.5)}
+ .toggle3{grid-template-columns:1fr 1fr 1fr}
+
+ /* Crash */
+ #crashCv{position:absolute;inset:0;width:100%;height:100%}
+ .crash-mult{position:relative;z-index:2;font-family:'Saira Condensed';font-weight:900;font-size:clamp(60px,10vw,110px);line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 0 30px rgba(var(--accent-rgb),.8)}
+ .crash-mult.boom{color:#ff5a5a;text-shadow:0 0 40px rgba(255,90,90,.9);animation:czShake .4s}
+ .crash-mult.cash{color:var(--good);text-shadow:0 0 40px rgba(78,227,154,.9)}
+ .crash-sub{position:absolute;z-index:2;left:0;right:0;bottom:22px;text-align:center;font-size:13px;color:var(--text-3)}
+ .crash-hist{position:absolute;z-index:2;top:14px;right:14px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:70%}
+ .crash-hist span{padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:700;background:rgba(var(--line-rgb),.06);border:1px solid var(--line)}
+ .crash-hist span.hi{color:var(--good);border-color:rgba(78,227,154,.4)}
+ .crash-hist span.lo{color:#ff8f8f;border-color:rgba(255,90,90,.35)}
+ @keyframes czShake{20%{transform:translateX(-8px) rotate(-2deg)}40%{transform:translateX(8px) rotate(2deg)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+
+ /* Mines */
+ .mines-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;width:min(440px,100%)}
+ .tile{position:relative;aspect-ratio:1;border-radius:14px;border:0;padding:0;perspective:600px;background:transparent;cursor:pointer}
+ .tile .in{position:absolute;inset:0;border-radius:inherit;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.34,1.56,.64,1)}
+ .tile .f,.tile .b{position:absolute;inset:0;border-radius:inherit;backface-visibility:hidden;display:flex;align-items:center;justify-content:center;font-size:clamp(22px,4vw,34px)}
+ .tile .f{background:linear-gradient(180deg,#2a2f45,#1a1d2c);box-shadow:inset 0 -5px 0 rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08)}
+ .tile:hover:not(:disabled) .f{background:linear-gradient(180deg,#363c58,#22263a);box-shadow:inset 0 -5px 0 rgba(0,0,0,.35),0 0 18px -4px var(--accent)}
+ .tile:hover:not(:disabled) .in{transform:translateY(-3px)}
+ .tile .b{transform:rotateY(180deg);background:radial-gradient(circle,#123a2a,#0b1712)}
+ .tile.mine .b{background:radial-gradient(circle,#4a1010,#170606)}
+ .tile.open .in{transform:rotateY(180deg)}
+ .tile.open.gem .b{box-shadow:0 0 24px -4px #4ee39a,inset 0 0 0 1px rgba(78,227,154,.5)}
+ .tile.open.mine.hit .b{box-shadow:0 0 30px 0 #ff3a3a;animation:czShake .4s}
+ .tile.dim{opacity:.45}
+ .tile:disabled{cursor:default}
+ .gem-ico{filter:drop-shadow(0 0 8px #4ee39a)}
+
+ /* Dice */
+ .dice-wrap{width:min(560px,100%)}
+ .dice-roll{font-family:'Saira Condensed';font-weight:900;font-size:clamp(56px,9vw,96px);text-align:center;line-height:1;font-variant-numeric:tabular-nums;transition:color .3s}
+ .dice-roll.win{color:var(--good);text-shadow:0 0 30px rgba(78,227,154,.8)}
+ .dice-roll.lose{color:#ff6b6b;text-shadow:0 0 30px rgba(255,90,90,.6)}
+ .dice-track{position:relative;height:16px;margin:46px 0 10px;border-radius:99px;background:linear-gradient(90deg,#ff5a5a var(--t),#4ee39a var(--t));box-shadow:0 0 20px -6px rgba(0,0,0,.8)}
+ .dice-track.under{background:linear-gradient(90deg,#4ee39a var(--t),#ff5a5a var(--t))}
+ .dice-mark{position:absolute;top:-38px;left:var(--r,50%);transform:translateX(-50%);padding:5px 10px;border-radius:9px;background:#fff;color:#0b0c10;font-weight:800;font-size:13px;transition:left .8s cubic-bezier(.16,1,.3,1);opacity:0}
+ .dice-mark::after{content:'';position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-top-color:#fff;border-bottom:0}
+ .dice-mark.show{opacity:1}
+ .dice-scale{display:flex;justify-content:space-between;font-size:11px;color:var(--text-4)}
+ .dice-slider{width:100%;margin-top:22px}
+
+ /* Plinko */
+ #plinkoCv{width:min(480px,100%);height:auto;aspect-ratio:560/470}
+
+ /* Fil des paris */
+ .feed{margin-top:22px}
+ .feed .tbl-row{display:grid;grid-template-columns:1.2fr .9fr 1fr .8fr 1fr;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px;align-items:center}
+ .feed .tbl-row.head{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-4)}
+ .feed .tbl-row .num{text-align:right;font-variant-numeric:tabular-nums}
+ .feed .tbl-row .pos{color:var(--good)}
+ .feed .tbl-row .neg{color:var(--text-4)}
+ .feed .tbl-row.new{animation:czRow .6s cubic-bezier(.16,1,.3,1)}
+ @keyframes czRow{from{opacity:0;transform:translateY(-10px);background:rgba(var(--accent-rgb),.15)}to{opacity:1;transform:none;background:transparent}}
+ @media (max-width:640px){ .feed .tbl-row{grid-template-columns:1fr .8fr .8fr 1fr} .feed .tbl-row .hide-m{display:none} }
+ .gate{max-width:560px;margin-top:26px}
+</style>
+</head>
+<body>
+<div class="fx-curtain" aria-hidden="true"><div class="fx-curtain-in"><span class="fx-curtain-logo" data-logo="64"></span><b>DEYLO<i>·</i>GARAGE</b></div></div>
+<div id="site-nav" data-active="casino.html"></div>
+<main>
+  <div class="container" style="padding-top:40px;padding-bottom:70px">
+    <div class="eyebrow"><span class="dash"></span>Casino du garage</div>
+    <h1 class="h1">Tente ta chance</h1>
+    <p class="lead">Crash, Mines, Dice, Plinko : mise tes crédits et multiplie-les… ou perds-les.</p>
+    <div class="cz-note"><span data-icon="info"></span>Crédits virtuels du jeu uniquement : aucun argent réel, rien ne s'achète ni ne se retire. Tous les tirages sont faits par le serveur.</div>
+
+    <div id="gate" class="card gate" hidden>
+      <div class="empty" style="padding:20px 10px">
+        <div class="ei" data-icon="lock"></div>
+        <div>Connecte-toi pour jouer au casino avec tes crédits.</div>
+        <a href="compte.html" class="btn btn-primary btn-sm">Se connecter</a>
+      </div>
+    </div>
+
+    <div id="casino" hidden>
+      <div class="page-head" style="margin-top:24px;align-items:center">
+        <div class="seg cz-tabs" id="czTabs" style="margin-top:0">
+          <button data-g="crash" class="on"><span data-icon="bolt"></span>Crash</button>
+          <button data-g="mines"><span data-icon="spark"></span>Mines</button>
+          <button data-g="dice"><span data-icon="cube"></span>Dice</button>
+          <button data-g="plinko"><span data-icon="target"></span>Plinko</button>
+        </div>
+        <div class="cz-bal" id="czBal"><span class="coin"></span><div><small>Solde</small><span id="czBalV">—</span></div></div>
+      </div>
+      <div id="czSetup" class="msg msg-error" hidden style="margin-top:16px"></div>
+
+      <div class="cz-game">
+        <aside class="cz-side">
+          <div class="field"><label for="bet">Mise</label>
+            <div class="bet-row"><input type="number" id="bet" min="10" step="10" value="100"><button type="button" data-bet="half">½</button><button type="button" data-bet="double">×2</button><button type="button" data-bet="max">Max</button></div>
+          </div>
+
+          <div class="cz-panel" data-panel="crash">
+            <div class="field"><label for="crashAt">Encaisser automatiquement à</label><input type="number" id="crashAt" min="1.01" max="1000" step="0.01" value="2.00"></div>
+            <div class="cz-stat"><span>Chance de gain</span><b id="crashChance">49.5 %</b></div>
+            <div class="cz-stat"><span>Gain si encaissé</span><b id="crashWin">—</b></div>
+          </div>
+          <div class="cz-panel" data-panel="mines" hidden>
+            <div class="field"><label for="minesN">Nombre de mines</label><select id="minesN"></select></div>
+            <div class="cz-stat"><span>Multiplicateur actuel</span><b id="minesMult">×0</b></div>
+            <div class="cz-stat"><span>Prochaine case</span><b id="minesNext">—</b></div>
+          </div>
+          <div class="cz-panel" data-panel="dice" hidden>
+            <div class="toggle2" id="diceSide"><button data-over="0">En dessous</button><button data-over="1" class="on">Au-dessus</button></div>
+            <div class="cz-stat"><span>Cible</span><b id="diceTargetV">50.00</b></div>
+            <div class="cz-stat"><span>Chance de gain</span><b id="diceChance">50 %</b></div>
+            <div class="cz-stat"><span>Multiplicateur</span><b id="diceMult">×1.98</b></div>
+          </div>
+          <div class="cz-panel" data-panel="plinko" hidden>
+            <label style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);margin-bottom:7px">Risque</label>
+            <div class="toggle2 toggle3" id="plinkoRisk"><button data-r="low">Faible</button><button data-r="medium" class="on">Moyen</button><button data-r="high">Élevé</button></div>
+          </div>
+
+          <button class="btn btn-primary btn-block btn-lg cz-play" id="btnPlay">Jouer</button>
+          <button class="btn btn-ghost btn-block" id="btnCash" hidden style="margin-top:10px">Encaisser</button>
+          <div class="cz-msg" id="czMsg"></div>
+        </aside>
+
+        <div class="cz-board">
+          <div class="cz-panel" data-panel="crash" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+            <canvas id="crashCv"></canvas>
+            <div class="crash-hist" id="crashHist"></div>
+            <div class="crash-mult" id="crashMult">×1.00</div>
+            <div class="crash-sub" id="crashSub">Choisis ta cible et lance la course</div>
+          </div>
+          <div class="cz-panel" data-panel="mines" hidden style="width:100%;display:flex;justify-content:center"><div class="mines-grid" id="minesGrid"></div></div>
+          <div class="cz-panel dice-wrap" data-panel="dice" hidden>
+            <div class="dice-roll" id="diceRoll">50.00</div>
+            <div class="dice-track" id="diceTrack" style="--t:50%"><div class="dice-mark" id="diceMark">0</div></div>
+            <div class="dice-scale"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+            <input type="range" class="dice-slider" id="diceTarget" min="2" max="98" step="0.5" value="50" style="--p:50%">
+          </div>
+          <div class="cz-panel" data-panel="plinko" hidden style="width:100%;display:flex;justify-content:center"><canvas id="plinkoCv" width="560" height="470"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card feed">
+        <div class="card-head" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px">
+          <div class="card-title" style="margin:0"><span class="ic" data-icon="chart"></span>Derniers paris</div>
+          <div class="seg" id="feedTabs"><button data-f="all" class="on">Tout le monde</button><button data-f="me">Mes paris</button></div>
+        </div>
+        <div class="tbl-row head"><span>Joueur</span><span>Jeu</span><span class="num hide-m">Mise</span><span class="num">Multi</span><span class="num">Gain</span></div>
+        <div id="feedRows"></div>
+      </div>
+    </div>
+  </div>
+</main>
+<footer class="footer" id="site-footer"></footer>
+<script src="js/supabase-client.js"></script>
+<script src="js/cars.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/economy.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/fx.js"></script>
+<script>
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const esc = (s)=>String(s == null ? '' : s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmt = (n)=>Math.round(n).toLocaleString('fr-FR');
+  const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let game = 'crash', busy = false, balance = 0;
+  const GAME_LABEL = { crash:'Crash', mines:'Mines', dice:'Dice', plinko:'Plinko' };
+
+  // ---------- Solde ----------
+  function setBalance(v, anim){
+    const old = balance; balance = v;
+    $('czBalV').textContent = fmt(v);
+    if(DG.Auth.profile) DG.Auth.profile.money = v;
+    if(DG.Economy){ DG.Economy.money = v; DG.Economy._emit(); }
+    if(anim && v !== old){ const b = $('czBal'); b.classList.remove('up', 'down'); void b.offsetWidth; b.classList.add(v > old ? 'up' : 'down'); }
+  }
+  function bet(){ return Math.max(10, Math.floor(+$('bet').value || 0)); }
+  document.querySelectorAll('[data-bet]').forEach(b=>b.addEventListener('click', ()=>{
+    const k = b.getAttribute('data-bet'), v = bet();
+    $('bet').value = k === 'half' ? Math.max(10, Math.floor(v / 2)) : k === 'double' ? Math.min(100000, v * 2) : Math.min(100000, balance);
+    paintCrash();
+  }));
+  $('bet').addEventListener('input', paintCrash);
+  function say(text, cls){ const m = $('czMsg'); m.textContent = text; m.className = 'cz-msg' + (cls ? ' ' + cls : ''); }
+  async function rpc(name, args){
+    const { data, error } = await DG.supabase.rpc(name, args || {});
+    if(error){
+      if(/does not exist|Could not find/i.test(error.message)){ const s = $('czSetup'); s.hidden = false; s.textContent = 'Le casino n\'est pas encore installé sur le serveur : exécute supabase/casino.sql dans Supabase (SQL Editor).'; }
+      throw new Error(error.message);
+    }
+    return data;
+  }
+  function winFx(payout, x, y){
+    if(!DG.FX) return;
+    DG.FX.toast('+' + fmt(payout) + ' crédits', 'good');
+    if(x != null) DG.FX.confetti(x, y);
+  }
+
+  // ---------- Onglets ----------
+  function openGame(g){
+    if(busy) return;
+    game = g;
+    document.querySelectorAll('#czTabs [data-g]').forEach(b=>b.classList.toggle('on', b.getAttribute('data-g') === g));
+    document.querySelectorAll('.cz-panel').forEach(p=>{ p.hidden = p.getAttribute('data-panel') !== g; });
+    $('btnCash').hidden = !(g === 'mines' && mines.round);
+    $('btnPlay').textContent = g === 'mines' ? (mines.round ? 'Partie en cours' : 'Commencer') : g === 'crash' ? 'Lancer la course' : g === 'dice' ? 'Lancer le dé' : 'Lâcher la bille';
+    $('btnPlay').disabled = g === 'mines' && !!mines.round;
+    say('');
+    if(g === 'crash') sizeCrash();
+    if(g === 'plinko') drawPlinko();
+    try { localStorage.setItem('dg_casino_game', g); } catch(e){}
+  }
+  document.querySelectorAll('#czTabs [data-g]').forEach(b=>b.addEventListener('click', ()=>openGame(b.getAttribute('data-g'))));
+
+  $('btnPlay').addEventListener('click', async ()=>{
+    if(busy) return;
+    if(bet() > balance){ say('Crédits insuffisants.', 'lose'); return; }
+    busy = true; $('btnPlay').disabled = true; say('');
+    try {
+      if(game === 'crash') await playCrash();
+      else if(game === 'dice') await playDice();
+      else if(game === 'plinko') await playPlinko();
+      else if(game === 'mines') await startMines();
+    } catch(e){
+      say(e.message || 'Erreur', 'lose');
+      try { await DG.Auth.refreshProfile(); if(DG.Auth.profile) setBalance(DG.Auth.profile.money); } catch(err){}
+    }
+    busy = false;
+    $('btnPlay').disabled = game === 'mines' && !!mines.round;
+    loadFeed();
+  });
+
+  // =============== CRASH ===============
+  const ccv = $('crashCv'), cg = ccv.getContext('2d');
+  let crashPts = [];
+  function sizeCrash(){ const r = ccv.getBoundingClientRect(), d = Math.min(2, devicePixelRatio || 1); ccv.width = Math.max(1, r.width * d); ccv.height = Math.max(1, r.height * d); cg.setTransform(d, 0, 0, d, 0, 0); drawCrash(1, 1, false); }
+  addEventListener('resize', ()=>{ if(game === 'crash') sizeCrash(); });
+  function paintCrash(){
+    const t = Math.max(1.01, +$('crashAt').value || 2);
+    $('crashChance').textContent = (99 / t).toFixed(2).replace(/\.00$/, '') + ' %';
+    $('crashWin').textContent = '+' + fmt(bet() * t);
+  }
+  $('crashAt').addEventListener('input', paintCrash);
+  // courbe exponentielle + voiture au bout ; m = multiplicateur courant
+  function drawCrash(m, top, dead){
+    const W = ccv.clientWidth, H = ccv.clientHeight;
+    cg.clearRect(0, 0, W, H);
+    const css = getComputedStyle(document.documentElement);
+    const acc = css.getPropertyValue('--accent').trim() || '#8b7cff', acc2 = css.getPropertyValue('--accent-2').trim() || '#5ee7ff';
+    // grille
+    cg.strokeStyle = 'rgba(255,255,255,.05)'; cg.lineWidth = 1;
+    for(let i = 1; i < 6; i++){ const y = H - i * H / 6; cg.beginPath(); cg.moveTo(0, y); cg.lineTo(W, y); cg.stroke(); }
+    if(m <= 1) return;
+    const maxM = Math.max(2, top * 1.15), pad = 40;
+    const tMax = Math.log(maxM) / 0.12;
+    const t = Math.log(m) / 0.12;
+    const X = (tt)=>pad + (tt / Math.max(tMax, 1)) * (W - pad * 2);
+    const Y = (mm)=>H - pad - ((mm - 1) / (maxM - 1)) * (H - pad * 2);
+    const grad = cg.createLinearGradient(0, H, W, 0); grad.addColorStop(0, acc); grad.addColorStop(1, dead ? '#ff5a5a' : acc2);
+    cg.beginPath(); cg.moveTo(X(0), Y(1));
+    for(let k = 1; k <= 60; k++){ const tt = t * k / 60; cg.lineTo(X(tt), Y(Math.exp(0.12 * tt))); }
+    cg.lineWidth = 4; cg.strokeStyle = grad; cg.shadowColor = dead ? '#ff5a5a' : acc; cg.shadowBlur = 18; cg.stroke(); cg.shadowBlur = 0;
+    cg.lineTo(X(t), H - pad); cg.lineTo(X(0), H - pad); cg.closePath();
+    const fill = cg.createLinearGradient(0, 0, 0, H); fill.addColorStop(0, dead ? 'rgba(255,90,90,.22)' : 'rgba(139,124,255,.22)'); fill.addColorStop(1, 'transparent');
+    cg.fillStyle = fill; cg.fill();
+    // voiture au bout de la courbe
+    const x = X(t), y = Y(m);
+    cg.save(); cg.translate(x, y);
+    cg.font = '30px serif'; cg.textAlign = 'center'; cg.textBaseline = 'middle';
+    cg.fillText(dead ? '💥' : '🏎️', 0, -4);
+    cg.restore();
+  }
+  async function playCrash(){
+    const target = Math.round(Math.max(1.01, Math.min(1000, +$('crashAt').value || 2)) * 100) / 100;
+    const b = bet();
+    setBalance(balance - b);
+    const res = await rpc('casino_crash', { p_bet:b, p_cashout:target });
+    const crash = +res.crash, multEl = $('crashMult'), sub = $('crashSub');
+    multEl.className = 'crash-mult'; sub.textContent = 'Encaissement auto à ×' + target.toFixed(2);
+    const top = Math.min(crash, 1000);
+    const dur = reduced ? 300 : Math.min(9000, 900 + Math.log(top) * 2200);
+    const t0 = performance.now();
+    let cashed = false;
+    await new Promise(resolve=>{
+      (function frame(now){
+        const k = Math.min(1, (now - t0) / dur);
+        const m = Math.exp(Math.log(top) * k);
+        multEl.textContent = '×' + m.toFixed(2);
+        if(res.win && !cashed && m >= target){
+          cashed = true; multEl.classList.add('cash');
+          sub.innerHTML = '✓ Encaissé à ×' + target.toFixed(2) + ' · <b style="color:var(--good)">+' + fmt(res.payout) + '</b>';
+          const r = multEl.getBoundingClientRect(); winFx(res.payout, r.left + r.width / 2, r.top);
+        }
+        drawCrash(m, top, false);
+        if(k < 1) requestAnimationFrame(frame); else resolve();
+      })(t0);
+    });
+    multEl.textContent = '×' + crash.toFixed(2);
+    multEl.classList.remove('cash'); multEl.classList.add('boom');
+    drawCrash(top, top, true);
+    if(!res.win) sub.innerHTML = '💥 Crash à ×' + crash.toFixed(2) + ' — mise perdue';
+    say(res.win ? 'Gagné : +' + fmt(res.payout) + ' crédits' : 'Perdu : crash à ×' + crash.toFixed(2), res.win ? 'win' : 'lose');
+    setBalance(res.balance, true);
+    const h = $('crashHist'); const s = document.createElement('span'); s.className = crash >= 2 ? 'hi' : 'lo'; s.textContent = '×' + crash.toFixed(2); h.prepend(s); while(h.children.length > 8) h.lastChild.remove();
+  }
+
+  // =============== MINES ===============
+  const mines = { round:null };
+  const sel = $('minesN');
+  for(let i = 1; i <= 24; i++) sel.innerHTML += '<option value="' + i + '"' + (i === 3 ? ' selected' : '') + '>' + i + '</option>';
+  function buildGrid(){
+    $('minesGrid').innerHTML = Array.from({ length:25 }, (_, i)=>'<button class="tile" data-c="' + i + '" disabled><span class="in"><span class="f"></span><span class="b"></span></span></button>').join('');
+    document.querySelectorAll('#minesGrid .tile').forEach(t=>t.addEventListener('click', ()=>reveal(+t.getAttribute('data-c'))));
+  }
+  buildGrid();
+  function tile(i){ return document.querySelector('#minesGrid .tile[data-c="' + i + '"]'); }
+  function openTile(i, kind, hit){
+    const t = tile(i); if(!t) return;
+    t.querySelector('.b').innerHTML = kind === 'mine' ? '💣' : '<span class="gem-ico">💎</span>';
+    t.classList.add('open', kind); if(hit) t.classList.add('hit');
+    t.disabled = true;
+  }
+  function paintMines(){
+    const r = mines.round;
+    $('minesMult').textContent = r && r.multiplier ? '×' + (+r.multiplier).toFixed(2) : '×0';
+    $('minesNext').textContent = r ? '×' + (+r.next).toFixed(2) : '—';
+    $('btnCash').hidden = !(game === 'mines' && r);
+    $('btnCash').disabled = !(r && r.multiplier > 0);
+    $('btnCash').textContent = r && r.multiplier > 0 ? 'Encaisser ' + fmt(r.bet * r.multiplier) : 'Encaisser';
+    sel.disabled = !!r; $('bet').disabled = !!r;
+    if(game === 'mines'){ $('btnPlay').textContent = r ? 'Partie en cours' : 'Commencer'; $('btnPlay').disabled = !!r; }
+  }
+  async function startMines(){
+    const b = bet();
+    buildGrid();
+    const res = await rpc('casino_mines_start', { p_bet:b, p_mines:+sel.value });
+    mines.round = { id:res.id, bet:res.bet, mines:res.mines, multiplier:0, next:res.next };
+    setBalance(res.balance, true);
+    document.querySelectorAll('#minesGrid .tile').forEach(t=>t.disabled = false);
+    say('Retourne des cases… et évite les ' + res.mines + ' mine' + (res.mines > 1 ? 's' : ''));
+    paintMines();
+  }
+  async function reveal(i){
+    const r = mines.round; if(!r || busy) return;
+    busy = true;
+    try {
+      const res = await rpc('casino_mines_reveal', { p_id:r.id, p_cell:i });
+      if(res.mine){
+        openTile(i, 'mine', true);
+        await sleep(350);
+        (res.grid || []).forEach(c=>{ if(c !== i) openTile(c, 'mine'); });
+        document.querySelectorAll('#minesGrid .tile:not(.open)').forEach(t=>{ t.classList.add('dim'); t.disabled = true; });
+        mines.round = null;
+        say('💥 BOUM ! Mise perdue', 'lose');
+        setBalance(res.balance, true);
+      } else {
+        openTile(i, 'gem');
+        if(res.cashed){ endMines(res); }
+        else { r.multiplier = +res.multiplier; r.next = +res.next; say('💎 ×' + r.multiplier.toFixed(2) + ' — continue ou encaisse'); }
+      }
+    } catch(e){ say(e.message, 'lose'); }
+    busy = false;
+    paintMines();
+    loadFeed();
+  }
+  function endMines(res){
+    (res.grid || []).forEach(c=>openTile(c, 'mine'));
+    document.querySelectorAll('#minesGrid .tile:not(.open)').forEach(t=>{ t.disabled = true; });
+    mines.round = null;
+    say('Encaissé ×' + (+res.multiplier).toFixed(2) + ' : +' + fmt(res.payout) + ' crédits', 'win');
+    setBalance(res.balance, true);
+    const g = $('minesGrid').getBoundingClientRect(); winFx(res.payout, g.left + g.width / 2, g.top + g.height / 2);
+  }
+  $('btnCash').addEventListener('click', async ()=>{
+    const r = mines.round; if(!r || busy || !r.multiplier) return;
+    busy = true;
+    try { endMines(await rpc('casino_mines_cashout', { p_id:r.id })); } catch(e){ say(e.message, 'lose'); }
+    busy = false; paintMines(); loadFeed();
+  });
+  async function resumeMines(){
+    try {
+      const st = await rpc('casino_mines_state');
+      if(!st) return;
+      mines.round = { id:st.id, bet:st.bet, mines:st.mines, multiplier:+st.multiplier, next:+st.next };
+      buildGrid();
+      (st.revealed || []).forEach(c=>openTile(c, 'gem'));
+      document.querySelectorAll('#minesGrid .tile:not(.open)').forEach(t=>t.disabled = false);
+      $('bet').value = st.bet; sel.value = st.mines;
+      paintMines();
+    } catch(e){}
+  }
+
+  // =============== DICE ===============
+  let diceOver = true;
+  function paintDice(){
+    const t = +$('diceTarget').value, chance = diceOver ? 100 - t : t;
+    $('diceTargetV').textContent = t.toFixed(2);
+    $('diceChance').textContent = chance.toFixed(2).replace(/\.00$/, '') + ' %';
+    $('diceMult').textContent = '×' + (99 / chance).toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+    $('diceTrack').style.setProperty('--t', t + '%');
+    $('diceTrack').classList.toggle('under', !diceOver);
+    $('diceTarget').style.setProperty('--p', ((t - 2) / 96 * 100) + '%');
+  }
+  $('diceTarget').addEventListener('input', paintDice);
+  document.querySelectorAll('#diceSide button').forEach(b=>b.addEventListener('click', ()=>{
+    diceOver = b.getAttribute('data-over') === '1';
+    document.querySelectorAll('#diceSide button').forEach(x=>x.classList.toggle('on', x === b));
+    paintDice();
+  }));
+  async function playDice(){
+    const b = bet();
+    setBalance(balance - b);
+    const res = await rpc('casino_dice', { p_bet:b, p_target:+$('diceTarget').value, p_over:diceOver });
+    const el = $('diceRoll'), mark = $('diceMark');
+    el.className = 'dice-roll';
+    const t0 = performance.now(), dur = reduced ? 50 : 700;
+    await new Promise(resolve=>{
+      (function frame(now){
+        const k = Math.min(1, (now - t0) / dur);
+        el.textContent = (k < 1 ? Math.random() * 100 : +res.roll).toFixed(2);
+        if(k < 1) requestAnimationFrame(frame); else resolve();
+      })(t0);
+    });
+    mark.textContent = (+res.roll).toFixed(2); mark.classList.add('show'); mark.style.setProperty('--r', res.roll + '%');
+    el.classList.add(res.win ? 'win' : 'lose');
+    say(res.win ? 'Gagné : +' + fmt(res.payout) + ' crédits' : 'Perdu', res.win ? 'win' : 'lose');
+    if(res.win){ const r = el.getBoundingClientRect(); winFx(res.payout, r.left + r.width / 2, r.top); }
+    setBalance(res.balance, true);
+  }
+
+  // =============== PLINKO ===============
+  const PL = { low:[10,3,1.6,1.4,1.1,1,0.5,1,1.1,1.4,1.6,3,10], medium:[33,11,4,2,1.1,0.6,0.3,0.6,1.1,2,4,11,33], high:[170,24,8.1,2,0.7,0.2,0.2,0.2,0.7,2,8.1,24,170] };
+  let risk = 'medium', plBall = null, plHit = -1;
+  const pcv = $('plinkoCv'), pg = pcv.getContext('2d');
+  const ROWS = 12, PW = 560, PH = 470, GAP = 38, TOPY = 34;
+  function pegX(row, i){ return PW / 2 + (i - row / 2) * GAP; }
+  function slotX(i){ return PW / 2 + (i - ROWS / 2) * GAP; }
+  function slotColor(m){ return m >= 10 ? '#ff3b6b' : m >= 3 ? '#ff7a3d' : m >= 1.4 ? '#ffb43d' : m >= 1 ? '#ffd84d' : '#8fd0ff'; }
+  function drawPlinko(){
+    pg.clearRect(0, 0, PW, PH);
+    for(let r = 0; r < ROWS; r++){
+      for(let i = 0; i <= r + 2; i++){
+        const x = pegX(r + 2, i), y = TOPY + r * 33;
+        pg.beginPath(); pg.arc(x, y, 4, 0, Math.PI * 2); pg.fillStyle = 'rgba(255,255,255,.75)'; pg.shadowColor = '#fff'; pg.shadowBlur = 6; pg.fill(); pg.shadowBlur = 0;
+      }
+    }
+    const table = PL[risk], y = TOPY + ROWS * 33 + 6;
+    table.forEach((m, i)=>{
+      const x = slotX(i), w = GAP - 4, hit = i === plHit;
+      pg.fillStyle = slotColor(m);
+      pg.globalAlpha = hit ? 1 : 0.85;
+      pg.shadowColor = slotColor(m); pg.shadowBlur = hit ? 24 : 0;
+      roundRect(x - w / 2, y + (hit ? 4 : 0), w, 26, 6); pg.fill();
+      pg.shadowBlur = 0; pg.globalAlpha = 1;
+      pg.fillStyle = '#10121a'; pg.font = '800 11px Saira, sans-serif'; pg.textAlign = 'center'; pg.textBaseline = 'middle';
+      pg.fillText(m + '×', x, y + 13 + (hit ? 4 : 0));
+    });
+    if(plBall){ pg.beginPath(); pg.arc(plBall.x, plBall.y, 7, 0, Math.PI * 2); pg.fillStyle = '#ffe066'; pg.shadowColor = '#ffcc00'; pg.shadowBlur = 18; pg.fill(); pg.shadowBlur = 0; }
+  }
+  function roundRect(x, y, w, h, r){ pg.beginPath(); pg.moveTo(x + r, y); pg.arcTo(x + w, y, x + w, y + h, r); pg.arcTo(x + w, y + h, x, y + h, r); pg.arcTo(x, y + h, x, y, r); pg.arcTo(x, y, x + w, y, r); pg.closePath(); }
+  document.querySelectorAll('#plinkoRisk button').forEach(b=>b.addEventListener('click', ()=>{
+    if(busy) return;
+    risk = b.getAttribute('data-r');
+    document.querySelectorAll('#plinkoRisk button').forEach(x=>x.classList.toggle('on', x === b));
+    plHit = -1; drawPlinko();
+  }));
+  async function playPlinko(){
+    const b = bet();
+    setBalance(balance - b);
+    const res = await rpc('casino_plinko', { p_bet:b, p_risk:risk });
+    plHit = -1;
+    // la bille suit le chemin tire par le serveur : un rebond par rangee
+    let col = 0;
+    const pts = [{ x:PW / 2, y:6 }];
+    for(let r = 0; r < ROWS; r++){
+      col += res.path[r];
+      pts.push({ x:PW / 2 + (col - (r + 1) / 2) * GAP, y:TOPY + r * 33 + 16 });
+    }
+    pts.push({ x:slotX(res.slot), y:TOPY + ROWS * 33 + 14 });
+    const step = reduced ? 10 : 150;
+    for(let i = 1; i < pts.length; i++){
+      const a = pts[i - 1], z = pts[i], t0 = performance.now();
+      await new Promise(resolve=>{
+        (function frame(now){
+          const k = Math.min(1, (now - t0) / step);
+          plBall = { x:a.x + (z.x - a.x) * k, y:a.y + (z.y - a.y) * k - Math.sin(k * Math.PI) * 10 };
+          drawPlinko();
+          if(k < 1) requestAnimationFrame(frame); else resolve();
+        })(t0);
+      });
+    }
+    plHit = res.slot; plBall = null; drawPlinko();
+    const m = +res.multiplier;
+    say('×' + m + ' : ' + (res.payout >= b ? '+' : '') + fmt(res.payout) + ' crédits', res.payout >= b ? 'win' : 'lose');
+    if(m >= 2){ const r = pcv.getBoundingClientRect(); winFx(res.payout, r.left + r.width / 2, r.bottom - 40); }
+    setBalance(res.balance, true);
+  }
+
+  // =============== FIL DES PARIS ===============
+  let feedMode = 'all', lastTop = '';
+  async function loadFeed(){
+    try {
+      const rows = feedMode === 'me' ? await rpc('casino_history') : await rpc('casino_feed');
+      const top = rows && rows[0] ? rows[0].created_at : '';
+      $('feedRows').innerHTML = (rows || []).map((r, i)=>{
+        const win = r.payout > 0 && +r.multiplier > 0;
+        return '<div class="tbl-row' + (i === 0 && top !== lastTop && lastTop ? ' new' : '') + '"><span>' + esc(r.username || 'Moi') + '</span><span>' + esc(GAME_LABEL[r.game] || r.game) + '</span>' +
+          '<span class="num hide-m">' + fmt(r.bet) + '</span><span class="num">' + (win ? '×' + (+r.multiplier).toFixed(2) : '—') + '</span>' +
+          '<span class="num ' + (win ? 'pos' : 'neg') + '">' + (win ? '+' + fmt(r.payout) : '−' + fmt(r.bet)) + '</span></div>';
+      }).join('') || '<div class="empty" style="padding:24px">Aucun pari pour le moment.</div>';
+      lastTop = top;
+    } catch(e){}
+  }
+  document.querySelectorAll('#feedTabs button').forEach(b=>b.addEventListener('click', ()=>{
+    feedMode = b.getAttribute('data-f');
+    document.querySelectorAll('#feedTabs button').forEach(x=>x.classList.toggle('on', x === b));
+    lastTop = ''; loadFeed();
+  }));
+
+  // ---------- Demarrage ----------
+  (async function boot(){
+    await DG.Auth.init();
+    if(!DG.Auth.isLoggedIn()){ $('gate').hidden = false; return; }
+    $('casino').hidden = false;
+    await DG.Auth.refreshProfile();
+    setBalance(DG.Auth.profile ? DG.Auth.profile.money : 0);
+    paintCrash(); paintDice();
+    let g = 'crash'; try { g = localStorage.getItem('dg_casino_game') || 'crash'; } catch(e){}
+    openGame(GAME_LABEL[g] ? g : 'crash');
+    await resumeMines();
+    loadFeed();
+    setInterval(()=>{ if(!document.hidden && !busy) loadFeed(); }, 8000);
+  })();
+})();
+</script>
+</body>
+</html>
