@@ -38,24 +38,26 @@
     return location.pathname.split('/').pop() || 'index.html';
   }
 
+  // L'entree en cascade des liens ne se joue qu'au premier rendu (pas apres un changement de theme)
+  let rendered = false;
   function render(mount){
     const active = mount.dataset.active || currentPage();
     const cur = getTheme();
-    const themeBtns = THEMES.map(t=>(
-      '<button type="button" data-theme-pick="' + t.id + '" class="' + (cur===t.id?'on':'') + '">' +
+    const themeBtns = THEMES.map((t, i)=>(
+      '<button type="button" data-theme-pick="' + t.id + '" class="' + (cur===t.id?'on':'') + '" style="--i:' + (i + 1) + '">' +
         '<span class="sw" style="background:' + t.ring + '"></span><span style="display:flex;flex-direction:column;line-height:1.2">' + t.label + '<small style="font-size:10.5px;color:var(--text-4)">' + t.sub + '</small></span><span class="ck">✓</span>' +
       '</button>'
     )).join('');
 
     mount.innerHTML =
-      '<nav class="navbar" aria-label="Navigation principale">' +
+      '<nav class="navbar' + (rendered ? ' no-intro' : '') + '" aria-label="Navigation principale">' +
         '<a href="index.html" class="brand" aria-label="Deylo Garage — accueil">' +
           (DG.Logo ? DG.Logo.mark(40, 'brand-logo') : '<div class="brand-mark"><span>D</span></div>') +
           '<div><div class="brand-name">DEYLO <span class="grad-text">GARAGE</span></div><div class="brand-sub">Supercars · 3D</div></div>' +
         '</a>' +
         '<div class="nav-links" id="dgNavLinks">' +
           '<span class="nav-pill" aria-hidden="true"></span>' +
-          LINKS.map(l=>'<a href="' + l.href + '" class="' + (l.href===active?'active':'') + '"' + (l.href===active?' aria-current="page"':'') + '><span class="ni">' + (DG.Icon ? DG.Icon(l.icon) : '') + '</span>' + l.label + '</a>').join('') +
+          LINKS.map((l, i)=>'<a href="' + l.href + '" class="' + (l.href===active?'active':'') + '" style="--i:' + i + '"' + (l.href===active?' aria-current="page"':'') + '><span class="ni">' + (DG.Icon ? DG.Icon(l.icon) : '') + '</span>' + l.label + '</a>').join('') +
         '</div>' +
         '<div class="nav-right">' +
           '<a href="compte.html" class="nav-avatar" id="dgAvatar" title="Mon compte"><img src="" alt=""></a>' +
@@ -120,6 +122,7 @@
 
     paintMoney();
     paintAvatar();
+    rendered = true;
   }
 
   // Les ecouteurs sont poses une seule fois et relisent le DOM a chaque appel :

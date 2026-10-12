@@ -58,6 +58,62 @@
  .bar-row .bl b{font-variant-numeric:tabular-nums;color:var(--text-2);font-weight:500}
  .bar-row .progress{height:6px}
 
+ /* ---------- Animations ---------- */
+ @keyframes admRise{from{opacity:0;transform:translateY(18px) scale(.985);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+ @keyframes admRow{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+ @keyframes admPop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.25)}100%{transform:scale(1);opacity:1}}
+ @keyframes admPulse{0%,100%{box-shadow:0 0 0 0 currentColor}50%{box-shadow:0 0 0 4px transparent}}
+ @keyframes admFlash{0%{background:rgba(255,90,90,.28)}100%{background:transparent}}
+ @keyframes admOut{to{opacity:0;transform:translateX(30px)}}
+ @keyframes admGlowLine{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+ @keyframes admWiggle{0%,100%{transform:none}30%{transform:rotate(-14deg) scale(1.15)}60%{transform:rotate(10deg) scale(1.1)}}
+
+ /* Indicateur d'onglet qui glisse */
+ .adm-tabs button{z-index:1;transition:color .3s}
+ .adm-tabs button.on{background:transparent;box-shadow:none}
+ .adm-tabs button:hover svg{animation:admWiggle .5s var(--ease-out,ease)}
+ .adm-ind{position:absolute;z-index:0;top:4px;bottom:4px;left:0;width:0;border-radius:10px;pointer-events:none;
+   background:linear-gradient(120deg,rgba(var(--accent-rgb),.3),rgba(var(--accent-2-rgb),.12));box-shadow:inset 0 0 0 1px rgba(var(--accent-rgb),.45),0 6px 18px -10px var(--accent);
+   transition:transform .55s cubic-bezier(.16,1,.3,1),width .55s cubic-bezier(.16,1,.3,1)}
+ .seg button .ct.pop{animation:admPop .55s cubic-bezier(.16,1,.3,1)}
+ @keyframes admZoomIn{from{opacity:0;transform:scale(.94);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}
+ @keyframes admTabPop{0%{transform:scale(.88)}55%{transform:scale(1.1)}100%{transform:scale(1)}}
+ .adm-panel.enter{animation:admZoomIn .6s cubic-bezier(.16,1,.3,1) both;transform-origin:50% 0}
+ .adm-tabs button.on{animation:admTabPop .5s cubic-bezier(.34,1.56,.64,1)}
+ .adm-ind{overflow:hidden}
+ .adm-ind::after{content:'';position:absolute;top:0;bottom:0;left:-70%;width:45%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.25),transparent);transform:skewX(-20deg);animation:fxShine 4s ease-in-out infinite}
+
+ /* Entree des panneaux et des cartes */
+ .adm-panel.enter > *, .adm-panel.enter .adm-cols > *{animation:admRise .7s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(var(--d,0) * 90ms)}
+ .kpi{transition:transform .4s cubic-bezier(.16,1,.3,1),border-color .3s,box-shadow .3s}
+ .kpi:hover{transform:translateY(-4px);border-color:rgba(var(--accent-rgb),.4);box-shadow:0 18px 40px -22px var(--accent)}
+ .kpi.in{animation:admRise .7s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(var(--i,0) * 70ms)}
+ .kpi .k svg{transition:transform .5s cubic-bezier(.16,1,.3,1)}
+ .kpi:hover .k svg{transform:scale(1.3) rotate(-10deg)}
+ .kpi::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 30%,rgba(var(--line-rgb),.07),transparent 70%);transform:translateX(-100%)}
+ .kpi:hover::after{animation:admGlowLine .9s cubic-bezier(.16,1,.3,1)}
+ .adm-panel .card{transition:border-color .3s,box-shadow .4s,transform .4s cubic-bezier(.16,1,.3,1)}
+ .adm-panel .card:hover{border-color:rgba(var(--accent-rgb),.22);box-shadow:inset 0 1px 0 rgba(var(--line-rgb),.05),0 24px 60px -36px var(--accent)}
+ .card-title .ic{transition:transform .5s cubic-bezier(.16,1,.3,1)}
+ .card:hover .card-title .ic{transform:rotate(-8deg) scale(1.1)}
+
+ /* Lignes de tableau en cascade, flash, sortie */
+ .tbl tbody.anim tr{animation:admRow .5s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(var(--i,0) * 32ms)}
+ .tbl tbody tr.flash{animation:admFlash 1.2s ease-out}
+ .tbl tbody tr.out{animation:admOut .4s cubic-bezier(.65,0,.35,1) forwards}
+ .tbl td .tag{transition:transform .25s,border-color .25s,background .25s}
+ .tbl tr:hover .tag{border-color:rgba(var(--accent-rgb),.35);background:rgba(var(--accent-rgb),.1)}
+ .pill-owned .dot{animation:admPulse 2s ease-in-out infinite}
+ .bar-row{animation:admRise .6s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(var(--i,0) * 60ms)}
+ .bar-row .progress i{transition-delay:calc(var(--i,0) * 60ms + 150ms)}
+ .bar-row:hover .bl span{color:var(--accent-light)}
+ .msg{transition:opacity .4s}
+
+ @media (prefers-reduced-motion:reduce){
+   .adm-panel.enter > *,.adm-panel.enter .adm-cols > *,.kpi.in,.adm-panel.enter,.adm-tabs button.on,.adm-ind::after,.tbl tbody.anim tr,.bar-row,.pill-owned .dot,.seg button .ct.pop{animation:none!important}
+   .adm-ind{transition:none}
+ }
+
  .adm-denied{margin-top:24px;max-width:640px}
  .adm-denied code{font-size:12px;padding:2px 6px;border-radius:6px;background:rgba(var(--line-rgb),.06)}
 </style>
@@ -80,6 +136,7 @@
 
     <div id="adminView" hidden>
       <div class="seg adm-tabs" role="tablist" id="admTabs">
+        <span class="adm-ind" id="admInd" aria-hidden="true"></span>
         <button role="tab" data-tab="stats" class="on"><span data-icon="chart"></span>Vue d'ensemble</button>
         <button role="tab" data-tab="radio"><span data-icon="music"></span>Radio <span class="ct" id="ctSuggestions" hidden></span></button>
         <button role="tab" data-tab="players"><span data-icon="users"></span>Joueurs <span class="ct" id="ctPlayers" hidden></span></button>
@@ -204,18 +261,60 @@
   const emptyRow = (cols, text)=>'<tr class="empty-row"><td colspan="' + cols + '">' + text + '</td></tr>';
   const icon = (n)=>DG.Icon ? DG.Icon(n) : '';
   function setCount(id, text){ const el = document.getElementById(id); if(el) el.textContent = text; }
-  function setBadge(id, n){ const el = document.getElementById(id); if(!el) return; el.textContent = n; el.hidden = !n; }
+  function setBadge(id, n){
+    const el = document.getElementById(id); if(!el) return;
+    if(String(n) !== el.textContent && n){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+    el.textContent = n; el.hidden = !n;
+    requestAnimationFrame(moveInd);
+  }
   function msg(id, ok, text){ document.getElementById(id).innerHTML = '<div class="msg ' + (ok ? 'msg-ok' : 'msg-error') + '">' + escapeHTML(text) + '</div>'; }
+  function toast(text, ok){ if(DG.FX) DG.FX.toast(text, ok ? 'good' : 'bad'); }
+  function celebrate(btn){ if(!DG.FX || !btn) return; const r = btn.getBoundingClientRect(); DG.FX.confetti(r.left + r.width / 2, r.top + r.height / 2); }
+
+  // Fait entrer les lignes d'un tableau en cascade (relance l'animation a chaque rendu)
+  function animRows(id){
+    const tb = document.getElementById(id); if(!tb) return;
+    [...tb.rows].forEach((r, i)=>r.style.setProperty('--i', Math.min(i, 16)));
+    tb.classList.remove('anim'); void tb.offsetWidth; tb.classList.add('anim');
+  }
+  // Fait sortir une ligne (ban / deban) avant de recharger le tableau
+  function rowOut(btn){ const tr = btn.closest('tr'); if(tr) tr.classList.add('out'); return new Promise(r=>setTimeout(r, 380)); }
 
   // Onglets (l'onglet ouvert est garde dans l'URL : admin.html#moderation)
   const tabs = document.querySelectorAll('#admTabs [data-tab]');
+  const ind = document.getElementById('admInd');
+  function moveInd(){
+    const on = document.querySelector('#admTabs button.on');
+    if(!on || !on.offsetWidth) return;
+    ind.style.width = on.offsetWidth + 'px';
+    ind.style.transform = 'translateX(' + on.offsetLeft + 'px)';
+  }
+  window.addEventListener('resize', moveInd);
   function openTab(name){
     if(!document.querySelector('[data-panel="' + name + '"]')) name = 'stats';
     tabs.forEach(t=>{ const on = t.getAttribute('data-tab') === name; t.classList.toggle('on', on); t.setAttribute('aria-selected', on); });
-    document.querySelectorAll('[data-panel]').forEach(p=>{ p.hidden = p.getAttribute('data-panel') !== name; });
+    document.querySelectorAll('[data-panel]').forEach(p=>{
+      const show = p.getAttribute('data-panel') === name;
+      p.hidden = !show;
+      if(!show) return;
+      // Cartes du panneau en cascade, puis lignes des tableaux
+      let d = 0;
+      p.querySelectorAll(':scope > *').forEach(c=>{
+        if(c.classList.contains('adm-cols')) [...c.children].forEach(cc=>cc.style.setProperty('--d', d++));
+        else c.style.setProperty('--d', d++);
+      });
+      p.classList.remove('enter'); void p.offsetWidth; p.classList.add('enter');
+      p.querySelectorAll('tbody[id]').forEach(tb=>animRows(tb.id));
+      p.querySelectorAll('.bar-row').forEach(b=>{ b.style.animation = 'none'; void b.offsetWidth; b.style.animation = ''; });
+      growBars(p);
+    });
     if(location.hash.slice(1) !== name) history.replaceState(null, '', '#' + name);
+    moveInd();
+    const btn = document.querySelector('#admTabs button.on');
+    if(btn && btn.scrollIntoView) btn.scrollIntoView({ block:'nearest', inline:'nearest', behavior:'smooth' });
   }
   tabs.forEach(t=>t.addEventListener('click', ()=>openTab(t.getAttribute('data-tab'))));
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(moveInd);
 
   async function boot(){
     await DG.Auth.init();
@@ -237,22 +336,42 @@
   function bars(rows, label){
     if(!rows.length) return '<div class="empty" style="padding:20px">Pas encore de données.</div>';
     const max = Math.max(...rows.map(r=>r.plays), 1);
-    return rows.map(r=>'<div class="bar-row"><div class="bl"><span>' + escapeHTML(label(r)) + '</span><b>' + fmt(r.plays) + '</b></div>' +
+    return rows.map((r, i)=>'<div class="bar-row" style="--i:' + i + '"><div class="bl"><span>' + escapeHTML(label(r)) + '</span><b>' + fmt(r.plays) + '</b></div>' +
       '<div class="progress"><i style="width:' + (r.plays / max * 100).toFixed(1) + '%"></i></div></div>').join('');
+  }
+
+  // Les barres partent de zero et se remplissent jusqu'a leur valeur
+  function growBars(scope){
+    scope.querySelectorAll('.bar-row .progress i').forEach(i=>{
+      const w = i.dataset.w || (i.dataset.w = i.style.width);
+      i.style.width = '0'; void i.offsetWidth;
+      requestAnimationFrame(()=>{ i.style.width = w; });
+    });
   }
 
   async function loadStats(){
     const { data, error } = await DG.supabase.rpc('admin_stats');
     if(error || !data){ document.getElementById('statGrid').innerHTML = '<div class="msg msg-error">Statistiques indisponibles.</div>'; return; }
     const cells = [
-      ['users', 'Joueurs inscrits', fmt(data.players)], ['spark', 'Nouveaux (7 j)', fmt(data.accounts_last_7d)],
-      ['flag', 'Parties jouées', fmt(data.games_played)], ['clock', 'Temps de jeu', fmt(data.total_playtime_hours) + ' h'],
-      ['trophy', 'Meilleur score', fmt(data.top_score)], ['bulb', 'Suggestions', fmt(data.music_suggestions_pending)],
+      ['users', 'Joueurs inscrits', data.players], ['spark', 'Nouveaux (7 j)', data.accounts_last_7d],
+      ['flag', 'Parties jouées', data.games_played], ['clock', 'Temps de jeu', data.total_playtime_hours, ' h'],
+      ['trophy', 'Meilleur score', data.top_score], ['bulb', 'Suggestions', data.music_suggestions_pending],
     ];
-    document.getElementById('statGrid').innerHTML = cells.map(c=>'<div class="kpi"><div class="k">' + icon(c[0]) + c[1] + '</div><div class="v">' + c[2] + '</div></div>').join('');
+    const grid = document.getElementById('statGrid');
+    // Retire l'animation d'entree une fois finie, sinon elle bloque l'effet de survol
+    grid.addEventListener('animationend', (e)=>{ if(e.target.classList.contains('kpi')) e.target.classList.remove('in'); });
+    grid.innerHTML = cells.map((c, i)=>'<div class="kpi in" style="--i:' + i + '"><div class="k">' + icon(c[0]) + c[1] + '</div><div class="v">0' + (c[3]||'') + '</div></div>').join('');
+    // Les chiffres defilent jusqu'a leur valeur
+    grid.querySelectorAll('.kpi .v').forEach((v, i)=>{
+      const c = cells[i], to = Number(c[2]) || 0, suffix = c[3] || '';
+      setTimeout(()=>{
+        if(DG.FX) DG.FX.countUp(v, to, { duration:1400, format:n=>fmt(Math.round(n)) + suffix });
+        else v.textContent = fmt(to) + suffix;
+      }, i * 70 + 150);
+    });
     document.getElementById('carsUsage').innerHTML = bars(data.cars_usage||[], r=>{ const car = DG.carById(r.car_id); return car ? car.name : r.car_id; });
     document.getElementById('routesUsage').innerHTML = bars(data.routes_usage||[], r=>{ const route = DG.routeById(r.route_id); return route ? route.name : r.route_id; });
-    requestAnimationFrame(()=>document.querySelectorAll('.bar-row .progress i').forEach(i=>{ const w = i.style.width; i.style.width = '0'; requestAnimationFrame(()=>{ i.style.width = w; }); }));
+    growBars(document);
   }
 
   async function loadTracks(){
@@ -264,9 +383,12 @@
       '<td>' + (t.active ? '<span class="pill pill-owned"><span class="dot"></span>Active</span>' : '<span class="pill pill-tier">Masquée</span>') + '</td>' +
       '<td class="act"><button class="btn btn-ghost btn-sm" data-toggle="' + t.id + '" data-active="' + t.active + '">' + (t.active?'Masquer':'Réactiver') + '</button></td></tr>'
     )).join('') || emptyRow(4, 'Aucune piste.');
+    animRows('tracksBody');
     document.querySelectorAll('[data-toggle]').forEach(b=>b.addEventListener('click', async ()=>{
       b.classList.add('loading');
-      await DG.supabase.rpc('admin_set_track_active', { p_id: parseInt(b.getAttribute('data-toggle'),10), p_active: b.getAttribute('data-active') !== 'true' });
+      const on = b.getAttribute('data-active') !== 'true';
+      await DG.supabase.rpc('admin_set_track_active', { p_id: parseInt(b.getAttribute('data-toggle'),10), p_active: on });
+      toast(on ? 'Morceau réactivé.' : 'Morceau masqué.', true);
       loadTracks();
     }));
   }
@@ -281,6 +403,7 @@
       '<td>' + (s.link ? '<a href="' + escapeHTML(s.link) + '" target="_blank" rel="noopener">Écouter ↗</a>' : '<span class="muted">—</span>') + '</td>' +
       '<td class="muted">' + escapeHTML(s.submitted_by||'anonyme') + '</td></tr>'
     )).join('') || emptyRow(4, 'Aucune suggestion pour le moment.');
+    animRows('suggestionsBody');
   }
 
   let allPlayers = [];
@@ -290,6 +413,7 @@
       '</td><td class="num">' + (p.best_score!=null ? fmt(p.best_score) : '<span class="muted">—</span>') +
       '</td><td>' + (p.is_admin ? '<span class="pill pill-gold">Admin</span>' : '<span class="muted">Joueur</span>') + '</td><td class="num muted">' + fmtDate(p.created_at) + '</td></tr>'
     )).join('') || emptyRow(6, 'Aucun joueur.');
+    animRows('playersBody');
   }
 
   async function loadPlayers(){
@@ -333,7 +457,12 @@
         '</td><td class="num">' + fmt(g.games) + '</td><td class="num">' + fmt(g.best) + '</td><td class="num muted">' + fmtDateTime(g.last) +
         '</td><td class="act">' + action + '</td></tr>';
     }).join('') || emptyRow(6, 'Aucune partie enregistrée.');
-    document.querySelectorAll('[data-quick-ban]').forEach(btn=>btn.addEventListener('click', ()=>{ btn.classList.add('loading'); banIp(btn.getAttribute('data-quick-ban')); }));
+    animRows('sessionsBody');
+    document.querySelectorAll('[data-quick-ban]').forEach(btn=>btn.addEventListener('click', ()=>{
+      btn.classList.add('loading');
+      const tr = btn.closest('tr'); if(tr) tr.classList.add('flash');
+      banIp(btn.getAttribute('data-quick-ban'));
+    }));
   }
 
   function filterSessions(){
@@ -366,9 +495,12 @@
         '<td>' + (c.active ? '<span class="pill pill-owned"><span class="dot"></span>Actif</span>' : '<span class="pill pill-tier">Désactivé</span>') + '</td>' +
         '<td class="act"><button class="btn btn-ghost btn-sm" data-code-toggle="' + escapeHTML(c.code) + '" data-active="' + c.active + '">' + (c.active?'Désactiver':'Réactiver') + '</button></td></tr>';
     }).join('') || emptyRow(6, 'Aucun code créé.');
+    animRows('codesBody');
     document.querySelectorAll('[data-code-toggle]').forEach(b=>b.addEventListener('click', async ()=>{
       b.classList.add('loading');
-      await DG.supabase.rpc('admin_set_code_active', { p_code: b.getAttribute('data-code-toggle'), p_active: b.getAttribute('data-active') !== 'true' });
+      const on = b.getAttribute('data-active') !== 'true';
+      await DG.supabase.rpc('admin_set_code_active', { p_code: b.getAttribute('data-code-toggle'), p_active: on });
+      toast('Code ' + b.getAttribute('data-code-toggle') + (on ? ' réactivé.' : ' désactivé.'), true);
       loadCodes();
     }));
   }
@@ -384,9 +516,14 @@
         '</td><td class="num muted">' + fmtDate(b.banned_at) + '</td>' +
         '<td class="act"><button class="btn btn-ghost btn-sm" data-unban="' + escapeHTML(b.ip) + '">Débannir</button></td></tr>';
     }).join('') || emptyRow(5, 'Aucune IP bannie.');
+    animRows('bannedIpsBody');
     document.querySelectorAll('[data-unban]').forEach(btn=>btn.addEventListener('click', async ()=>{
       btn.classList.add('loading');
-      await DG.supabase.rpc('admin_unban_ip', { p_ip: btn.getAttribute('data-unban') });
+      const ip = btn.getAttribute('data-unban');
+      const { error } = await DG.supabase.rpc('admin_unban_ip', { p_ip: ip });
+      if(error){ btn.classList.remove('loading'); toast(error.message, false); return; }
+      await rowOut(btn);
+      toast('IP ' + ip + ' débannie.', true);
       loadBannedIps();
     }));
     filterSessions();
@@ -396,8 +533,9 @@
     if(!ip){ msg('banMsg', false, 'L\'IP ne peut pas être vide.'); return; }
     const reason = document.getElementById('banReason').value.trim() || null;
     const { error } = await DG.supabase.rpc('admin_ban_ip', { p_ip: ip, p_reason: reason });
-    if(error){ msg('banMsg', false, error.message); filterSessions(); return; }
+    if(error){ msg('banMsg', false, error.message); toast(error.message, false); filterSessions(); return; }
     msg('banMsg', true, 'IP ' + ip + ' bannie.');
+    toast('IP ' + ip + ' bannie.', true);
     document.getElementById('banIp').value=''; document.getElementById('banReason').value='';
     loadBannedIps();
   }
@@ -417,6 +555,8 @@
     btn.classList.remove('loading');
     if(error){ msg('codeMsg', false, error.message); return; }
     msg('codeMsg', true, 'Code enregistré !');
+    toast('Code ' + code.toUpperCase() + ' enregistré !', true);
+    celebrate(btn);
     document.getElementById('codeCode').value=''; document.getElementById('codeCar').value=''; document.getElementById('codeCredits').value='0'; document.getElementById('codeMax').value='';
     loadCodes();
   });
@@ -435,6 +575,8 @@
       const { error: rpcErr } = await DG.supabase.rpc('admin_add_track', { p_title:title, p_artist: document.getElementById('trArtist').value.trim() || null, p_url: pub.publicUrl });
       if(rpcErr){ msg('uploadMsg', false, rpcErr.message); return; }
       msg('uploadMsg', true, 'Morceau ajouté à la radio !');
+      toast('« ' + title + ' » ajouté à la radio !', true);
+      celebrate(btn);
       document.getElementById('trTitle').value=''; document.getElementById('trArtist').value=''; document.getElementById('trFile').value='';
       loadTracks();
     } finally { btn.classList.remove('loading'); }
