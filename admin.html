@@ -102,7 +102,7 @@
         <h3 style="font-size:18px">🚫 IP bannies</h3>
         <p style="color:var(--text-3);font-size:13px">
           Bloque l'IP au moment de l'envoi du score (submit_run) : plus de crédits ni d'entrée classement pour cette IP.
-          Copie une IP depuis le tableau des parties récentes ci-dessous.
+          Ou clique « Bannir » directement dans le tableau « Joueurs par IP » ci-dessous.
         </p>
         <div id="banMsg"></div>
         <div class="grid grid-auto" style="gap:12px">
@@ -114,13 +114,13 @@
       </div>
 
       <div class="card" style="margin-top:20px">
-        <h3 style="font-size:18px">Parties récentes (avec IP)</h3>
+        <h3 style="font-size:18px">Joueurs par IP</h3>
         <p style="color:var(--text-3);font-size:13px">
-          L'IP est celle déclarée par le navigateur au moment de l'envoi du score — utile pour repérer un joueur qui
-          triche ou multi-compte. Les 100 dernières parties, invités compris.
+          Les 500 dernières parties regroupées par IP (une ligne par IP, invités compris) — utile pour repérer un joueur qui
+          triche ou multi-compte. « Bannir » bannit directement l'IP (avec la raison saisie ci-dessus si remplie).
         </p>
         <input type="text" id="sessionSearch" placeholder="Rechercher un pseudo ou une IP…" style="width:100%;max-width:320px;margin:10px 0;background:var(--card-1);border:1px solid rgba(var(--line-rgb),.12);border-radius:8px;padding:8px 12px;color:inherit;font-family:inherit">
-        <table style="margin-top:6px"><thead><tr><th>Date</th><th>Joueur</th><th>Score</th><th>Voiture</th><th>Route</th><th>IP</th><th></th></tr></thead><tbody id="sessionsBody"></tbody></table>
+        <table style="margin-top:6px"><thead><tr><th>IP</th><th>Pseudos</th><th>Parties</th><th>Meilleur score</th><th>Dernière partie</th><th></th></tr></thead><tbody id="sessionsBody"></tbody></table>
       </div>
     </div>
   </div>
@@ -214,34 +214,50 @@
   });
 
   let allSessions = [];
+  let bannedSet = new Set();
+
+  // Une ligne par IP : pseudos distincts, nb de parties, meilleur score, derniere partie.
+  function groupByIp(list){
+    const map = new Map();
+    for(const s of list){
+      const key = s.ip_address || '';
+      let g = map.get(key);
+      if(!g){ g = { ip: s.ip_address, names: new Set(), games: 0, best: 0, last: s.created_at }; map.set(key, g); }
+      g.names.add(s.username || 'invite');
+      g.games++;
+      if(s.score > g.best) g.best = s.score;
+      if(s.created_at > g.last) g.last = s.created_at;
+    }
+    return [...map.values()].sort((x,y)=> (y.last > x.last) - (y.last < x.last));
+  }
+
   function renderSessions(list){
-    document.getElementById('sessionsBody').innerHTML = list.map(s=>{
-      const car = DG.carById(s.car_id);
-      const route = DG.routeById(s.route_id);
-      return '<tr><td>' + new Date(s.created_at).toLocaleString('fr-FR') + '</td><td>' + escapeHTML(s.username) + '</td><td>' + s.score +
-        '</td><td>' + (car?escapeHTML(car.name):escapeHTML(s.car_id||'—')) + '</td><td>' + (route?escapeHTML(route.name):escapeHTML(s.route_id||'—')) +
-        '</td><td>' + escapeHTML(s.ip_address||'—') +
-        '</td><td>' + (s.ip_address ? '<button class="btn btn-ghost btn-sm" data-quick-ban="' + escapeHTML(s.ip_address) + '">Bannir</button>' : '') + '</td></tr>';
-    }).join('') || '<tr><td colspan="7">Aucune partie enregistrée.</td></tr>';
-    document.querySelectorAll('[data-quick-ban]').forEach(btn=>btn.addEventListener('click', ()=>{
-      document.getElementById('banIp').value = btn.getAttribute('data-quick-ban');
-      document.getElementById('banIp').scrollIntoView({ behavior:'smooth', block:'center' });
-      document.getElementById('banIp').focus();
-    }));
+    document.getElementById('sessionsBody').innerHTML = groupByIp(list).map(g=>{
+      const banned = g.ip && bannedSet.has(g.ip);
+      const action = !g.ip ? '' : banned
+        ? '<span style="color:var(--text-3)">Bannie</span>'
+        : '<button class="btn btn-ghost btn-sm" data-quick-ban="' + escapeHTML(g.ip) + '">Bannir</button>';
+      return '<tr><td>' + escapeHTML(g.ip||'— (sans IP)') + '</td><td>' + escapeHTML([...g.names].join(', ')) +
+        '</td><td>' + g.games + '</td><td>' + g.best + '</td><td>' + new Date(g.last).toLocaleString('fr-FR') +
+        '</td><td>' + action + '</td></tr>';
+    }).join('') || '<tr><td colspan="6">Aucune partie enregistrée.</td></tr>';
+    document.querySelectorAll('[data-quick-ban]').forEach(btn=>btn.addEventListener('click', ()=>banIp(btn.getAttribute('data-quick-ban'))));
   }
 
-  async function loadSessions(){
-    const { data, error } = await DG.supabase.rpc('admin_list_sessions', { p_limit: 100 });
-    allSessions = (!error && data) ? data : [];
-    renderSessions(allSessions);
-  }
-
-  document.getElementById('sessionSearch').addEventListener('input', (e)=>{
-    const q = e.target.value.trim().toLowerCase();
+  function filterSessions(){
+    const q = document.getElementById('sessionSearch').value.trim().toLowerCase();
     renderSessions(!q ? allSessions : allSessions.filter(s=>
       (s.username||'').toLowerCase().includes(q) || (s.ip_address||'').toLowerCase().includes(q)
     ));
-  });
+  }
+
+  async function loadSessions(){
+    const { data, error } = await DG.supabase.rpc('admin_list_sessions', { p_limit: 500 });
+    allSessions = (!error && data) ? data : [];
+    filterSessions();
+  }
+
+  document.getElementById('sessionSearch').addEventListener('input', filterSessions);
 
   const codeCarSelect = document.getElementById('codeCar');
   codeCarSelect.innerHTML += DG.CARS.map(c=>'<option value="' + c.id + '">' + escapeHTML(c.name) + '</option>').join('');
@@ -265,6 +281,7 @@
   async function loadBannedIps(){
     const { data, error } = await DG.supabase.rpc('admin_list_banned_ips');
     const rows = (!error && data) ? data : [];
+    bannedSet = new Set(rows.map(b=>b.ip));
     document.getElementById('bannedIpsBody').innerHTML = rows.map(b=>{
       return '<tr><td>' + escapeHTML(b.ip) + '</td><td>' + escapeHTML(b.reason||'—') + '</td><td>' + escapeHTML(b.banned_by_username||'—') +
         '</td><td>' + new Date(b.banned_at).toLocaleString('fr-FR') + '</td>' +
@@ -274,19 +291,21 @@
       await DG.supabase.rpc('admin_unban_ip', { p_ip: btn.getAttribute('data-unban') });
       loadBannedIps();
     }));
+    filterSessions();
   }
 
-  document.getElementById('btnBanIp').addEventListener('click', async ()=>{
+  async function banIp(ip){
     const msgEl = document.getElementById('banMsg');
-    const ip = document.getElementById('banIp').value.trim();
     if(!ip){ msgEl.innerHTML = '<div class="msg msg-error">L\'IP ne peut pas être vide.</div>'; return; }
     const reason = document.getElementById('banReason').value.trim() || null;
     const { error } = await DG.supabase.rpc('admin_ban_ip', { p_ip: ip, p_reason: reason });
     if(error){ msgEl.innerHTML = '<div class="msg msg-error">' + escapeHTML(error.message) + '</div>'; return; }
-    msgEl.innerHTML = '<div class="msg msg-ok">IP bannie.</div>';
+    msgEl.innerHTML = '<div class="msg msg-ok">IP ' + escapeHTML(ip) + ' bannie.</div>';
     document.getElementById('banIp').value=''; document.getElementById('banReason').value='';
     loadBannedIps();
-  });
+  }
+
+  document.getElementById('btnBanIp').addEventListener('click', ()=>banIp(document.getElementById('banIp').value.trim()));
 
   document.getElementById('btnCreateCode').addEventListener('click', async ()=>{
     const msgEl = document.getElementById('codeMsg');
