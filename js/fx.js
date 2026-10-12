@@ -13,6 +13,8 @@
 
   // ---------- Decor : aurore, grain, progression du scroll ----------
   if(!reduced) el('div', 'fx-aurora').setAttribute('aria-hidden', 'true');
+  // Grille neon en fond (pas sur la page admin, ou elle gene la lecture des tableaux)
+  if(!reduced && !/admin\.html$/.test(location.pathname)) el('div', 'fx-grid').setAttribute('aria-hidden', 'true');
   el('div', 'fx-grain').setAttribute('aria-hidden', 'true');
   const progress = el('div', 'fx-progress');
 
