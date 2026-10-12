@@ -85,17 +85,9 @@
 
  /* Entree des panneaux et des cartes */
  .adm-panel.enter > *, .adm-panel.enter .adm-cols > *{animation:admRise .7s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(var(--d,0) * 90ms)}
- .kpi{transition:transform .4s cubic-bezier(.16,1,.3,1),border-color .3s,box-shadow .3s}
- .kpi:hover{transform:translateY(-4px);border-color:rgba(var(--accent-rgb),.4);box-shadow:0 18px 40px -22px var(--accent)}
  .kpi.in{animation:admRise .7s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(var(--i,0) * 70ms)}
- .kpi .k svg{transition:transform .5s cubic-bezier(.16,1,.3,1)}
- .kpi:hover .k svg{transform:scale(1.3) rotate(-10deg)}
- .kpi::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 30%,rgba(var(--line-rgb),.07),transparent 70%);transform:translateX(-100%)}
- .kpi:hover::after{animation:admGlowLine .9s cubic-bezier(.16,1,.3,1)}
  .adm-panel .card{transition:border-color .3s,box-shadow .4s,transform .4s cubic-bezier(.16,1,.3,1)}
  .adm-panel .card:hover{border-color:rgba(var(--accent-rgb),.22);box-shadow:inset 0 1px 0 rgba(var(--line-rgb),.05),0 24px 60px -36px var(--accent)}
- .card-title .ic{transition:transform .5s cubic-bezier(.16,1,.3,1)}
- .card:hover .card-title .ic{transform:rotate(-8deg) scale(1.1)}
 
  /* Lignes de tableau en cascade, flash, sortie */
  .tbl tbody.anim tr{animation:admRow .5s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(var(--i,0) * 32ms)}

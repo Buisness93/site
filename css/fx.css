@@ -195,6 +195,128 @@ main > .container > .lead{animation-delay:.68s}
 .seg button svg{transition:transform .5s var(--spring)}
 .seg button:hover svg,.seg button.on svg{transform:scale(1.18) rotate(-8deg)}
 
+/* ================= Interface de base : zoom, survols, details vivants ================= */
+@keyframes fxZoomIn{from{opacity:0;transform:translateY(22px) scale(.9);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
+@keyframes fxSweep{from{left:-70%}to{left:140%}}
+@keyframes fxFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes fxSpinIn{from{transform:scale(0) rotate(-200deg);opacity:0}to{transform:none;opacity:1}}
+@keyframes fxRing{0%{box-shadow:0 14px 34px -12px var(--accent),0 0 0 0 rgba(var(--accent-rgb),.55)}100%{box-shadow:0 14px 34px -12px var(--accent),0 0 0 18px rgba(var(--accent-rgb),0)}}
+
+/* Blocs (cartes, tuiles, avantages, badges) : zoom en cascade a l'apparition */
+.fx-zoom:not(.is-in){opacity:0}
+.fx-zoom.is-in{animation:fxZoomIn .9s var(--ease-out) backwards;animation-delay:calc(var(--zi,0) * 90ms + 80ms)}
+
+/* Cartes : lueur au survol, icone de titre qui tourne */
+main .card{transition:border-color .4s,box-shadow .5s,transform .7s var(--ease-out)}
+main .card:not(.fx-tilt):hover{border-color:rgba(var(--accent-rgb),.25);box-shadow:inset 0 1px 0 rgba(var(--line-rgb),.05),0 26px 60px -38px var(--accent)}
+.card-title .ic{transition:transform .55s var(--spring)}
+.card:hover .card-title .ic{transform:rotate(-10deg) scale(1.15)}
+
+/* Tuiles de chiffres : se soulevent + reflet */
+.kpi{transition:transform .5s var(--spring),border-color .3s,box-shadow .4s}
+.kpi:hover{transform:translateY(-5px) scale(1.03);border-color:rgba(var(--accent-rgb),.4);box-shadow:0 20px 44px -24px var(--accent)}
+.kpi::after{content:'';position:absolute;top:0;bottom:0;left:-70%;width:45%;pointer-events:none;background:linear-gradient(100deg,transparent,rgba(var(--line-rgb),.09),transparent);transform:skewX(-20deg)}
+.kpi:hover::after{animation:fxSweep .9s var(--ease-out) forwards}
+.kpi .k svg{transition:transform .5s var(--spring)}
+.kpi:hover .k svg{transform:scale(1.35) rotate(-12deg)}
+
+/* Boutons : icones qui rebondissent */
+.btn svg{transition:transform .5s var(--spring)}
+.btn:hover svg{transform:scale(1.22) rotate(-6deg)}
+.btn-ghost:hover,.btn-soft:hover,.btn-danger:hover{box-shadow:0 12px 30px -16px var(--accent)}
+
+/* Pastilles et badges */
+.pill{transition:transform .4s var(--spring)}
+.pill:hover{transform:scale(1.08)}
+.badge.unlocked{transition:transform .5s var(--spring),border-color .3s,box-shadow .4s}
+.badge.unlocked:hover{transform:translateY(-5px) scale(1.06);box-shadow:0 20px 40px -24px var(--accent)}
+.badge.unlocked:hover .icon{animation:fxFloat 1.4s ease-in-out infinite}
+
+/* Avantages (page compte) */
+.perk .pi{transition:transform .55s var(--spring),box-shadow .3s}
+.perk:hover .pi{transform:scale(1.18) rotate(-10deg);box-shadow:0 10px 26px -10px var(--accent)}
+.perk{transition:transform .45s var(--ease-out)}
+.perk:hover{transform:translateX(4px)}
+
+/* Etats vides : l'icone flotte */
+.empty .ei{animation:fxFloat 3s ease-in-out infinite}
+
+/* Formulaires : le libelle s'allume, le champ grossit legerement */
+.field label{transition:color .25s,letter-spacing .35s var(--ease-out)}
+.field:focus-within label{color:var(--accent-light);letter-spacing:.2em}
+.field input,.field textarea,.field select,.input{transition:border-color .2s,box-shadow .3s,background .2s,transform .45s var(--spring)}
+.field input:focus,.field textarea:focus,.field select:focus,.input:focus{transform:scale(1.015)}
+
+/* Classement : lignes qui glissent et zooment, avatar qui pivote */
+.leaderboard-row{transition:background .25s,border-color .25s,transform .45s var(--spring),box-shadow .35s}
+.leaderboard-row:not(.top3):hover{transform:translateX(6px) scale(1.012);box-shadow:0 14px 34px -22px var(--accent)}
+.leaderboard-row.top3:hover{transform:scale(1.02)}
+.leaderboard-row .av{transition:transform .55s var(--spring)}
+.leaderboard-row:hover .av{transform:rotate(-12deg) scale(1.15)}
+.leaderboard-row .score{transition:transform .45s var(--spring),text-shadow .3s}
+.leaderboard-row:hover .score{transform:scale(1.1);text-shadow:0 0 14px rgba(var(--accent-rgb),.6)}
+
+/* Podium : medailles qui tournent, couronne qui flotte, marches qui se soulevent */
+.podium .medal{animation:fxSpinIn 1s var(--spring) backwards;transition:transform .5s var(--spring);animation-delay:1s}
+.podium .p1 .medal{animation-delay:1.25s}
+.podium .p3 .medal{animation-delay:.85s}
+.pod-crown{animation:fxFloat 2.6s ease-in-out 2s infinite}
+.podium .pod{transition:transform .55s var(--spring),box-shadow .4s}
+.podium .pod:hover{transform:translateY(-8px) scale(1.03);box-shadow:0 -24px 60px -28px rgba(var(--neon-rgb),.8)}
+.podium .pod:hover .medal{transform:scale(1.12) rotate(12deg)}
+
+/* Radio : morceaux qui glissent, bouton lecture qui respire pendant la musique */
+.playlist-row{transition:background .2s,border-color .2s,transform .4s var(--spring)}
+.playlist-row:hover{transform:translateX(6px) scale(1.01)}
+.playlist-row.active{box-shadow:0 12px 30px -20px var(--accent)}
+.transport button{transition:transform .4s var(--spring),border-color .2s,background .2s}
+.transport button:hover{transform:scale(1.1)}
+.transport button.play:hover{transform:scale(1.12)}
+.now:has(.disc.spin) .transport button.play{animation:fxRing 1.6s ease-out infinite}
+.disc{transition:box-shadow .5s,transform .6s var(--spring)}
+.disc:not(.spin):hover{transform:scale(1.05) rotate(-20deg)}
+
+/* Pied de page : liens qui glissent */
+.footer-col a{transition:color .2s,transform .35s var(--spring)}
+.footer-col a:hover{transform:translateX(5px)}
+
+/* ================= Couche "passion" : lumiere, etincelles, energie ================= */
+@keyframes fxGradFlow{0%{background-position:0% 50%}100%{background-position:100% 50%}}
+@keyframes fxBreath{0%,100%{box-shadow:0 14px 34px -14px rgba(var(--accent-rgb),.9),0 0 0 0 rgba(var(--accent-rgb),0),inset 0 1px 0 rgba(255,255,255,.5)}50%{box-shadow:0 18px 44px -12px rgba(var(--accent-rgb),1),0 0 34px -4px rgba(var(--accent-2-rgb),.55),inset 0 1px 0 rgba(255,255,255,.5)}}
+@keyframes fxRays{to{transform:translate(-50%,-50%) rotate(360deg)}}
+@keyframes fxRowSheen{0%,70%{left:-40%}100%{left:130%}}
+@keyframes fxSpark{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0}}
+@keyframes fxDashGlow{0%,100%{box-shadow:0 0 0 rgba(var(--accent-rgb),0)}50%{box-shadow:0 0 12px rgba(var(--accent-rgb),.9)}}
+
+/* Textes irises : les couleurs coulent en continu */
+.grad-text{background-size:220% 100%;animation:fxGradFlow 5s ease-in-out infinite alternate}
+
+/* Bouton principal : halo qui respire */
+.btn-primary:not(:disabled),.nav-cta{animation:fxBreath 3.2s ease-in-out infinite}
+.btn-primary:hover,.nav-cta:hover{animation-play-state:paused}
+
+/* Projecteur qui suit la souris sur toutes les cartes */
+main .card:not(.fx-tilt)::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .45s;
+  background:radial-gradient(520px circle at var(--mx,50%) var(--my,50%),rgba(var(--accent-rgb),.13),transparent 42%)}
+main .card:not(.fx-tilt):hover::after{opacity:1}
+
+/* Etincelles au clic (creees par fx.js) */
+.fx-spark{position:fixed;z-index:9600;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;pointer-events:none;background:var(--c,var(--accent-light));box-shadow:0 0 10px var(--c,var(--accent)),0 0 18px var(--c,var(--accent));animation:fxSpark .65s cubic-bezier(.2,.7,.2,1) forwards}
+
+/* Classement : reflet qui balaie le top 3, rayons derriere le 1er */
+.leaderboard-row.top3{overflow:hidden}
+.leaderboard-row.top3::after{content:'';position:absolute;top:0;bottom:0;left:-40%;width:30%;pointer-events:none;background:linear-gradient(100deg,transparent,rgba(255,255,255,.14),transparent);transform:skewX(-20deg);animation:fxRowSheen 5s ease-in-out infinite}
+.leaderboard-row.rank-2::after{animation-delay:.6s}
+.leaderboard-row.rank-3::after{animation-delay:1.2s}
+.podium .pod{isolation:isolate}
+.podium .pod.p1::before{content:'';position:absolute;left:50%;top:70px;width:420px;height:420px;z-index:-1;pointer-events:none;opacity:.5;
+  background:repeating-conic-gradient(from 0deg,rgba(255,204,0,.22) 0 8deg,transparent 8deg 22deg);
+  -webkit-mask:radial-gradient(circle,#000 10%,transparent 62%);mask:radial-gradient(circle,#000 10%,transparent 62%);
+  transform:translate(-50%,-50%);animation:fxRays 22s linear infinite}
+
+/* Petits details qui vivent */
+.eyebrow span.dash{animation:fxDash 1.1s .55s var(--ease-out) both,fxDashGlow 3s 2s ease-in-out infinite}
+
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
   .fx-aurora,.fx-cursor,.fx-cursor-dot,.fx-particles{display:none}

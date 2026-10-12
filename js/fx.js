@@ -58,8 +58,24 @@
 
   // ---------- Apparitions au scroll + cascades ----------
   const revealIO = 'IntersectionObserver' in window ? new IntersectionObserver((entries)=>{
-    entries.forEach(en=>{ if(en.isIntersecting){ en.target.classList.add('is-in'); revealIO.unobserve(en.target); } });
+    let n = 0;
+    entries.forEach(en=>{
+      if(!en.isIntersecting) return;
+      // Les elements qui entrent ensemble a l'ecran zooment l'un apres l'autre
+      if(en.target.classList.contains('fx-zoom')) en.target.style.setProperty('--zi', n++);
+      en.target.classList.add('is-in'); revealIO.unobserve(en.target);
+    });
   }, { threshold:0.12, rootMargin:'0px 0px -6% 0px' }) : null;
+
+  // Zoom d'apparition automatique sur les blocs de base de toutes les pages
+  const ZOOM_SEL = 'main .card,main .kpi,main .perk,main .badge,main .fx-step';
+  function prepZoom(node){
+    if(node.__fxZoom || reduced) return;
+    if(node.hasAttribute('data-reveal') || node.closest('[data-reveal],[data-stagger],.adm-panel,#viewerModal')) return;
+    node.__fxZoom = true;
+    node.classList.add('fx-zoom');
+    if(revealIO) revealIO.observe(node); else node.classList.add('is-in');
+  }
 
   function prepReveal(node){
     if(node.__fxReveal) return; node.__fxReveal = true;
@@ -102,6 +118,28 @@
     doc.addEventListener('pointerleave', ()=>{ if(current){ resetTilt(current); current = null; } });
   }
   function resetTilt(card){ card.classList.remove('tilting'); card.style.setProperty('--rx', '0deg'); card.style.setProperty('--ry', '0deg'); }
+
+  // ---------- Projecteur sur les cartes + etincelles au clic ----------
+  if(finePointer && !reduced){
+    doc.addEventListener('pointermove', (e)=>{
+      const card = e.target.closest && e.target.closest('main .card:not(.fx-tilt)');
+      if(!card) return;
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+      card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+    }, { passive:true });
+  }
+  const SPARK_SEL = '.btn,.nav-cta,.seg button,.nav-links a,.theme-menu button,.transport button,.playlist-row';
+  if(!reduced) doc.addEventListener('pointerdown', (e)=>{
+    if(!(e.target.closest && e.target.closest(SPARK_SEL))) return;
+    const cols = ['var(--accent-light)', 'var(--accent)', 'var(--accent-2)', '#fff'];
+    for(let i = 0; i < 12; i++){
+      const a = (i / 12) * Math.PI * 2 + Math.random() * 0.4, d = 26 + Math.random() * 34;
+      const sp = el('span', 'fx-spark');
+      sp.style.cssText = 'left:' + e.clientX + 'px;top:' + e.clientY + 'px;--dx:' + (Math.cos(a) * d).toFixed(1) + 'px;--dy:' + (Math.sin(a) * d).toFixed(1) + 'px;--c:' + cols[i % 4];
+      setTimeout(()=>sp.remove(), 700);
+    }
+  }, { passive:true });
 
   // ---------- Boutons magnetiques + ripple ----------
   const MAG_SEL = '.btn-primary:not(.btn-block),.btn-ghost:not(.btn-block),.nav-cta,[data-magnetic]';
@@ -166,6 +204,8 @@
   function scan(scope){
     if(!scope.querySelectorAll) return;
     scope.querySelectorAll('[data-reveal]').forEach(prepReveal);
+    scope.querySelectorAll(ZOOM_SEL).forEach(prepZoom);
+    if(scope.matches && scope.matches(ZOOM_SEL)) prepZoom(scope);
     scope.querySelectorAll(TILT_SEL).forEach(prepTilt);
     if(scope.matches && scope.matches(TILT_SEL)) prepTilt(scope);
   }
