@@ -364,7 +364,42 @@ main .card:not(.now):not(.fx-tilt):hover{border-color:transparent;
   -webkit-mask:linear-gradient(to top,#000 0%,rgba(0,0,0,.6) 45%,transparent 100%);mask:linear-gradient(to top,#000 0%,rgba(0,0,0,.6) 45%,transparent 100%)}
 .fx-grid::after{content:'';position:absolute;left:0;right:0;top:0;height:2px;background:var(--accent);box-shadow:0 0 30px 8px rgba(var(--accent-rgb),.6)}
 
+/* ================= Art : titres devoiles, mots qui eclosent, vitesse, comete ================= */
+@keyframes fxWipe{from{clip-path:inset(-20% 100% -20% 0);transform:translateX(-12px)}to{clip-path:inset(-20% -5% -20% 0);transform:none}}
+@keyframes fxWipeBar{0%{transform:scaleX(0);transform-origin:0 50%}45%{transform:scaleX(1);transform-origin:0 50%}55%{transform:scaleX(1);transform-origin:100% 50%}100%{transform:scaleX(0);transform-origin:100% 50%}}
+@keyframes fxWordIn{from{opacity:0;transform:translateY(.6em) rotateX(-70deg);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
+@keyframes fxStreak{0%{transform:translateX(-30vw) scaleX(.4);opacity:0}10%{opacity:1}100%{transform:translateX(130vw) scaleX(1.4);opacity:0}}
+
+/* Titres de section : un rideau de lumiere passe et devoile le texte */
+.fx-wipe{position:relative}
+.fx-wipe:not(.art-in){opacity:0}
+.fx-wipe.art-in{animation:fxWipe 1.1s cubic-bezier(.77,0,.18,1) backwards}
+.fx-wipe::after{content:'';position:absolute;left:0;right:0;top:8%;bottom:8%;pointer-events:none;transform:scaleX(0);
+  background:linear-gradient(90deg,var(--accent),var(--accent-2));box-shadow:0 0 24px var(--accent),0 0 60px rgba(var(--accent-2-rgb),.5)}
+.fx-wipe.art-in::after{animation:fxWipeBar 1.1s cubic-bezier(.77,0,.18,1)}
+
+/* Paragraphes d'intro : les mots eclosent un par un */
+.fx-words{perspective:600px}
+.fx-words .fx-w{display:inline-block}
+.fx-words:not(.art-in) .fx-w{opacity:0}
+.fx-words.art-in .fx-w{animation:fxWordIn .7s var(--ease-out) backwards;animation-delay:calc(var(--w,0) * 28ms + 150ms)}
+main > .container > .lead.fx-words.art-in .fx-w{animation-delay:calc(var(--w,0) * 28ms + 750ms)}
+
+/* Eyebrows : le texte se decode (fx.js) avec une lueur */
+.fx-decode{font-variant-numeric:tabular-nums}
+.fx-decode.art-in{text-shadow:0 0 14px rgba(var(--accent-rgb),.7)}
+
+/* Traits de vitesse qui traversent le fond */
+.fx-streaks{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;contain:strict}
+.fx-streaks i{position:absolute;left:0;top:var(--top);width:var(--len);height:1px;border-radius:2px;opacity:0;
+  background:linear-gradient(90deg,transparent,rgba(var(--accent-2-rgb),.9),#fff);box-shadow:0 0 8px rgba(var(--accent-2-rgb),.8),0 0 18px rgba(var(--accent-rgb),.5);
+  animation:fxStreak var(--dur) cubic-bezier(.5,0,.6,1) var(--del) infinite}
+.fx-streaks i:nth-child(even){background:linear-gradient(90deg,transparent,rgba(var(--accent-rgb),.9),#fff)}
+
+/* Comete neon qui suit la souris */
+.fx-trail{position:fixed;inset:0;width:100%;height:100%;z-index:8990;pointer-events:none;mix-blend-mode:screen}
+
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
-  .fx-aurora,.fx-grid,.fx-cursor,.fx-cursor-dot,.fx-particles{display:none}
+  .fx-aurora,.fx-grid,.fx-streaks,.fx-trail,.fx-cursor,.fx-cursor-dot,.fx-particles{display:none}
 }

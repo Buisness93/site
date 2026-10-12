@@ -121,6 +121,98 @@
   }
   function resetTilt(card){ card.classList.remove('tilting'); card.style.setProperty('--rx', '0deg'); card.style.setProperty('--ry', '0deg'); }
 
+  // ---------- Art : textes qui se decodent, titres qui se devoilent, mots qui eclosent ----------
+  const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&*+<>/';
+  function scramble(node){
+    // Ne touche qu'aux noeuds texte : les icones et le trait de l'eyebrow restent en place
+    const texts = [];
+    const walk = doc.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    while(walk.nextNode()) if(walk.currentNode.nodeValue.trim()) texts.push({ n:walk.currentNode, v:walk.currentNode.nodeValue });
+    if(!texts.length) return;
+    const dur = 1100, t0 = performance.now();
+    (function step(now){
+      const k = Math.min(1, (now - t0) / dur);
+      texts.forEach(t=>{
+        const fixed = Math.floor(t.v.length * k);
+        let out = t.v.slice(0, fixed);
+        for(let i = fixed; i < t.v.length; i++) out += /\s/.test(t.v[i]) ? t.v[i] : GLYPHS[(Math.random() * GLYPHS.length) | 0];
+        t.n.nodeValue = out;
+      });
+      if(k < 1) requestAnimationFrame(step);
+    })(t0);
+  }
+  function splitWords(node){
+    let i = 0;
+    Array.from(node.childNodes).forEach(c=>{
+      if(c.nodeType === 3){
+        const frag = doc.createDocumentFragment();
+        c.nodeValue.split(/(\s+)/).forEach(w=>{
+          if(!w) return;
+          if(/^\s+$/.test(w)){ frag.appendChild(doc.createTextNode(w)); return; }
+          const sp = doc.createElement('span'); sp.className = 'fx-w'; sp.style.setProperty('--w', i++); sp.textContent = w; frag.appendChild(sp);
+        });
+        node.replaceChild(frag, c);
+      } else if(c.nodeType === 1){ c.classList.add('fx-w'); c.style.setProperty('--w', i++); }
+    });
+  }
+  const artIO = 'IntersectionObserver' in window ? new IntersectionObserver((entries)=>{
+    entries.forEach(en=>{
+      if(!en.isIntersecting) return;
+      const t = en.target; artIO.unobserve(t);
+      if(t.classList.contains('fx-decode')) setTimeout(()=>scramble(t), 500);
+      t.classList.add('art-in');
+    });
+  }, { threshold:0.2 }) : null;
+  function prepArt(scope){
+    if(reduced || !artIO || !scope.querySelectorAll) return;
+    scope.querySelectorAll('main .eyebrow').forEach(e=>{ if(e.__fxArt) return; e.__fxArt = true; e.classList.add('fx-decode'); artIO.observe(e); });
+    scope.querySelectorAll('main .section .h1,main .sec-head .h1,main .h2').forEach(h=>{ if(h.__fxArt) return; h.__fxArt = true; h.classList.add('fx-wipe'); artIO.observe(h); });
+    scope.querySelectorAll('main .lead').forEach(l=>{ if(l.__fxArt || l.closest('.hero-text')) return; l.__fxArt = true; splitWords(l); l.classList.add('fx-words'); artIO.observe(l); });
+  }
+
+  // ---------- Art : traits de vitesse en fond + comete neon qui suit la souris ----------
+  if(!reduced && !/admin\.html$/.test(location.pathname)){
+    const box = el('div', 'fx-streaks'); box.setAttribute('aria-hidden', 'true');
+    for(let i = 0; i < 7; i++){
+      const st = el('i', '', box);
+      st.style.cssText = '--top:' + (8 + Math.random() * 84).toFixed(1) + '%;--dur:' + (5 + Math.random() * 6).toFixed(1) + 's;--del:' + (-Math.random() * 10).toFixed(1) + 's;--len:' + (120 + Math.random() * 220 | 0) + 'px';
+    }
+  }
+  if(finePointer && !reduced){
+    const cv = el('canvas', 'fx-trail'); cv.setAttribute('aria-hidden', 'true');
+    const g = cv.getContext('2d');
+    const pts = [];
+    let dpr = 1, raf = 0;
+    function size(){ dpr = Math.min(2, devicePixelRatio || 1); cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0); }
+    size(); addEventListener('resize', size);
+    const css = getComputedStyle(root);
+    function draw(){
+      raf = 0;
+      g.clearRect(0, 0, innerWidth, innerHeight);
+      const now = performance.now();
+      while(pts.length && now - pts[0].t > 420) pts.shift();
+      if(pts.length > 1){
+        const a = css.getPropertyValue('--accent').trim() || '#8b7cff', b = css.getPropertyValue('--accent-2').trim() || '#5ee7ff';
+        g.lineCap = 'round'; g.lineJoin = 'round';
+        g.shadowBlur = 16; g.shadowColor = a;
+        for(let i = 1; i < pts.length; i++){
+          const life = 1 - (now - pts[i].t) / 420;
+          g.globalAlpha = Math.max(0, life) * .85;
+          g.strokeStyle = i % 2 ? a : b;
+          g.lineWidth = 1 + life * 4;
+          g.beginPath(); g.moveTo(pts[i - 1].x, pts[i - 1].y); g.lineTo(pts[i].x, pts[i].y); g.stroke();
+        }
+        g.globalAlpha = 1;
+      }
+      if(pts.length) raf = requestAnimationFrame(draw);
+    }
+    doc.addEventListener('pointermove', (e)=>{
+      pts.push({ x:e.clientX, y:e.clientY, t:performance.now() });
+      if(pts.length > 40) pts.shift();
+      if(!raf) raf = requestAnimationFrame(draw);
+    }, { passive:true });
+  }
+
   // ---------- Projecteur sur les cartes + etincelles au clic ----------
   if(finePointer && !reduced){
     doc.addEventListener('pointermove', (e)=>{
@@ -207,6 +299,7 @@
     if(!scope.querySelectorAll) return;
     scope.querySelectorAll('[data-reveal]').forEach(prepReveal);
     scope.querySelectorAll(ZOOM_SEL).forEach(prepZoom);
+    prepArt(scope);
     if(scope.matches && scope.matches(ZOOM_SEL)) prepZoom(scope);
     scope.querySelectorAll(TILT_SEL).forEach(prepTilt);
     if(scope.matches && scope.matches(TILT_SEL)) prepTilt(scope);
