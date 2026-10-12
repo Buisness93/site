@@ -24,7 +24,7 @@
  @keyframes czUp{30%{transform:scale(1.08);box-shadow:0 0 40px -4px #4ee39a;border-color:#4ee39a}}
  @keyframes czDown{30%{transform:translateX(-4px);border-color:#ff5a5a}60%{transform:translateX(4px)}}
 
- .cz-tabs{margin-top:26px}
+ .cz-tabs{margin-top:26px;flex-wrap:wrap;overflow:visible}
  .cz-game{display:grid;grid-template-columns:300px minmax(0,1fr);gap:0;margin-top:16px;border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--line);background:linear-gradient(180deg,var(--card-1),var(--card-2))}
  @media (max-width:860px){ .cz-game{grid-template-columns:minmax(0,1fr)} .cz-side{order:2} }
  .cz-side{padding:20px;background:rgba(0,0,0,.25);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
@@ -140,6 +140,78 @@
  .chips button{width:48px;height:48px;border-radius:50%;border:3px dashed rgba(255,255,255,.6);font-family:'Saira Condensed';font-weight:900;font-size:13px;color:#fff;transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
  .chips button.on{transform:translateY(-4px) scale(1.1);box-shadow:0 0 0 2px #fff,0 0 20px var(--accent)}
 
+ /* Cartes (blackjack, hi-lo, baccarat) */
+ .pcard{position:relative;text-align:left;width:86px;height:122px;border-radius:10px;background:linear-gradient(160deg,#ffffff,#e9ecf3);color:#151821;box-shadow:0 10px 24px -8px rgba(0,0,0,.7),inset 0 0 0 1px rgba(0,0,0,.08);
+   display:flex;flex-direction:column;justify-content:space-between;padding:7px 9px;font-family:'Saira Condensed';font-weight:900;flex:0 0 auto;animation:cardIn .5s cubic-bezier(.16,1,.3,1) both}
+ .pcard.red{color:#d21d3a}
+ .pcard .cr{font-size:22px;line-height:1}
+ .pcard .cc{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:40px;pointer-events:none}
+ .pcard .cb{align-self:flex-end;font-size:18px;line-height:1}
+ .pcard.back{background:repeating-linear-gradient(45deg,rgba(var(--accent-rgb),.9) 0 8px,rgba(var(--accent-rgb),.6) 8px 16px);box-shadow:0 10px 24px -8px rgba(0,0,0,.7),inset 0 0 0 4px #fff}
+ .pcard.back *{display:none}
+ .pcard.big{width:128px;height:180px;padding:10px 12px}
+ .pcard.big .cr,.pcard.big .cb{font-size:32px}.pcard.big .cc{font-size:62px}
+ .pcard.mini{width:44px;height:62px;padding:4px 5px;animation:none}
+ .pcard.mini .cr{font-size:13px}.pcard.mini .cc{font-size:18px}.pcard.mini .cb{display:none}
+ @keyframes cardIn{from{opacity:0;transform:translate(60px,-40px) rotate(12deg) scale(.8)}to{opacity:1;transform:none}}
+ .hand{display:flex;gap:-20px;justify-content:center;min-height:126px}
+ .hand .pcard + .pcard{margin-left:-34px}
+ .hand-lbl{display:flex;justify-content:center;align-items:center;gap:10px;margin:10px 0 18px;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-3)}
+ .hand-lbl b{font-family:'Saira Condensed';font-size:20px;letter-spacing:0;color:var(--text-1);padding:2px 10px;border-radius:8px;background:rgba(var(--line-rgb),.08)}
+ .bj-wrap,.bac-wrap{width:100%;max-width:560px;text-align:center}
+ .bj-acts{display:flex;gap:10px;justify-content:center;margin-top:8px}
+ .bj-acts[hidden]{display:none}
+ .bj-out{font-family:'Saira Condensed';font-weight:900;font-size:28px;min-height:36px;letter-spacing:.04em}
+ .bj-out.win{color:var(--good);text-shadow:0 0 20px rgba(78,227,154,.7)}
+ .bj-out.lose{color:#ff6b6b}
+
+ /* Hi-Lo */
+ .hilo-wrap{width:100%;max-width:560px;display:flex;flex-direction:column;align-items:center;gap:16px}
+ .hilo-row{display:flex;align-items:center;gap:18px}
+ .hilo-btn{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:150px;padding:14px 16px;border-radius:14px;border:1px solid var(--line-2);background:var(--glass);color:var(--text-1);font-weight:700;transition:transform .3s cubic-bezier(.34,1.56,.64,1),border-color .2s,box-shadow .2s}
+ .hilo-btn:hover:not(:disabled){transform:translateY(-3px);border-color:rgba(var(--accent-rgb),.6);box-shadow:0 0 20px -6px var(--accent)}
+ .hilo-btn small{font-weight:500;color:var(--text-3);font-size:11.5px}
+ .hilo-btn:disabled{opacity:.4;cursor:not-allowed}
+ .hilo-hist{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:100%}
+ .hilo-mult{font-family:'Saira Condensed';font-weight:900;font-size:30px;color:var(--good);text-shadow:0 0 18px rgba(78,227,154,.6)}
+
+ /* Tower */
+ .tower{display:flex;flex-direction:column-reverse;gap:7px;width:min(460px,100%)}
+ .t-row{display:grid;grid-template-columns:62px repeat(var(--c,3),1fr);gap:7px;align-items:center;opacity:.55;transition:opacity .3s}
+ .t-row.cur{opacity:1}
+ .t-row.done{opacity:.9}
+ .t-row .t-m{font-size:12px;font-weight:700;color:var(--text-3);text-align:right;font-variant-numeric:tabular-nums}
+ .t-row.cur .t-m{color:var(--accent-light)}
+ .t-cell{height:42px;border:0;border-radius:10px;background:linear-gradient(180deg,#2a2f45,#1a1d2c);box-shadow:inset 0 -4px 0 rgba(0,0,0,.35);font-size:20px;transition:transform .25s cubic-bezier(.34,1.56,.64,1),background .2s,box-shadow .2s}
+ .t-row.cur .t-cell:hover:not(:disabled){transform:translateY(-3px);box-shadow:inset 0 -4px 0 rgba(0,0,0,.35),0 0 16px -4px var(--accent)}
+ .t-row.cur .t-cell{background:linear-gradient(180deg,#363c58,#22263a)}
+ .t-cell.safe{background:linear-gradient(180deg,#1f9a62,#0d5c38)!important;box-shadow:0 0 18px -4px #4ee39a;animation:czPop .4s}
+ .t-cell.trap{background:linear-gradient(180deg,#a3182d,#5c0a17)!important;animation:czShake .4s}
+ .t-cell.ghost{opacity:.6}
+
+ /* Slots */
+ .slots{display:flex;flex-direction:column;align-items:center;gap:16px}
+ .reels{display:flex;gap:12px;padding:16px;border-radius:22px;background:linear-gradient(180deg,#1b1e2c,#0d0e16);box-shadow:inset 0 0 0 2px rgba(255,204,0,.35),0 0 40px -12px rgba(255,204,0,.6)}
+ .reel{position:relative;width:104px;height:312px;overflow:hidden;border-radius:14px;background:linear-gradient(180deg,#0b0c12,#1c1f2c 50%,#0b0c12)}
+ .reel::after{content:'';position:absolute;left:0;right:0;top:104px;height:104px;border-top:2px solid rgba(255,204,0,.5);border-bottom:2px solid rgba(255,204,0,.5);pointer-events:none}
+ .reel-strip{position:absolute;left:0;right:0;top:0;will-change:transform}
+ .reel-strip div{height:104px;display:flex;align-items:center;justify-content:center;font-size:56px}
+ .reels.win{animation:slotWin .9s ease-in-out 2}
+ @keyframes slotWin{50%{box-shadow:inset 0 0 0 2px #ffcc00,0 0 70px 0 rgba(255,204,0,.9)}}
+ .slot-pay{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;font-size:12px;color:var(--text-3)}
+ .slot-pay span{padding:4px 8px;border-radius:8px;background:rgba(var(--line-rgb),.05);border:1px solid var(--line)}
+ @media (max-width:640px){ .reel{width:78px;height:234px} .reel::after{top:78px;height:78px} .reel-strip div{height:78px;font-size:42px} }
+
+ /* Baccarat */
+ .bac-zones{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px}
+ .bac-zone{position:relative;padding:14px 8px;border-radius:14px;border:1px dashed rgba(var(--line-rgb),.25);background:rgba(var(--line-rgb),.03);color:var(--text-1);font-family:'Saira Condensed';font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase;transition:transform .25s cubic-bezier(.34,1.56,.64,1),border-color .2s}
+ .bac-zone small{display:block;font-family:'Saira';font-weight:500;font-size:11px;color:var(--text-3);letter-spacing:.04em;text-transform:none}
+ .bac-zone:hover{transform:translateY(-2px);border-color:rgba(var(--accent-rgb),.6)}
+ .bac-zone.win{border-style:solid;border-color:#4ee39a;box-shadow:0 0 24px -6px #4ee39a}
+ .bac-zone .rl-chip{right:8px;top:8px}
+ .bac-hands{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+ .bac-hands .hand .pcard + .pcard{margin-left:-50px}
+
  /* Keno */
  .keno-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px;width:min(560px,100%)}
  .kc{aspect-ratio:1;border:0;border-radius:10px;background:linear-gradient(180deg,#262a3d,#191b29);color:var(--text-2);font-family:'Saira Condensed';font-weight:800;font-size:16px;box-shadow:inset 0 -4px 0 rgba(0,0,0,.35);transition:transform .2s,background .2s,box-shadow .2s}
@@ -161,8 +233,8 @@
   <div class="container" style="padding-top:40px;padding-bottom:70px">
     <div class="eyebrow"><span class="dash"></span>Casino du garage</div>
     <h1 class="h1">Tente ta chance</h1>
-    <p class="lead">Crash, Mines, Dice, Plinko, Limbo, Roulette, Roue, Keno, Pile ou face : mise tes crédits et multiplie-les… ou perds-les.</p>
-    <div class="cz-note"><span data-icon="info"></span>Crédits virtuels du jeu uniquement : aucun argent réel, rien ne s'achète ni ne se retire. Tous les tirages sont faits par le serveur.</div>
+    <p class="lead">Crash, Mines, Dice, Plinko, Limbo, Roulette, Roue, Keno, Pile ou face, Blackjack, Hi-Lo, Tower, Slots, Baccarat : mise tes crédits et multiplie-les… ou perds-les.</p>
+    <div class="cz-note"><span data-icon="info"></span>Crédits virtuels du jeu uniquement : aucun argent réel, rien ne s'achète ni ne se retire. Tous les tirages sont faits par le serveur. Mise de 10 à 10 000 000 crédits, gain maximum 1 milliard par pari.</div>
 
     <div id="gate" class="card gate" hidden>
       <div class="empty" style="padding:20px 10px">
@@ -184,6 +256,11 @@
           <button data-g="wheel"><span data-icon="sun"></span>Roue</button>
           <button data-g="keno"><span data-icon="layers"></span>Keno</button>
           <button data-g="coinflip"><span data-icon="coin"></span>Pile ou face</button>
+          <button data-g="blackjack"><span data-icon="star"></span>Blackjack</button>
+          <button data-g="hilo"><span data-icon="arrow"></span>Hi-Lo</button>
+          <button data-g="tower"><span data-icon="city"></span>Tower</button>
+          <button data-g="slots"><span data-icon="bolt"></span>Slots</button>
+          <button data-g="baccarat"><span data-icon="crown"></span>Baccarat</button>
         </div>
         <div class="cz-bal" id="czBal"><span class="coin"></span><div><small>Solde</small><span id="czBalV">—</span></div></div>
       </div>
@@ -192,7 +269,7 @@
       <div class="cz-game">
         <aside class="cz-side">
           <div class="field" id="betField"><label for="bet">Mise</label>
-            <div class="bet-row"><input type="number" id="bet" min="10" step="10" value="100"><button type="button" data-bet="half">½</button><button type="button" data-bet="double">×2</button><button type="button" data-bet="max">Max</button></div>
+            <div class="bet-row"><input type="number" id="bet" min="10" max="10000000" step="10" value="100"><button type="button" data-bet="half">½</button><button type="button" data-bet="double">×2</button><button type="button" data-bet="max">Max</button></div>
           </div>
 
           <div class="cz-panel" data-panel="crash">
@@ -241,6 +318,30 @@
             <div class="keno-pay" id="kenoPay"></div>
           </div>
 
+          <div class="cz-panel" data-panel="blackjack" hidden>
+            <div class="cz-stat"><span>Blackjack</span><b>paye 3:2</b></div>
+            <div class="cz-stat"><span>Croupier</span><b>tire jusqu'à 17</b></div>
+          </div>
+          <div class="cz-panel" data-panel="hilo" hidden>
+            <div class="cz-stat"><span>Multiplicateur</span><b id="hiloMultV">×1.00</b></div>
+            <div class="cz-stat"><span>Gain si encaissé</span><b id="hiloWinV">—</b></div>
+          </div>
+          <div class="cz-panel" data-panel="tower" hidden>
+            <label style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);margin-bottom:7px">Difficulté</label>
+            <div class="toggle2" id="towerDiff" style="grid-template-columns:1fr 1fr"><button data-d="easy">Facile</button><button data-d="medium" class="on">Moyen</button><button data-d="hard">Difficile</button><button data-d="expert">Expert</button></div>
+            <div class="cz-stat"><span>Multiplicateur actuel</span><b id="towerMultV">×0</b></div>
+            <div class="cz-stat"><span>Étage suivant</span><b id="towerNextV">—</b></div>
+          </div>
+          <div class="cz-panel" data-panel="slots" hidden>
+            <div class="cz-stat"><span>Ligne</span><b>celle du milieu</b></div>
+          </div>
+          <div class="cz-panel" data-panel="baccarat" hidden>
+            <label style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);margin-bottom:9px">Valeur du jeton</label>
+            <div class="chips" id="chips2"></div>
+            <div class="cz-stat"><span>Mise totale</span><b id="bacTotal">0</b></div>
+            <button class="btn btn-ghost btn-sm" id="bacClear" type="button" style="margin-bottom:6px">Retirer les jetons</button>
+          </div>
+
           <button class="btn btn-primary btn-block btn-lg cz-play" id="btnPlay">Jouer</button>
           <button class="btn btn-ghost btn-block" id="btnCash" hidden style="margin-top:10px">Encaisser</button>
           <div class="cz-msg" id="czMsg"></div>
@@ -266,6 +367,38 @@
           <div class="cz-panel" data-panel="wheel" hidden style="width:100%;display:flex;justify-content:center"><div class="wheel-box"><div class="wheel-ptr"></div><canvas id="wheelCv" width="600" height="600"></canvas><div class="wheel-res" id="wheelRes"></div></div></div>
           <div class="cz-panel" data-panel="roulette" hidden style="width:100%"><div class="rl-layout"><div class="wheel-box"><div class="wheel-ptr"></div><canvas id="rlCv" width="600" height="600"></canvas><div class="wheel-res" id="rlRes"></div></div><div class="rl-table" id="rlTable"></div></div></div>
           <div class="cz-panel" data-panel="keno" hidden style="width:100%;display:flex;justify-content:center"><div class="keno-grid" id="kenoGrid"></div></div>
+          <div class="cz-panel bj-wrap" data-panel="blackjack" hidden>
+            <div class="hand" id="bjDealer"></div><div class="hand-lbl">Croupier <b id="bjDT">—</b></div>
+            <div class="bj-out" id="bjOut"></div>
+            <div class="hand-lbl">Toi <b id="bjPT">—</b></div><div class="hand" id="bjPlayer"></div>
+            <div class="bj-acts" id="bjActs" hidden><button class="btn btn-ghost" data-bj="hit">Tirer</button><button class="btn btn-ghost" data-bj="stand">Rester</button><button class="btn btn-ghost" data-bj="double" id="bjDouble">Doubler</button></div>
+          </div>
+          <div class="cz-panel hilo-wrap" data-panel="hilo" hidden>
+            <div class="hilo-mult" id="hiloMult">×1.00</div>
+            <div class="hilo-row">
+              <button class="hilo-btn" data-h="lo" disabled>▼ Plus bas ou égal<small id="hiloLo">—</small></button>
+              <div id="hiloCard"><div class="pcard big back"></div></div>
+              <button class="hilo-btn" data-h="hi" disabled>▲ Plus haut ou égal<small id="hiloHi">—</small></button>
+            </div>
+            <button class="btn btn-ghost btn-sm" data-h="skip" disabled>Passer la carte</button>
+            <div class="hilo-hist" id="hiloHist"></div>
+          </div>
+          <div class="cz-panel" data-panel="tower" hidden style="width:100%;display:flex;justify-content:center"><div class="tower" id="tower"></div></div>
+          <div class="cz-panel slots" data-panel="slots" hidden>
+            <div class="reels" id="reels"><div class="reel"><div class="reel-strip"></div></div><div class="reel"><div class="reel-strip"></div></div><div class="reel"><div class="reel-strip"></div></div></div>
+            <div class="slot-pay"><span>🏎️🏎️🏎️ ×800</span><span>7️⃣7️⃣7️⃣ ×200</span><span>💎💎💎 ×80</span><span>⭐⭐⭐ ×30</span><span>🔔🔔🔔 ×15</span><span>🍋🍋🍋 ×8</span><span>🍒🍒🍒 ×5</span><span>🍒🍒 ×2.6</span></div>
+          </div>
+          <div class="cz-panel bac-wrap" data-panel="baccarat" hidden>
+            <div class="bac-hands">
+              <div><div class="hand-lbl">Joueur <b id="bacPT">—</b></div><div class="hand" id="bacP"></div></div>
+              <div><div class="hand-lbl">Banquier <b id="bacBT">—</b></div><div class="hand" id="bacB"></div></div>
+            </div>
+            <div class="bac-zones">
+              <button class="bac-zone" data-z="player">Joueur<small>×2</small></button>
+              <button class="bac-zone" data-z="tie">Égalité<small>×9</small></button>
+              <button class="bac-zone" data-z="banker">Banquier<small>×1.95</small></button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -293,11 +426,13 @@
   const $ = (id)=>document.getElementById(id);
   const esc = (s)=>String(s == null ? '' : s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const fmt = (n)=>Math.round(n).toLocaleString('fr-FR');
+  const shortNum = (v)=>v >= 1e6 ? +(v / 1e6).toFixed(v % 1e6 ? 1 : 0) + 'M' : v >= 1000 ? +(v / 1000).toFixed(v % 1000 ? 1 : 0) + 'k' : v;
   const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let game = 'crash', busy = false, balance = 0;
-  const GAME_LABEL = { crash:'Crash', mines:'Mines', dice:'Dice', plinko:'Plinko', limbo:'Limbo', roulette:'Roulette', wheel:'Roue', keno:'Keno', coinflip:'Pile ou face' };
-  const PLAY_LABEL = { crash:'Lancer la course', dice:'Lancer le dé', plinko:'Lâcher la bille', limbo:'Jouer', roulette:'Lancer la bille', wheel:'Tourner la roue', keno:'Tirer les numéros', coinflip:'Lancer la pièce' };
+  const MAX_BET = 10000000; // 10 millions par pari (gain plafonne a 1 milliard cote serveur)
+  const GAME_LABEL = { blackjack:'Blackjack', hilo:'Hi-Lo', tower:'Tower', slots:'Slots', baccarat:'Baccarat', crash:'Crash', mines:'Mines', dice:'Dice', plinko:'Plinko', limbo:'Limbo', roulette:'Roulette', wheel:'Roue', keno:'Keno', coinflip:'Pile ou face' };
+  const PLAY_LABEL = { blackjack:'Distribuer', hilo:'Commencer', tower:'Commencer', slots:'Lancer les rouleaux', baccarat:'Distribuer', crash:'Lancer la course', dice:'Lancer le dé', plinko:'Lâcher la bille', limbo:'Jouer', roulette:'Lancer la bille', wheel:'Tourner la roue', keno:'Tirer les numéros', coinflip:'Lancer la pièce' };
 
   // ---------- Solde ----------
   function setBalance(v, anim){
@@ -307,10 +442,10 @@
     if(DG.Economy){ DG.Economy.money = v; DG.Economy._emit(); }
     if(anim && v !== old){ const b = $('czBal'); b.classList.remove('up', 'down'); void b.offsetWidth; b.classList.add(v > old ? 'up' : 'down'); }
   }
-  function bet(){ return Math.max(10, Math.floor(+$('bet').value || 0)); }
+  function bet(){ return Math.max(10, Math.min(MAX_BET, Math.floor(+$('bet').value || 0))); }
   document.querySelectorAll('[data-bet]').forEach(b=>b.addEventListener('click', ()=>{
     const k = b.getAttribute('data-bet'), v = bet();
-    $('bet').value = k === 'half' ? Math.max(10, Math.floor(v / 2)) : k === 'double' ? Math.min(100000, v * 2) : Math.min(100000, balance);
+    $('bet').value = k === 'half' ? Math.max(10, Math.floor(v / 2)) : k === 'double' ? Math.min(MAX_BET, v * 2) : Math.max(10, Math.min(MAX_BET, balance));
     paintCrash();
   }));
   $('bet').addEventListener('input', paintCrash);
@@ -335,10 +470,15 @@
     game = g;
     document.querySelectorAll('#czTabs [data-g]').forEach(b=>b.classList.toggle('on', b.getAttribute('data-g') === g));
     document.querySelectorAll('.cz-panel').forEach(p=>{ p.hidden = p.getAttribute('data-panel') !== g; });
-    $('btnCash').hidden = !(g === 'mines' && mines.round);
-    $('btnPlay').textContent = g === 'mines' ? (mines.round ? 'Partie en cours' : 'Commencer') : PLAY_LABEL[g];
-    $('betField').hidden = g === 'roulette';
-    $('btnPlay').disabled = g === 'mines' && !!mines.round;
+    const ar = activeRound(g);
+    $('btnCash').hidden = !(ar && CASHABLE[g]);
+    $('btnPlay').textContent = ar ? 'Partie en cours' : g === 'mines' ? 'Commencer' : PLAY_LABEL[g];
+    $('betField').hidden = g === 'roulette' || g === 'baccarat';
+    $('btnPlay').disabled = !!ar;
+    $('bet').disabled = !!ar;
+    if(g === 'hilo') paintHilo();
+    if(g === 'tower') paintTower();
+    if(g === 'mines') paintMines();
     say('');
     if(g === 'crash') sizeCrash();
     if(g === 'plinko') drawPlinko();
@@ -350,7 +490,7 @@
 
   $('btnPlay').addEventListener('click', async ()=>{
     if(busy) return;
-    if(game !== 'roulette' && bet() > balance){ say('Crédits insuffisants.', 'lose'); return; }
+    if(game !== 'roulette' && game !== 'baccarat' && bet() > balance){ say('Crédits insuffisants.', 'lose'); return; }
     busy = true; $('btnPlay').disabled = true; say('');
     try {
       if(game === 'crash') await playCrash();
@@ -362,12 +502,17 @@
       else if(game === 'wheel') await playWheel();
       else if(game === 'roulette') await playRoulette();
       else if(game === 'keno') await playKeno();
+      else if(game === 'blackjack') await startBj();
+      else if(game === 'hilo') await startHilo();
+      else if(game === 'tower') await startTower();
+      else if(game === 'slots') await playSlots();
+      else if(game === 'baccarat') await playBaccarat();
     } catch(e){
       say(e.message || 'Erreur', 'lose');
       try { await DG.Auth.refreshProfile(); if(DG.Auth.profile) setBalance(DG.Auth.profile.money); } catch(err){}
     }
     busy = false;
-    $('btnPlay').disabled = game === 'mines' && !!mines.round;
+    $('btnPlay').disabled = !!activeRound(game);
     loadFeed();
   });
 
@@ -513,6 +658,8 @@
     const g = $('minesGrid').getBoundingClientRect(); winFx(res.payout, g.left + g.width / 2, g.top + g.height / 2);
   }
   $('btnCash').addEventListener('click', async ()=>{
+    if(game === 'hilo') return cashHilo();
+    if(game === 'tower') return cashTower();
     const r = mines.round; if(!r || busy || !r.multiplier) return;
     busy = true;
     try { endMines(await rpc('casino_mines_cashout', { p_id:r.id })); } catch(e){ say(e.message, 'lose'); }
@@ -749,11 +896,11 @@
   // =============== ROULETTE ===============
   const RL_ORDER = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
   const RL_RED = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
-  const CHIPS = [10, 50, 100, 500, 1000, 5000];
+  const CHIPS = [10, 100, 1000, 10000, 100000, 1000000];
   const CHIP_COL = ['#5ee7ff', '#4ee39a', '#8b7cff', '#ff7a3d', '#ff3b6b', '#ffcc00'];
   let chip = 100, rlBets = {}, rlRot = 0;
-  $('chips').innerHTML = CHIPS.map((c, i)=>'<button type="button" data-chip="' + c + '" style="background:' + CHIP_COL[i] + '"' + (c === chip ? ' class="on"' : '') + '>' + (c >= 1000 ? c / 1000 + 'k' : c) + '</button>').join('');
-  document.querySelectorAll('[data-chip]').forEach(b=>b.addEventListener('click', ()=>{ chip = +b.getAttribute('data-chip'); document.querySelectorAll('[data-chip]').forEach(x=>x.classList.toggle('on', x === b)); }));
+  $('chips').innerHTML = CHIPS.map((c, i)=>'<button type="button" data-chip="' + c + '" style="background:' + CHIP_COL[i] + '"' + (c === chip ? ' class="on"' : '') + '>' + (c >= 1000000 ? c / 1000000 + 'M' : c >= 1000 ? c / 1000 + 'k' : c) + '</button>').join('');
+  document.querySelectorAll('[data-chip]').forEach(b=>b.addEventListener('click', ()=>{ chip = +b.getAttribute('data-chip'); document.querySelectorAll('[data-chip]').forEach(x=>x.classList.toggle('on', +x.getAttribute('data-chip') === chip)); }));
   function rlCell(key, label, cls, style){ return '<button type="button" class="rl-cell ' + cls + '" data-k="' + key + '"' + (style ? ' style="' + style + '"' : '') + '>' + label + '</button>'; }
   function buildRlTable(){
     let h = rlCell('number:0', '0', 'zero', 'grid-row:1 / span 3;grid-column:1');
@@ -777,7 +924,7 @@
     document.querySelectorAll('#rlTable [data-k]').forEach(c=>{
       const v = rlBets[c.getAttribute('data-k')];
       let chipEl = c.querySelector('.rl-chip');
-      if(v){ if(!chipEl){ chipEl = document.createElement('span'); chipEl.className = 'rl-chip'; c.appendChild(chipEl); } chipEl.textContent = v >= 1000 ? (v / 1000).toFixed(v % 1000 ? 1 : 0) + 'k' : v; }
+      if(v){ if(!chipEl){ chipEl = document.createElement('span'); chipEl.className = 'rl-chip'; c.appendChild(chipEl); } chipEl.textContent = shortNum(v); }
       else if(chipEl) chipEl.remove();
     });
     $('rlTotal').textContent = fmt(rlTotal());
@@ -849,6 +996,307 @@
     setBalance(res.balance, true);
   }
 
+  // =============== PARTIES A ETAPES (generique) ===============
+  const CASHABLE = { mines:true, hilo:true, tower:true };
+  function activeRound(g){ return g === 'mines' ? mines.round : g === 'hilo' ? hilo.round : g === 'tower' ? tower.round : g === 'blackjack' ? bj.round : null; }
+  function lockPlay(){ $('btnPlay').disabled = !!activeRound(game); $('btnPlay').textContent = activeRound(game) ? 'Partie en cours' : (game === 'mines' ? 'Commencer' : PLAY_LABEL[game]); $('bet').disabled = !!activeRound(game); }
+  const SUITS = ['♠', '♥', '♦', '♣'], RANKS = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  function cardHTML(c, cls){
+    if(!c) return '<div class="pcard back ' + (cls || '') + '"></div>';
+    const red = c.s === 1 || c.s === 2;
+    return '<div class="pcard ' + (red ? 'red ' : '') + (cls || '') + '"><span class="cr">' + RANKS[c.r] + '</span><span class="cc">' + SUITS[c.s] + '</span><span class="cb">' + SUITS[c.s] + '</span></div>';
+  }
+
+  // =============== BLACKJACK ===============
+  const bj = { round:null };
+  function bjTotal(cards){ let t = 0, a = 0; cards.forEach(c=>{ if(c.r === 1){ a++; t += 11; } else t += Math.min(10, c.r); }); while(t > 21 && a){ t -= 10; a--; } return t; }
+  async function dealHand(el, cards, from, hiddenSecond){
+    for(let i = from; i < cards.length; i++){
+      el.insertAdjacentHTML('beforeend', cardHTML(hiddenSecond && i === 1 ? null : cards[i]));
+      await sleep(reduced ? 0 : 260);
+    }
+  }
+  async function showBj(res, prev){
+    const P = $('bjPlayer'), D = $('bjDealer');
+    if(!prev){ P.innerHTML = ''; D.innerHTML = ''; $('bjOut').textContent = ''; $('bjOut').className = 'bj-out'; }
+    const pFrom = prev ? prev.player.length : 0;
+    await dealHand(P, res.player, pFrom);
+    $('bjPT').textContent = res.playerTotal != null ? res.playerTotal : bjTotal(res.player);
+    if(!prev){ await dealHand(D, res.done ? res.dealer : [res.dealer[0], null], 0, !res.done); }
+    if(res.done){
+      // retourne la carte cachee puis le croupier tire
+      D.innerHTML = '';
+      await dealHand(D, res.dealer, 0);
+      $('bjDT').textContent = res.dealerTotal;
+      const o = { blackjack:'BLACKJACK ! +' + fmt(res.payout), win:'GAGNÉ +' + fmt(res.payout), push:'ÉGALITÉ · mise rendue', lose:'PERDU', bust:'DÉPASSÉ (' + res.playerTotal + ')' }[res.outcome];
+      $('bjOut').textContent = o; $('bjOut').className = 'bj-out ' + (res.outcome === 'win' || res.outcome === 'blackjack' ? 'win' : res.outcome === 'push' ? '' : 'lose');
+      if(res.payout > res.bet){ const r = $('bjOut').getBoundingClientRect(); winFx(res.payout - (res.outcome === 'push' ? res.bet : 0), r.left + r.width / 2, r.top); }
+      say(o, res.payout > res.bet ? 'win' : res.outcome === 'push' ? '' : 'lose');
+      bj.round = null;
+      if(res.balance != null) setBalance(res.balance, true);
+    } else {
+      $('bjDT').textContent = bjTotal([res.dealer[0]]);
+      bj.round = res;
+    }
+    $('bjActs').hidden = !bj.round;
+    $('bjDouble').disabled = !(bj.round && bj.round.canDouble);
+    lockPlay();
+  }
+  async function startBj(){
+    const b = bet();
+    setBalance(balance - b);
+    const res = await rpc('casino_bj_start', { p_bet:b });
+    await showBj(res, null);
+  }
+  document.querySelectorAll('[data-bj]').forEach(btn=>btn.addEventListener('click', async ()=>{
+    if(!bj.round || busy) return;
+    const act = btn.getAttribute('data-bj');
+    if(act === 'double' && bj.round.bet > balance){ say('Crédits insuffisants pour doubler.', 'lose'); return; }
+    busy = true; $('bjActs').hidden = true;
+    const prev = bj.round;
+    try {
+      if(act === 'double') setBalance(balance - prev.bet);
+      const res = await rpc('casino_bj_action', { p_id:prev.id, p_action:act });
+      await showBj(res, prev);
+    } catch(e){ say(e.message, 'lose'); $('bjActs').hidden = !bj.round; }
+    busy = false; lockPlay(); loadFeed();
+  }));
+
+  // =============== HI-LO ===============
+  const hilo = { round:null };
+  function paintHilo(){
+    const r = hilo.round;
+    const cur = r && r.card ? r.card.r : 0;
+    const pHi = (14 - cur) / 13, pLo = cur / 13;
+    const m = r ? +r.mult : 1;
+    $('hiloMult').textContent = '×' + m.toFixed(2);
+    $('hiloMultV').textContent = '×' + m.toFixed(2);
+    $('hiloWinV').textContent = r && r.wins > 0 ? '+' + fmt(r.bet * m) : '—';
+    $('hiloHi').textContent = r ? (pHi * 100).toFixed(1) + ' % · ×' + (m * 0.99 / pHi).toFixed(2) : '—';
+    $('hiloLo').textContent = r ? (pLo * 100).toFixed(1) + ' % · ×' + (m * 0.99 / pLo).toFixed(2) : '—';
+    document.querySelector('[data-h="hi"]').disabled = !r || pHi >= 1;
+    document.querySelector('[data-h="lo"]').disabled = !r || pLo >= 1;
+    document.querySelector('[data-h="skip"]').disabled = !r;
+    if(game === 'hilo'){
+      $('btnCash').hidden = !r;
+      $('btnCash').disabled = !(r && r.wins > 0);
+      $('btnCash').textContent = r && r.wins > 0 ? 'Encaisser ' + fmt(r.bet * m) : 'Encaisser';
+      lockPlay();
+    }
+  }
+  function showHiloCard(c){ $('hiloCard').innerHTML = cardHTML(c, 'big'); }
+  function showHiloHist(h){ $('hiloHist').innerHTML = (h || []).slice(-12).map(c=>cardHTML(c, 'mini')).join(''); }
+  async function startHilo(){
+    const b = bet();
+    setBalance(balance - b);
+    const res = await rpc('casino_hilo_start', { p_bet:b });
+    hilo.round = res; showHiloCard(res.card); showHiloHist(res.history);
+    say('Plus haut ou plus bas ?');
+    paintHilo();
+  }
+  document.querySelectorAll('[data-h]').forEach(btn=>btn.addEventListener('click', async ()=>{
+    const r = hilo.round; if(!r || busy) return;
+    busy = true;
+    try {
+      const res = await rpc('casino_hilo_guess', { p_id:r.id, p_dir:btn.getAttribute('data-h') });
+      showHiloCard(res.card); showHiloHist(res.history);
+      if(res.lost){
+        hilo.round = null; say('Perdu ! ' + RANKS[res.card.r] + SUITS[res.card.s], 'lose');
+        $('hiloCard').firstElementChild.style.animation = 'czShake .4s';
+        setBalance(res.balance, true);
+      } else {
+        Object.assign(r, { card:res.card, mult:+res.mult, wins:+res.wins, history:res.history });
+        say(res.skipped ? 'Carte passée' : 'Bien vu ! ×' + (+res.mult).toFixed(2), res.skipped ? '' : 'win');
+      }
+    } catch(e){ say(e.message, 'lose'); }
+    busy = false; paintHilo(); loadFeed();
+  }));
+  async function cashHilo(){
+    const r = hilo.round; if(!r || busy || !r.wins) return;
+    busy = true;
+    try {
+      const res = await rpc('casino_hilo_cashout', { p_id:r.id });
+      hilo.round = null;
+      say('Encaissé ×' + (+res.mult).toFixed(2) + ' : +' + fmt(res.payout) + ' crédits', 'win');
+      const c = $('hiloCard').getBoundingClientRect(); winFx(res.payout, c.left + c.width / 2, c.top);
+      setBalance(res.balance, true);
+    } catch(e){ say(e.message, 'lose'); }
+    busy = false; paintHilo(); loadFeed();
+  }
+
+  // =============== TOWER ===============
+  const TOWER = { easy:[4, 1], medium:[3, 1], hard:[2, 1], expert:[3, 2] };
+  const tower = { round:null, diff:'medium' };
+  function towerMult(diff, k){ const [c, b] = TOWER[diff]; return 0.99 * Math.pow(c / (c - b), k); }
+  function buildTower(){
+    const r = tower.round, diff = r ? r.diff : tower.diff, cols = TOWER[diff][0];
+    let h = '';
+    for(let lv = 0; lv < 8; lv++){
+      h += '<div class="t-row" data-lv="' + lv + '" style="--c:' + cols + '"><span class="t-m">×' + towerMult(diff, lv + 1).toFixed(2) + '</span>';
+      for(let c = 0; c < cols; c++) h += '<button type="button" class="t-cell" data-c="' + c + '" disabled></button>';
+      h += '</div>';
+    }
+    $('tower').innerHTML = h;
+    document.querySelectorAll('#tower .t-cell').forEach(b=>b.addEventListener('click', ()=>pickTower(+b.closest('.t-row').getAttribute('data-lv'), +b.getAttribute('data-c'))));
+  }
+  function paintTower(){
+    const r = tower.round, picks = r ? r.picks : [];
+    document.querySelectorAll('#tower .t-row').forEach(row=>{
+      const lv = +row.getAttribute('data-lv');
+      row.classList.toggle('cur', !!r && lv === picks.length);
+      row.classList.toggle('done', lv < picks.length);
+      row.querySelectorAll('.t-cell').forEach(c=>{ c.disabled = !(r && lv === picks.length); });
+    });
+    picks.forEach((c, lv)=>{ const cell = document.querySelector('#tower .t-row[data-lv="' + lv + '"] .t-cell[data-c="' + c + '"]'); if(cell){ cell.classList.add('safe'); cell.textContent = '💎'; } });
+    $('towerMultV').textContent = r && r.mult ? '×' + (+r.mult).toFixed(2) : '×0';
+    $('towerNextV').textContent = r ? '×' + (+r.next).toFixed(2) : '—';
+    document.querySelectorAll('#towerDiff button').forEach(b=>b.disabled = !!r);
+    if(game === 'tower'){
+      $('btnCash').hidden = !r;
+      $('btnCash').disabled = !(r && picks.length);
+      $('btnCash').textContent = r && picks.length ? 'Encaisser ' + fmt(r.bet * r.mult) : 'Encaisser';
+      lockPlay();
+    }
+  }
+  document.querySelectorAll('#towerDiff button').forEach(b=>b.addEventListener('click', ()=>{
+    if(tower.round) return;
+    tower.diff = b.getAttribute('data-d');
+    document.querySelectorAll('#towerDiff button').forEach(x=>x.classList.toggle('on', x === b));
+    buildTower(); paintTower();
+  }));
+  function revealTower(board, picks, lostAt){
+    (board || []).forEach((traps, lv)=>traps.forEach(c=>{
+      const cell = document.querySelector('#tower .t-row[data-lv="' + lv + '"] .t-cell[data-c="' + c + '"]');
+      if(cell){ cell.textContent = '💣'; cell.classList.add('trap'); if(lv !== lostAt) cell.classList.add('ghost'); }
+    }));
+  }
+  async function startTower(){
+    const b = bet();
+    setBalance(balance - b);
+    const res = await rpc('casino_tower_start', { p_bet:b, p_diff:tower.diff });
+    tower.round = { id:res.id, diff:res.diff, picks:[], mult:0, next:+res.next, bet:res.bet };
+    buildTower(); paintTower();
+    say('Monte étage par étage… sans tomber sur un piège');
+  }
+  async function pickTower(lv, col){
+    const r = tower.round; if(!r || busy || lv !== r.picks.length) return;
+    busy = true;
+    try {
+      const res = await rpc('casino_tower_pick', { p_id:r.id, p_col:col });
+      if(res.lost){
+        tower.round = null;
+        revealTower(res.board, res.picks, lv);
+        say('💥 Piège ! Mise perdue', 'lose');
+        setBalance(res.balance, true);
+      } else {
+        r.picks = res.picks;
+        if(res.cashed){ tower.round = null; paintTower(); revealTower(res.board, res.picks, -1); endTower(res); }
+        else { r.mult = +res.mult; r.next = +res.next; say('Étage ' + r.picks.length + ' · ×' + r.mult.toFixed(2), 'win'); }
+      }
+    } catch(e){ say(e.message, 'lose'); }
+    busy = false; paintTower(); loadFeed();
+  }
+  function endTower(res){
+    say('Encaissé ×' + (+res.mult).toFixed(2) + ' : +' + fmt(res.payout) + ' crédits', 'win');
+    const t = $('tower').getBoundingClientRect(); winFx(res.payout, t.left + t.width / 2, t.top);
+    setBalance(res.balance, true);
+  }
+  async function cashTower(){
+    const r = tower.round; if(!r || busy || !r.picks.length) return;
+    busy = true;
+    try { const res = await rpc('casino_tower_cashout', { p_id:r.id }); tower.round = null; paintTower(); revealTower(res.board, r.picks, -1); endTower(res); }
+    catch(e){ say(e.message, 'lose'); }
+    busy = false; paintTower(); loadFeed();
+  }
+  buildTower(); paintTower();
+
+  // =============== SLOTS ===============
+  const SYM = { cherry:'🍒', lemon:'🍋', bell:'🔔', star:'⭐', diamond:'💎', seven:'7️⃣', car:'🏎️' };
+  const SYM_KEYS = Object.keys(SYM);
+  const reelEls = [...document.querySelectorAll('#reels .reel-strip')];
+  function randSym(){ return SYM[SYM_KEYS[Math.floor(Math.random() * SYM_KEYS.length)]]; }
+  reelEls.forEach(st=>{ st.innerHTML = [randSym(), randSym(), randSym()].map(x=>'<div>' + x + '</div>').join(''); });
+  async function playSlots(){
+    const b = bet();
+    setBalance(balance - b);
+    const res = await rpc('casino_slots', { p_bet:b });
+    $('reels').classList.remove('win');
+    const cell = reelEls[0].firstElementChild ? reelEls[0].firstElementChild.offsetHeight : 104;
+    // chaque rouleau : une longue bande qui defile, le symbole tire arrive au milieu
+    await Promise.all(reelEls.map((st, i)=>new Promise(resolve=>{
+      const n = 18 + i * 6;
+      const list = [];
+      for(let k = 0; k < n; k++) list.push(randSym());
+      list.push(randSym(), SYM[res.reels[i]], randSym());
+      st.style.transition = 'none'; st.style.transform = 'translateY(0)';
+      st.innerHTML = list.map(x=>'<div>' + x + '</div>').join('');
+      void st.offsetWidth;
+      const dur = reduced ? 50 : 1200 + i * 450;
+      st.style.transition = 'transform ' + dur + 'ms cubic-bezier(.15,.85,.25,1.04)';
+      st.style.transform = 'translateY(' + (-(list.length - 3) * cell) + 'px)';
+      setTimeout(()=>{
+        // garde seulement les 3 symboles visibles (bande courte entre deux tirages)
+        st.style.transition = 'none'; st.innerHTML = list.slice(-3).map(x=>'<div>' + x + '</div>').join(''); st.style.transform = 'translateY(0)';
+        resolve();
+      }, dur + 40);
+    })));
+    const m = +res.multiplier;
+    if(m > 0){ $('reels').classList.add('win'); const r = $('reels').getBoundingClientRect(); winFx(res.payout, r.left + r.width / 2, r.top + r.height / 2); }
+    say(m > 0 ? '×' + m + ' : +' + fmt(res.payout) + ' crédits' : 'Perdu', m > 0 ? 'win' : 'lose');
+    setBalance(res.balance, true);
+  }
+
+  // =============== BACCARAT ===============
+  let bacBets = { player:0, tie:0, banker:0 };
+  $('chips2').innerHTML = $('chips').innerHTML;
+  document.querySelectorAll('#chips2 [data-chip]').forEach(b=>b.addEventListener('click', ()=>{ chip = +b.getAttribute('data-chip'); document.querySelectorAll('[data-chip]').forEach(x=>x.classList.toggle('on', +x.getAttribute('data-chip') === chip)); }));
+  function bacTotal(){ return bacBets.player + bacBets.tie + bacBets.banker; }
+  function paintBac(){
+    document.querySelectorAll('.bac-zone').forEach(z=>{
+      const v = bacBets[z.getAttribute('data-z')];
+      let c = z.querySelector('.rl-chip');
+      if(v){ if(!c){ c = document.createElement('span'); c.className = 'rl-chip'; z.appendChild(c); } c.textContent = shortNum(v); }
+      else if(c) c.remove();
+    });
+    $('bacTotal').textContent = fmt(bacTotal());
+  }
+  document.querySelectorAll('.bac-zone').forEach(z=>{
+    z.addEventListener('click', ()=>{ if(busy) return; bacBets[z.getAttribute('data-z')] += chip; document.querySelectorAll('.bac-zone').forEach(x=>x.classList.remove('win')); paintBac(); });
+    z.addEventListener('contextmenu', (e)=>{ e.preventDefault(); if(busy) return; bacBets[z.getAttribute('data-z')] = 0; paintBac(); });
+  });
+  $('bacClear').addEventListener('click', ()=>{ if(busy) return; bacBets = { player:0, tie:0, banker:0 }; paintBac(); });
+  async function playBaccarat(){
+    const total = bacTotal();
+    if(!total){ say('Place au moins un jeton (Joueur, Égalité ou Banquier).', 'lose'); return; }
+    if(total > balance){ say('Crédits insuffisants.', 'lose'); return; }
+    setBalance(balance - total);
+    document.querySelectorAll('.bac-zone').forEach(x=>x.classList.remove('win'));
+    const res = await rpc('casino_baccarat', { p_player:bacBets.player, p_banker:bacBets.banker, p_tie:bacBets.tie });
+    const P = $('bacP'), B = $('bacB'); P.innerHTML = ''; B.innerHTML = ''; $('bacPT').textContent = '—'; $('bacBT').textContent = '—';
+    // distribution : joueur, banquier, joueur, banquier, puis troisiemes cartes
+    const order = [[P, res.player[0]], [B, res.banker[0]], [P, res.player[1]], [B, res.banker[1]]];
+    if(res.player[2]) order.push([P, res.player[2]]);
+    if(res.banker[2]) order.push([B, res.banker[2]]);
+    for(const [el, c] of order){ el.insertAdjacentHTML('beforeend', cardHTML(c)); await sleep(reduced ? 0 : 380); }
+    $('bacPT').textContent = res.playerTotal; $('bacBT').textContent = res.bankerTotal;
+    const z = document.querySelector('.bac-zone[data-z="' + res.winner + '"]'); if(z) z.classList.add('win');
+    const net = res.payout - res.total;
+    say({ player:'Le joueur gagne', banker:'Le banquier gagne', tie:'Égalité !' }[res.winner] + ' · ' + (res.payout ? 'gain ' + fmt(res.payout) + ' (' + (net >= 0 ? '+' : '−') + fmt(Math.abs(net)) + ')' : 'perdu'), net > 0 ? 'win' : 'lose');
+    if(net > 0 && z){ const r = z.getBoundingClientRect(); winFx(res.payout, r.left + r.width / 2, r.top); }
+    setBalance(res.balance, true);
+  }
+
+  // Reprend les parties a etapes laissees en cours (rechargement de page)
+  async function resumeStaged(){
+    try {
+      const [b, h, t] = await Promise.all([rpc('casino_round_state', { p_game:'blackjack' }), rpc('casino_round_state', { p_game:'hilo' }), rpc('casino_round_state', { p_game:'tower' })]);
+      if(b){ await showBj(b, null); }
+      if(h){ hilo.round = Object.assign(h, { mult:+h.mult, wins:+h.wins }); showHiloCard(h.card); showHiloHist(h.history); paintHilo(); }
+      if(t){ tower.round = { id:t.id, diff:t.diff, picks:t.picks, mult:+t.mult, next:+t.next, bet:t.bet }; buildTower(); paintTower(); }
+      lockPlay();
+    } catch(e){}
+  }
+
   // =============== FIL DES PARIS ===============
   let feedMode = 'all', lastTop = '';
   async function loadFeed(){
@@ -881,6 +1329,7 @@
     let g = 'crash'; try { g = localStorage.getItem('dg_casino_game') || 'crash'; } catch(e){}
     openGame(GAME_LABEL[g] ? g : 'crash');
     await resumeMines();
+    await resumeStaged();
     loadFeed();
     setInterval(()=>{ if(!document.hidden && !busy) loadFeed(); }, 8000);
   })();
