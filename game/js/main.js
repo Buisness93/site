@@ -136,6 +136,7 @@
     setTimeout(()=>rip.remove(), 700);
   });
 
+  const GOFAST_CAR = 'rs6-abt'; // voiture de mission du go fast (pretee)
   const state = { username:null, selectedCar: DG.defaultCarId, selectedRoute: DG.defaultRouteId, screen:'loading', personalBest:0 };
 
   async function refreshPersonalBest(){
@@ -287,8 +288,8 @@
   function updateDock(){
     const el = document.getElementById('dockSel');
     if(!el) return;
-    const car = DG.carById(state.selectedCar), route = DG.routeById(state.selectedRoute);
-    el.innerHTML = '<b>' + (car ? car.brand + ' ' + car.name : '—') + '</b><span>' + (route ? route.name : '') + (state.rp ? ' · 🎭 mode libre' : '') + (state.gofast && !state.rp ? ' · 📦 go fast' : '') + '</span>';
+    const car = DG.carById(state.gofast && !state.rp ? GOFAST_CAR : state.selectedCar), route = DG.routeById(state.selectedRoute);
+    el.innerHTML = '<b>' + (car ? car.brand + ' ' + car.name : '—') + '</b><span>' + (route ? route.name : '') + (state.rp ? ' · 🎭 mode libre' : '') + (state.gofast && !state.rp ? ' · 📦 go fast en RS6' : '') + '</span>';
   }
 
   function statBar(val, color){ return '<div class="stat-bar"><i style="width:' + (val*10) + '%;color:' + color + '"></i></div>'; }
@@ -1686,7 +1687,9 @@
     const rt = DG.routeById(state.selectedRoute);
     if(rt && rt.journey && rt.journey.intro) setTimeout(()=>{ if(engine.playing) popup(rt.journey.intro, '#ffffff', true); }, 3600);
     if(els.journeyChip){ els.journeyChip.classList.add('hidden'); els.journeyChip.innerHTML = ''; }
-    const car = DG.carById(state.selectedCar);
+    const gofast = !!state.gofast && !state.rp;
+    // Go fast : la voiture de mission est toujours l'Audi RS6 ABT (pretee, meme si elle n'est pas debloquee)
+    const car = DG.carById(gofast ? GOFAST_CAR : state.selectedCar) || DG.carById(state.selectedCar);
     els.hudTop.style.display = 'flex'; els.hudBottom.style.display = 'flex';
     show(null);
     _lastScore = 0;
@@ -1695,7 +1698,8 @@
     els.draftBadge.classList.remove('show');
     engine.start(car, state.selectedRoute, state.personalBest, { rp:!!state.rp, gofast:!!state.gofast && !state.rp });
     renderGoFast(null);
-    if(state.gofast && !state.rp) setTimeout(()=>{ if(engine.playing) popup('📦 GO FAST · livre le colis avant la fin du chrono. La BAC te colle : roule vite, nitro pour la semer. Chaque livraison enchaîne un contrat mieux payé.', '#ffcc00', true); }, 3800);
+    if(DG.GameMusic) DG.GameMusic.setMode(gofast ? 'gofast' : 'all');
+    if(gofast) setTimeout(()=>{ if(engine.playing) popup('📦 GO FAST en Audi RS6 ABT · livre le colis avant la fin du chrono. La BAC te colle : roule vite, nitro pour la semer. Chaque livraison enchaîne un contrat mieux payé.', '#ffcc00', true); }, 3800);
     if(state.rp) setTimeout(()=>{ if(engine.playing) popup('🎭 MODE LIBRE · pas de chrono ni de classement : roule, arrête-toi aux stations, fume (F), respecte les gendarmes… un accrochage ne termine pas la balade (3 max)', '#c8b8ff', true); }, 3800);
   }
   els.btnStart.addEventListener('click', startRun);
@@ -1968,13 +1972,35 @@
   }
 
   function wireMusic(){
-    let tracks = [], current = -1, loaded = false;
+    let all = [], tracks = [], current = -1, loaded = false, mode = 'all';
+    const GOFAST_ARTISTS = /werenoi/i; // playlist go fast : morceaux de ces artistes dans la radio
     async function loadTracks(){
       if(loaded || !DG.supabase || !DG.SUPABASE_READY) return;
       loaded = true;
       const { data, error } = await DG.supabase.from('music_tracks').select('*').eq('active', true).order('added_at', { ascending:false });
-      tracks = (!error && data) ? data : [];
+      all = (!error && data) ? data : [];
+      tracks = all;
     }
+    // Go fast : ne joue que la playlist go fast (si elle existe), en ordre aleatoire ;
+    // retour a toute la radio en mode normal.
+    async function setMode(m){
+      await loadTracks();
+      if(m === mode && (m !== 'gofast' || !els.bgAudio.paused)) return;
+      mode = m;
+      if(m === 'gofast'){
+        const gf = all.filter(t=>GOFAST_ARTISTS.test((t.artist || '') + ' ' + (t.title || '')));
+        if(!gf.length){ setTimeout(()=>popup('🎧 Playlist go fast vide : ajoute des sons de Werenoi dans la radio (admin) pour les entendre ici', '#8a8f98'), 6500); tracks = all; return; }
+        tracks = gf.slice().sort(()=>Math.random() - 0.5);
+        playIndex(0);
+        setTimeout(()=>popup('🎧 ' + trackLabel(tracks[current]), '#ffcc00'), 2000);
+      } else {
+        const playing = !els.bgAudio.paused && current !== -1 ? tracks[current] : null;
+        tracks = all;
+        current = playing ? all.indexOf(playing) : -1;
+        renderList();
+      }
+    }
+    DG.GameMusic = { setMode };
     function trackLabel(t){ return t.artist ? (t.title + ' — ' + t.artist) : t.title; }
     function renderList(){
       if(!tracks.length){ els.musicList.innerHTML = '<div class="music-list-empty">Aucune piste</div>'; return; }

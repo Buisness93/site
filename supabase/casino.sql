@@ -290,3 +290,186 @@ as $$
   order by b.created_at desc limit 20;
 $$;
 grant execute on function public.casino_feed() to anon, authenticated;
+
+
+-- ============================================================
+-- JEUX SUPPLEMENTAIRES : Limbo, Pile ou face, Roue, Roulette, Keno
+-- ============================================================
+
+-- ---------- LIMBO : un multiplicateur tombe, il faut qu'il atteigne la cible ----------
+create or replace function public.casino_limbo(p_bet integer, p_target numeric)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_result numeric := least(1000000, greatest(1, floor(0.99 / (1 - random()) * 100) / 100));
+  v_win boolean;
+  v_payout integer := 0;
+  v_balance integer;
+begin
+  p_target := round(coalesce(p_target, 2), 2);
+  if p_target < 1.01 or p_target > 1000000 then raise exception 'Cible entre x1.01 et x1 000 000.'; end if;
+  perform public._casino_take(v_uid, p_bet);
+  v_win := v_result >= p_target;
+  if v_win then v_payout := floor(p_bet * p_target); end if;
+  v_balance := public._casino_settle(v_uid, 'limbo', p_bet, case when v_win then p_target else 0 end, v_payout,
+    jsonb_build_object('result', v_result, 'target', p_target));
+  return jsonb_build_object('result', v_result, 'win', v_win, 'multiplier', p_target, 'payout', v_payout, 'balance', v_balance);
+end;
+$$;
+grant execute on function public.casino_limbo(integer, numeric) to authenticated;
+
+-- ---------- PILE OU FACE : x1.98 ----------
+create or replace function public.casino_coinflip(p_bet integer, p_side text)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_side text := case when random() < 0.5 then 'pile' else 'face' end;
+  v_win boolean;
+  v_payout integer := 0;
+  v_balance integer;
+begin
+  if p_side not in ('pile', 'face') then raise exception 'Choisis pile ou face.'; end if;
+  perform public._casino_take(v_uid, p_bet);
+  v_win := v_side = p_side;
+  if v_win then v_payout := floor(p_bet * 1.98); end if;
+  v_balance := public._casino_settle(v_uid, 'coinflip', p_bet, case when v_win then 1.98 else 0 end, v_payout,
+    jsonb_build_object('side', v_side, 'pick', p_side));
+  return jsonb_build_object('side', v_side, 'win', v_win, 'multiplier', 1.98, 'payout', v_payout, 'balance', v_balance);
+end;
+$$;
+grant execute on function public.casino_coinflip(integer, text) to authenticated;
+
+-- ---------- ROUE : 20 segments, 3 niveaux de risque (retour ~99 %) ----------
+create or replace function public.casino_wheel(p_bet integer, p_risk text)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_seg integer := floor(random() * 20)::integer;
+  v_table numeric[];
+  v_mult numeric;
+  v_payout integer;
+  v_balance integer;
+begin
+  v_table := case coalesce(p_risk, 'medium')
+    when 'low'  then array[1.5,1.2,1.2,0,1.2,1.2,1.2,0,1.2,1.2, 1.5,1.2,1.2,0,1.2,1.2,1.2,0,1.2,1.2]
+    when 'high' then array[0,0,0,0,0,0,0,0,0,9.9, 0,0,0,0,0,0,0,0,0,9.9]
+    else             array[0,1.9,0,1.5,0,2,0,1.5,0,3, 0,1.9,0,1.5,0,2,0,1.5,0,3]
+  end;
+  perform public._casino_take(v_uid, p_bet);
+  v_mult := v_table[v_seg + 1];
+  v_payout := floor(p_bet * v_mult);
+  v_balance := public._casino_settle(v_uid, 'wheel', p_bet, v_mult, v_payout,
+    jsonb_build_object('risk', p_risk, 'segment', v_seg));
+  return jsonb_build_object('segment', v_seg, 'multiplier', v_mult, 'payout', v_payout, 'balance', v_balance);
+end;
+$$;
+grant execute on function public.casino_wheel(integer, text) to authenticated;
+
+-- ---------- ROULETTE europeenne (0 a 36), plusieurs jetons par tour ----------
+-- p_bets = [{"kind":"number","value":17,"amount":50}, {"kind":"red","amount":100}, ...]
+-- kinds : number (x36), red/black/odd/even/low/high (x2), dozen/column value 1..3 (x3)
+create or replace function public.casino_roulette(p_bets jsonb)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_n integer := floor(random() * 37)::integer;
+  v_reds integer[] := array[1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+  v_total integer := 0;
+  v_payout integer := 0;
+  v_b jsonb;
+  v_kind text;
+  v_val integer;
+  v_amt integer;
+  v_win boolean;
+  v_mult numeric;
+  v_balance integer;
+begin
+  if jsonb_typeof(p_bets) <> 'array' or jsonb_array_length(p_bets) = 0 or jsonb_array_length(p_bets) > 40 then
+    raise exception 'Place entre 1 et 40 jetons.';
+  end if;
+  for v_b in select * from jsonb_array_elements(p_bets) loop
+    v_amt := (v_b->>'amount')::integer;
+    if v_amt is null or v_amt < 1 then raise exception 'Jeton invalide.'; end if;
+    v_total := v_total + v_amt;
+  end loop;
+  perform public._casino_take(v_uid, v_total);
+
+  for v_b in select * from jsonb_array_elements(p_bets) loop
+    v_kind := v_b->>'kind'; v_val := (v_b->>'value')::integer; v_amt := (v_b->>'amount')::integer;
+    v_win := case v_kind
+      when 'number' then v_val = v_n
+      when 'red'    then v_n = any(v_reds)
+      when 'black'  then v_n > 0 and not (v_n = any(v_reds))
+      when 'odd'    then v_n > 0 and v_n % 2 = 1
+      when 'even'   then v_n > 0 and v_n % 2 = 0
+      when 'low'    then v_n between 1 and 18
+      when 'high'   then v_n between 19 and 36
+      when 'dozen'  then v_n > 0 and (v_n - 1) / 12 + 1 = v_val
+      when 'column' then v_n > 0 and (v_n - 1) % 3 + 1 = v_val
+      else false
+    end;
+    v_mult := case when v_kind = 'number' then 36 when v_kind in ('dozen', 'column') then 3 else 2 end;
+    if v_win then v_payout := v_payout + floor(v_amt * v_mult); end if;
+  end loop;
+
+  v_balance := public._casino_settle(v_uid, 'roulette', v_total, round(v_payout::numeric / v_total, 4), v_payout,
+    jsonb_build_object('number', v_n, 'bets', p_bets));
+  return jsonb_build_object('number', v_n, 'red', v_n = any(v_reds), 'total', v_total, 'payout', v_payout, 'balance', v_balance);
+end;
+$$;
+grant execute on function public.casino_roulette(jsonb) to authenticated;
+
+-- ---------- KENO : choisis 1 a 10 numeros sur 40, 10 sont tires (retour ~97 %) ----------
+create or replace function public._keno_table(p_n integer)
+returns numeric[]
+language sql immutable
+as $$
+  select case p_n
+    when 1  then array[0, 3.9]
+    when 2  then array[0, 1.6, 6.3]
+    when 3  then array[0, 0, 4.8, 26]
+    when 4  then array[0, 0, 2.1, 11, 36]
+    when 5  then array[0, 0, 0, 7.1, 38, 120]
+    when 6  then array[0, 0, 0, 3.3, 18, 57, 180]
+    when 7  then array[0, 0, 0, 0, 12, 62, 200, 640]
+    when 8  then array[0, 0, 0, 0, 5.8, 31, 98, 310, 1000]
+    when 9  then array[0, 0, 0, 0, 0, 22, 115, 370, 1200, 3800]
+    else         array[0, 0, 0, 0, 0, 11, 58, 180, 590, 1890, 6050]
+  end::numeric[];
+$$;
+
+create or replace function public.casino_keno(p_bet integer, p_picks integer[])
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_n integer;
+  v_draw integer[];
+  v_hits integer;
+  v_mult numeric;
+  v_payout integer;
+  v_balance integer;
+begin
+  select array_agg(distinct x) into p_picks from unnest(p_picks) x where x between 1 and 40;
+  v_n := coalesce(array_length(p_picks, 1), 0);
+  if v_n < 1 or v_n > 10 then raise exception 'Choisis entre 1 et 10 numeros.'; end if;
+  perform public._casino_take(v_uid, p_bet);
+  select array_agg(c) into v_draw from (select c from generate_series(1, 40) c order by random() limit 10) s;
+  select count(*) into v_hits from unnest(p_picks) x where x = any(v_draw);
+  v_mult := (public._keno_table(v_n))[v_hits + 1];
+  v_payout := floor(p_bet * v_mult);
+  v_balance := public._casino_settle(v_uid, 'keno', p_bet, v_mult, v_payout,
+    jsonb_build_object('picks', to_jsonb(p_picks), 'hits', v_hits));
+  return jsonb_build_object('draw', to_jsonb(v_draw), 'hits', v_hits, 'multiplier', v_mult, 'payout', v_payout, 'balance', v_balance);
+end;
+$$;
+grant execute on function public.casino_keno(integer, integer[]) to authenticated;

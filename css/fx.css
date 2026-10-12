@@ -141,14 +141,14 @@ main > .container > .lead{animation-delay:.68s}
 @keyframes fxNavDrop{from{opacity:0;transform:translateY(-14px) scale(.8);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
 @keyframes fxMenuItem{from{opacity:0;transform:translateY(-10px) scale(.84);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
 @keyframes fxIconPop{0%{transform:scale(0) rotate(-40deg)}60%{transform:scale(1.25) rotate(8deg)}100%{transform:none}}
-@keyframes fxShine{0%,55%{left:-70%}100%{left:140%}}
+@keyframes fxShine{0%,55%{transform:translateX(-160%) skewX(-20deg)}100%{transform:translateX(320%) skewX(-20deg)}}
 @keyframes fxDotGlow{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.6);opacity:.6}}
 
 /* Barre de nav : les liens tombent en cascade a l'arrivee, zoom au survol */
 .nav-links > a{animation:fxNavDrop .8s var(--ease-out) both;animation-delay:calc(.55s + var(--i,0) * 70ms);transition:color .25s,transform .45s var(--spring),background .25s}
 .navbar.no-intro .nav-links > a{animation:none}
 .nav-pill{overflow:hidden}
-.nav-pill::after{content:'';position:absolute;top:0;bottom:0;left:-70%;width:45%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.22),transparent);transform:skewX(-20deg);animation:fxShine 4.5s ease-in-out infinite}
+.nav-pill::after{content:'';position:absolute;top:0;bottom:0;left:0;width:45%;will-change:transform;background:linear-gradient(100deg,transparent,rgba(255,255,255,.22),transparent);transform:skewX(-20deg);animation:fxShine 4.5s ease-in-out infinite}
 @media (min-width:901px){
   .nav-links a:hover{transform:scale(1.1)}
   .nav-links a:active{transform:scale(.94)}
@@ -197,7 +197,7 @@ main > .container > .lead{animation-delay:.68s}
 
 /* ================= Interface de base : zoom, survols, details vivants ================= */
 @keyframes fxZoomIn{from{opacity:0;transform:translateY(22px) scale(.9);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
-@keyframes fxSweep{from{left:-70%}to{left:140%}}
+@keyframes fxSweep{from{transform:translateX(-160%) skewX(-20deg)}to{transform:translateX(320%) skewX(-20deg)}}
 @keyframes fxFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 @keyframes fxSpinIn{from{transform:scale(0) rotate(-200deg);opacity:0}to{transform:none;opacity:1}}
 @keyframes fxRing{0%{box-shadow:0 14px 34px -12px var(--accent),0 0 0 0 rgba(var(--accent-rgb),.55)}100%{box-shadow:0 14px 34px -12px var(--accent),0 0 0 18px rgba(var(--accent-rgb),0)}}
@@ -215,7 +215,7 @@ main .card:not(.fx-tilt):hover{border-color:rgba(var(--accent-rgb),.25);box-shad
 /* Tuiles de chiffres : se soulevent + reflet */
 .kpi{transition:transform .5s var(--spring),border-color .3s,box-shadow .4s}
 .kpi:hover{transform:translateY(-5px) scale(1.03);border-color:rgba(var(--accent-rgb),.4);box-shadow:0 20px 44px -24px var(--accent)}
-.kpi::after{content:'';position:absolute;top:0;bottom:0;left:-70%;width:45%;pointer-events:none;background:linear-gradient(100deg,transparent,rgba(var(--line-rgb),.09),transparent);transform:skewX(-20deg)}
+.kpi::after{content:'';position:absolute;top:0;bottom:0;left:0;width:45%;transform:translateX(-160%) skewX(-20deg);pointer-events:none;background:linear-gradient(100deg,transparent,rgba(var(--line-rgb),.09),transparent)}
 .kpi:hover::after{animation:fxSweep .9s var(--ease-out) forwards}
 .kpi .k svg{transition:transform .5s var(--spring)}
 .kpi:hover .k svg{transform:scale(1.35) rotate(-12deg)}
@@ -284,16 +284,15 @@ main .card:not(.fx-tilt):hover{border-color:rgba(var(--accent-rgb),.25);box-shad
 @keyframes fxGradFlow{0%{background-position:0% 50%}100%{background-position:100% 50%}}
 @keyframes fxBreath{0%,100%{box-shadow:0 14px 34px -14px rgba(var(--accent-rgb),.9),0 0 0 0 rgba(var(--accent-rgb),0),inset 0 1px 0 rgba(255,255,255,.5)}50%{box-shadow:0 18px 44px -12px rgba(var(--accent-rgb),1),0 0 34px -4px rgba(var(--accent-2-rgb),.55),inset 0 1px 0 rgba(255,255,255,.5)}}
 @keyframes fxRays{to{transform:translate(-50%,-50%) rotate(360deg)}}
-@keyframes fxRowSheen{0%,70%{left:-40%}100%{left:130%}}
+@keyframes fxRowSheen{0%,70%{transform:translateX(-140%) skewX(-20deg)}100%{transform:translateX(440%) skewX(-20deg)}}
 @keyframes fxSpark{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0}}
 @keyframes fxDashGlow{0%,100%{box-shadow:0 0 0 rgba(var(--accent-rgb),0)}50%{box-shadow:0 0 12px rgba(var(--accent-rgb),.9)}}
 
 /* Textes irises : les couleurs coulent en continu */
-.grad-text{background-size:220% 100%;animation:fxGradFlow 5s ease-in-out infinite alternate}
+main .h1 .grad-text,main .h2 .grad-text{background-size:220% 100%;animation:fxGradFlow 5s ease-in-out infinite alternate}
 
 /* Bouton principal : halo qui respire */
-.btn-primary:not(:disabled),.nav-cta{animation:fxBreath 3.2s ease-in-out infinite}
-.btn-primary:hover,.nav-cta:hover{animation-play-state:paused}
+.btn-primary:not(:disabled),.nav-cta{box-shadow:0 16px 40px -13px rgba(var(--accent-rgb),.95),0 0 26px -8px rgba(var(--accent-2-rgb),.45),inset 0 1px 0 rgba(255,255,255,.5)}
 
 /* Projecteur qui suit la souris sur toutes les cartes */
 main .card:not(.fx-tilt)::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .45s;
@@ -305,7 +304,7 @@ main .card:not(.fx-tilt):hover::after{opacity:1}
 
 /* Classement : reflet qui balaie le top 3, rayons derriere le 1er */
 .leaderboard-row.top3{overflow:hidden}
-.leaderboard-row.top3::after{content:'';position:absolute;top:0;bottom:0;left:-40%;width:30%;pointer-events:none;background:linear-gradient(100deg,transparent,rgba(255,255,255,.14),transparent);transform:skewX(-20deg);animation:fxRowSheen 5s ease-in-out infinite}
+.leaderboard-row.top3::after{content:'';position:absolute;top:0;bottom:0;left:0;width:30%;will-change:transform;pointer-events:none;background:linear-gradient(100deg,transparent,rgba(255,255,255,.14),transparent);transform:skewX(-20deg);animation:fxRowSheen 5s ease-in-out infinite}
 .leaderboard-row.rank-2::after{animation-delay:.6s}
 .leaderboard-row.rank-3::after{animation-delay:1.2s}
 .podium .pod{isolation:isolate}
@@ -322,20 +321,20 @@ main .card:not(.fx-tilt):hover::after{opacity:1}
 @keyframes fxAng{to{--ang:360deg}}
 @keyframes fxNeonOn{0%{opacity:.15;text-shadow:none}8%{opacity:1}10%{opacity:.3}14%{opacity:1}18%{opacity:.5}22%,100%{opacity:1}}
 @keyframes fxNeonBuzz{0%,92%,100%{opacity:1}93%{opacity:.55}94%{opacity:1}96%{opacity:.7}97%{opacity:1}}
-@keyframes fxGridMove{from{background-position:0 0,0 0}to{background-position:0 64px,0 0}}
-@keyframes fxTube{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+@keyframes fxGridMove{from{transform:translate3d(0,-64px,0)}to{transform:translate3d(0,0,0)}}
+@keyframes fxTube{0%,100%{opacity:.55}50%{opacity:1}}
 
 /* Titres : lettres de neon qui s'allument en gresillant, puis bourdonnent de temps en temps */
 main .h1,main .h2{text-shadow:0 0 6px rgba(var(--accent-rgb),.55),0 0 22px rgba(var(--accent-rgb),.4),0 0 48px rgba(var(--accent-2-rgb),.22)}
-main > .container > .h1{animation:fxIntro .9s .58s var(--ease-out) both,fxNeonOn 1.4s .9s linear both,fxNeonBuzz 7s 4s linear infinite}
+main > .container > .h1{will-change:opacity;animation:fxIntro .9s .58s var(--ease-out) both,fxNeonOn 1.4s .9s linear both,fxNeonBuzz 7s 4s linear infinite}
 main .h1 .grad-text,main .h2 .grad-text{text-shadow:none;filter:drop-shadow(0 0 10px rgba(var(--accent-rgb),.65)) drop-shadow(0 0 26px rgba(var(--accent-2-rgb),.35))}
 .eyebrow{text-shadow:0 0 10px rgba(var(--accent-rgb),.45)}
 .brand-name{text-shadow:0 0 12px rgba(var(--accent-rgb),.5);animation:fxNeonBuzz 9s 3s linear infinite}
 
 /* Tube de neon sous la barre de navigation */
 .navbar::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;pointer-events:none;opacity:.85;
-  background:linear-gradient(90deg,transparent,var(--accent),var(--accent-2),var(--accent),transparent,var(--accent-2),transparent);background-size:200% 100%;
-  box-shadow:0 0 12px rgba(var(--accent-rgb),.8),0 0 28px rgba(var(--accent-2-rgb),.35);animation:fxTube 7s linear infinite}
+  background:linear-gradient(90deg,transparent,var(--accent) 25%,var(--accent-2) 50%,var(--accent) 75%,transparent);
+  box-shadow:0 0 12px rgba(var(--accent-rgb),.8),0 0 28px rgba(var(--accent-2-rgb),.35);will-change:opacity;animation:fxTube 4s ease-in-out infinite}
 
 /* Cartes : au survol, une lumiere neon fait le tour de la bordure */
 main .card:not(.now):not(.fx-tilt):hover{border-color:transparent;
@@ -359,9 +358,10 @@ main .card:not(.now):not(.fx-tilt):hover{border-color:transparent;
 /* Grille neon synthwave qui defile en fond, en bas de l'ecran */
 .fx-grid{position:fixed;left:-50%;right:-50%;bottom:0;height:46vh;z-index:0;pointer-events:none;opacity:.22;
   transform:perspective(320px) rotateX(62deg);transform-origin:50% 100%;
-  background-image:linear-gradient(rgba(var(--accent-rgb),.9) 1px,transparent 1px),linear-gradient(90deg,rgba(var(--accent-2-rgb),.7) 1px,transparent 1px);
-  background-size:64px 64px,64px 64px;animation:fxGridMove 2.4s linear infinite;
+  overflow:hidden;contain:strict;
   -webkit-mask:linear-gradient(to top,#000 0%,rgba(0,0,0,.6) 45%,transparent 100%);mask:linear-gradient(to top,#000 0%,rgba(0,0,0,.6) 45%,transparent 100%)}
+.fx-grid::before{content:'';position:absolute;left:0;right:0;top:0;bottom:-64px;will-change:transform;animation:fxGridMove 2.4s linear infinite;
+  background-image:linear-gradient(rgba(var(--accent-rgb),.9) 1px,transparent 1px),linear-gradient(90deg,rgba(var(--accent-2-rgb),.7) 1px,transparent 1px);background-size:64px 64px,64px 64px}
 .fx-grid::after{content:'';position:absolute;left:0;right:0;top:0;height:2px;background:var(--accent);box-shadow:0 0 30px 8px rgba(var(--accent-rgb),.6)}
 
 /* ================= Art : titres devoiles, mots qui eclosent, vitesse, comete ================= */

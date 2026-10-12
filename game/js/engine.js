@@ -699,7 +699,7 @@
     if(this.fx) this.fx.attachPlayer(this._player, car);
     this._player.add(this._headlightTarget);
     this._headlightTarget.position.set(0, 0, -26);
-    this._crash = null;
+    this._crash = null; this._wrecked = false;
     this._countdown = 3.0; this._countStep = 4;
     this._drafting = false;
 
@@ -882,7 +882,7 @@
   GameEngine.prototype.resume = function(){ if(this.playing){ this.paused = false; this._last = performance.now(); if(this.cb.onPauseChange) this.cb.onPauseChange(false); } };
 
   GameEngine.prototype.quit = function(){
-    this.playing = false; this.paused = false; this._crash = null;
+    this.playing = false; this.paused = false; this._crash = null; this._wrecked = false;
     if(this._player){ this.scene.remove(this._player); this._player = null; }
     this._interiorHolder = null;
     this._obstacles.forEach(o=>this.scene.remove(o.mesh)); this._obstacles = [];
@@ -2050,7 +2050,9 @@
       this._armsUpdate(dt);
     }
 
-    let scroll = (this.playing ? this._speed : 7) * dt;
+    // Apres un crash (ecran de fin), le monde est fige : l'epave, les cones et le decor ne glissent plus.
+    // Le defilement lent a 7 ne sert qu'au menu (pas de voiture du joueur en scene).
+    let scroll = (this.playing ? this._speed : (this._wrecked ? 0 : 7)) * dt;
     if(this._crash){
       // Ralenti du crash : le monde freine brutalement, la voiture part en toupie.
       const c = this._crash;
@@ -2995,6 +2997,7 @@
 
   GameEngine.prototype._gameOver = function(){
     this.playing = false;
+    this._wrecked = true;
     const score = this.currentScore();
     const carId = this.car.id, routeId = this.route.id;
     const gf = this._gf;
