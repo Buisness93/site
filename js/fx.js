@@ -9,6 +9,30 @@
   const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
   root.classList.add('fx-ready');
 
+  // ---------- Mode leger ----------
+  // Petites machines (ou deja detectees lentes sur une page precedente) : on coupe
+  // les fonds animes plein ecran. Sinon on mesure la cadence quelques secondes
+  // apres le chargement et on bascule en leger si ca saccade.
+  let lite = false;
+  function goLite(){
+    if(lite) return; lite = true; root.classList.add('fx-lite');
+    try { sessionStorage.setItem('dg-fx-lite', '1'); } catch(e){}
+  }
+  try { if(sessionStorage.getItem('dg-fx-lite') === '1') goLite(); } catch(e){}
+  if((navigator.deviceMemory && navigator.deviceMemory <= 2) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2)) goLite();
+  if(!lite && !reduced){
+    addEventListener('load', ()=>setTimeout(()=>{
+      const times = []; let prev = 0;
+      requestAnimationFrame(function probe(now){
+        if(prev) times.push(now - prev);
+        prev = now;
+        if(times.length < 90 && !doc.hidden) return requestAnimationFrame(probe);
+        times.sort((x, y)=>x - y);
+        if(times.length >= 30 && times[times.length >> 1] > 24) goLite();
+      });
+    }, 1500));
+  }
+
   function el(tag, cls, parent){ const e = doc.createElement(tag); if(cls) e.className = cls; (parent || doc.body).appendChild(e); return e; }
 
   // ---------- Decor : aurore, grain, progression du scroll ----------
@@ -185,28 +209,32 @@
     let dpr = 1, raf = 0;
     function size(){ dpr = Math.min(2, devicePixelRatio || 1); cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0); }
     size(); addEventListener('resize', size);
-    const css = getComputedStyle(root);
+    // Couleurs lues une fois (et au changement de theme), pas a chaque image
+    let ca = '#8b7cff', cb = '#5ee7ff';
+    function colors(){ const css = getComputedStyle(root); ca = css.getPropertyValue('--accent').trim() || ca; cb = css.getPropertyValue('--accent-2').trim() || cb; }
+    colors(); addEventListener('dg:theme', ()=>setTimeout(colors, 0));
+    // Lueur = trait large et transparent sous le trait fin : meme rendu qu'un
+    // shadowBlur, sans le flou gaussien (tres couteux) recalcule a chaque segment.
     function draw(){
       raf = 0;
       g.clearRect(0, 0, innerWidth, innerHeight);
       const now = performance.now();
       while(pts.length && now - pts[0].t > 420) pts.shift();
       if(pts.length > 1){
-        const a = css.getPropertyValue('--accent').trim() || '#8b7cff', b = css.getPropertyValue('--accent-2').trim() || '#5ee7ff';
         g.lineCap = 'round'; g.lineJoin = 'round';
-        g.shadowBlur = 16; g.shadowColor = a;
         for(let i = 1; i < pts.length; i++){
-          const life = 1 - (now - pts[i].t) / 420;
-          g.globalAlpha = Math.max(0, life) * .85;
-          g.strokeStyle = i % 2 ? a : b;
-          g.lineWidth = 1 + life * 4;
-          g.beginPath(); g.moveTo(pts[i - 1].x, pts[i - 1].y); g.lineTo(pts[i].x, pts[i].y); g.stroke();
+          const life = Math.max(0, 1 - (now - pts[i].t) / 420);
+          g.strokeStyle = i % 2 ? ca : cb;
+          g.beginPath(); g.moveTo(pts[i - 1].x, pts[i - 1].y); g.lineTo(pts[i].x, pts[i].y);
+          g.globalAlpha = life * .18; g.lineWidth = 6 + life * 10; g.stroke();
+          g.globalAlpha = life * .85; g.lineWidth = 1 + life * 4; g.stroke();
         }
         g.globalAlpha = 1;
       }
       if(pts.length) raf = requestAnimationFrame(draw);
     }
     doc.addEventListener('pointermove', (e)=>{
+      if(lite) return;
       pts.push({ x:e.clientX, y:e.clientY, t:performance.now() });
       if(pts.length > 40) pts.shift();
       if(!raf) raf = requestAnimationFrame(draw);

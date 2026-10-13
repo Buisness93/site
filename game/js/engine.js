@@ -2,6 +2,19 @@
 // du DOM/HUD au-delà des callbacks fournis — game-ui.js s'occupe de l'affichage.
 (function(){
   window.DG = window.DG || {};
+  // Frequence de l'ecran, mesuree des le chargement (avant que la 3D ne charge le
+  // GPU) : intervalle typique entre deux rAF. Sert de cible a la resolution adaptative.
+  let SCREEN_MS = 0;
+  (function(){
+    const t = []; let p = 0;
+    requestAnimationFrame(function f(n){
+      if(p) t.push(n - p);
+      p = n;
+      if(t.length < 40) return requestAnimationFrame(f);
+      t.sort((a, b)=>a - b);
+      SCREEN_MS = Math.max(6, t[Math.floor(t.length * 0.2)]);
+    });
+  })();
   // Voies de circulation : 4 par defaut, 5 sur les routes qui le demandent
   // (route.lanes, ex. l'A1 italienne). LAST = indice de la voie de droite.
   // Voies : le decor (routes*.js) est dessine pour des voies de 2,2 ; en jeu
@@ -233,7 +246,7 @@
     BEND.value = new T.Vector2(0, 0); DIP.value = new T.Vector3(0, 0, 0); CLIP.value = new T.Vector4(0, 0, 0, -1); CLIPB.value = new T.Vector4(0, 0, 0, 0); WIDE.value = new T.Vector3(4.25, LANE_W, 4.25 * (LANE_W - 1) + SHOULDER);
     this._bendD = 0;
     const renderer = new T.WebGLRenderer({ antialias:true, alpha:true, powerPreference:'high-performance' });
-    renderer.setPixelRatio(Math.min((window.devicePixelRatio||1) < 1.5 ? (window.devicePixelRatio||1) * 1.25 : (window.devicePixelRatio||1), 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 1.5));
     renderer.setSize(w, h);
     renderer.outputEncoding = T.sRGBEncoding;
     renderer.toneMapping = T.ACESFilmicToneMapping;
@@ -242,7 +255,11 @@
     // _castShadows) sur une petite zone qui suit le joueur : peu couteux, mais
     // les voitures sont enfin "posees" sur la route.
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = T.PCFSoftShadowMap;
+    renderer.shadowMap.type = T.PCFShadowMap;
+    // Objets opaques dessines du plus proche au plus lointain (three.js trie d'abord
+    // par shader) : le GPU rejette les pixels caches avant de calculer leur eclairage
+    // PBR, qui est le gros du cout d'une image. Rendu identique.
+    renderer.setOpaqueSort((a, b)=>a.groupOrder - b.groupOrder || a.renderOrder - b.renderOrder || a.z - b.z || a.id - b.id);
     this.container.appendChild(renderer.domElement);
     this.renderer = renderer;
 
@@ -348,13 +365,14 @@
 
     this.fx = DG.GameFX ? new DG.GameFX(this) : null;
     this._routeExtras = [];
-    // Nettete : sur un ecran "1x" on rend un peu plus fin que l'ecran (supersampling
-    // 1.25x, les aretes et le bitume restent nets) ; sur un ecran haute densite on
-    // monte jusqu'a 2x. La resolution adaptative ne descend sous la definition
-    // native de l'ecran qu'en dernier recours (machine vraiment a la peine).
+    // Nettete : definition native sur un ecran "1x" (l'antialiasing suffit), plafonnee
+    // a 1.5x sur un ecran haute densite (au-dela, le cout explose pour un gain
+    // invisible en mouvement). Si la machine ne tient pas la cadence de l'ecran
+    // (60, 120, 144 Hz...), la resolution adaptative peut descendre jusqu'a 0.75x :
+    // quasi invisible en mouvement, et c'est le calcul par pixel qui limite.
     const dpr = window.devicePixelRatio || 1;
-    this._maxPR = Math.min(dpr < 1.5 ? dpr * 1.25 : dpr, 2);
-    this._minPR = Math.min(this._maxPR, Math.max(0.75, Math.min(dpr, 1)));
+    this._maxPR = Math.min(dpr, 1.5);
+    this._minPR = Math.min(this._maxPR, 0.75);
     this._pr = this._maxPR;
     this._frameAvg = 16.7; this._prCheckT = 0; this._prHoldT = 0; this._frameBase = 0;
     this._aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1);
@@ -1954,9 +1972,9 @@
     // apres un long start()/resume() : sans plancher, dt devenait negatif — le
     // decompte remontait et le volant partait tout seul a droite au depart)
     const raw = Math.max(0, now - this._last);
-    // Hors course (menus opaques par-dessus) : 30 fps suffisent largement.
+    // Pas de bride hors course : la scene reste visible derriere les menus, et
+    // un plafond a 30 fps s'y voyait (saccades nettes sur ecran 60/144 Hz).
     const active = this.playing || this._crash;
-    if(!active && raw < 30) return;
     const dt = Math.min(raw/1000, 0.05);
     this._last = now;
     this._lastDt = dt;
@@ -1980,14 +1998,16 @@
   GameEngine.prototype._adaptResolution = function(frameMs){
     if(frameMs > 100 || frameMs < 1) return; // onglet en arriere-plan / image fantome, pas representatif
     this._frameAvg += (frameMs - this._frameAvg) * 0.04;
-    // Cadence de reference = meilleure moyenne observee (intervalle de l'ecran)
-    this._frameBase = this._frameBase ? Math.min(this._frameBase + 0.002, Math.max(6, this._frameAvg)) : Math.max(6, frameMs);
-    if(this._frameAvg < this._frameBase) this._frameBase = Math.max(6, this._frameAvg);
+    // Cadence de reference = frequence de l'ecran (SCREEN_MS, mesuree au chargement)
+    // ou plus court intervalle observe depuis. Avant, c'etait la meilleure *moyenne* :
+    // un jeu qui ne tenait jamais 120 Hz croyait l'ecran a ~80 Hz et ne baissait jamais.
+    this._frameBase = this._frameBase ? Math.min(this._frameBase + 0.001, Math.max(6, frameMs)) : Math.max(6, frameMs);
     this._prCheckT += frameMs;
     this._prHoldT = Math.max(0, this._prHoldT - frameMs);
-    const base = Math.min(16.7, Math.max(this._frameBase, 6.9)), ratio = this._frameAvg / base;
+    const ref = SCREEN_MS ? Math.min(SCREEN_MS, this._frameBase) : this._frameBase;
+    const base = Math.min(16.7, Math.max(ref, 6.9)) * 1.05, ratio = this._frameAvg / base;
     let pr = this._pr;
-    if(this._prCheckT >= 2000 && ratio > 1.35 && pr > this._minPR){
+    if(this._prCheckT >= 2000 && ratio > 1.15 && pr > this._minPR){
       pr = Math.max(this._minPR, pr - 0.15);
       this._prHoldT = 12000;
     } else if(this._prCheckT >= 2000 && ratio > 1.8 && this._frameAvg > 30 && pr > 0.75){

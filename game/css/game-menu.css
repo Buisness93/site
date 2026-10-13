@@ -26,7 +26,7 @@
 
 /* ---------- Dock d'actions colle en bas de l'ecran de choix ---------- */
 .action-dock{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:4px;padding:14px 14px 14px 20px;border-radius:22px;
-  background:linear-gradient(180deg,rgba(18,21,29,.86),rgba(8,9,13,.94));border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  background:linear-gradient(180deg,rgba(18,21,29,.96),rgba(8,9,13,.98));border:1px solid rgba(255,255,255,.1);
   box-shadow:0 -10px 40px -20px #000,0 1px 0 rgba(255,255,255,.07) inset}
 .dock-info{min-width:0}
 .dock-label{font-size:9.5px;letter-spacing:.26em;color:#8a8f98;text-transform:uppercase}
