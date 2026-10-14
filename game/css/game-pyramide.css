@@ -1,0 +1,213 @@
+/* =====================================================================
+   Jeu — theme Pyramide (meme DA que css/pyramide.css du site) : noir mat,
+   or massif, coupes carrees, typo d'affiche. Le neon cyan/rose et la grille
+   synthwave des menus cedent la place a la feuille d'or et a la pyramide.
+   Les objets "reels" (carte bancaire, TPE, pompe, panneaux, PV) ne changent pas.
+   ===================================================================== */
+html[data-theme="pyramide"]{
+  --g:#d4a93c; --g-rgb:212,169,60; --g-deep:#6e4f12; --g-light:#f4dfa0; --cream:#efe9dc;
+  --display:'Anton','Saira Condensed',sans-serif;
+  --foil:linear-gradient(105deg,#7a5a17 0%,#d4a93c 16%,#fff1c1 30%,#d4a93c 44%,#8d6a1c 60%,#e9c867 78%,#7a5a17 100%);
+  --hair:rgba(212,169,60,.24);
+  --slab:linear-gradient(180deg,#100e0a,#060605);
+  --corners:
+    linear-gradient(var(--g),var(--g)) left top/14px 1px no-repeat,
+    linear-gradient(var(--g),var(--g)) left top/1px 14px no-repeat,
+    linear-gradient(var(--g),var(--g)) right top/14px 1px no-repeat,
+    linear-gradient(var(--g),var(--g)) right top/1px 14px no-repeat,
+    linear-gradient(var(--g),var(--g)) left bottom/14px 1px no-repeat,
+    linear-gradient(var(--g),var(--g)) left bottom/1px 14px no-repeat,
+    linear-gradient(var(--g),var(--g)) right bottom/14px 1px no-repeat,
+    linear-gradient(var(--g),var(--g)) right bottom/1px 14px no-repeat;
+}
+@keyframes pyrFoil{from{background-position:0% 50%}to{background-position:-250% 50%}}
+html[data-theme="pyramide"],html[data-theme="pyramide"] body{background:#050505}
+html[data-theme="pyramide"] ::selection{background:var(--g);color:#0a0804}
+
+/* ---------- Coupes carrees sur toute l'interface (les objets reels et les anneaux restent ronds) ---------- */
+html[data-theme="pyramide"] :is(.overlay:not(.toll-overlay),.topbar,.bottombar,.gf-hud,.journey-chip,.alert-chip) :not(.dc-ring):not(.dc-ring *):not(.route-check):not(.ui-ripple):not(.rw-sign):not(.rw-sign *):not(.rw-speed),
+html[data-theme="pyramide"] :is(.overlay:not(.toll-overlay),.topbar,.bottombar,.gf-hud,.journey-chip,.alert-chip,.multiplier-badge,.record-flash,.draft-badge){border-radius:0!important}
+
+/* ---------- Titres d'affiche ---------- */
+html[data-theme="pyramide"] .pyr-title{font-family:var(--display)!important;font-weight:400!important;letter-spacing:.02em!important;line-height:.9}
+html[data-theme="pyramide"] #ovChoosing .pyr-title{font-size:clamp(34px,5.4vw,64px)!important}
+html[data-theme="pyramide"] .pyr-over{font-size:clamp(46px,8vw,96px)!important;background:var(--foil);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:pyrFoil 9s linear infinite}
+html[data-theme="pyramide"] .pyr-kicker{color:var(--g)!important;letter-spacing:.42em!important;display:flex;align-items:center;gap:10px}
+html[data-theme="pyramide"] .pyr-kicker::before{content:'';width:11px;height:10px;flex:0 0 auto;background:var(--g);clip-path:polygon(50% 0,100% 100%,0 100%)}
+html[data-theme="pyramide"] #ovLoading img{filter:none!important}
+html[data-theme="pyramide"] #ovLoading .pyr-title{font-size:30px!important;letter-spacing:.14em!important;background:var(--foil);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:pyrFoil 4s linear infinite}
+html[data-theme="pyramide"] .load-bar i{background:linear-gradient(90deg,transparent,var(--g),transparent)}
+
+/* ---------- Fond des menus : projecteur dore + pyramide monumentale (remplace aurore et grille neon) ---------- */
+html[data-theme="pyramide"] .overlay:not(.toll-overlay){background:radial-gradient(60% 50% at 50% -6%,rgba(var(--g-rgb),.14),transparent 70%),rgba(5,5,5,.97)}
+html[data-theme="pyramide"] .overlay:not(.toll-overlay)::before{inset:0;animation:none;opacity:.07;background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+html[data-theme="pyramide"] .overlay:not(.toll-overlay)::after{left:50%;right:auto;width:min(1240px,140vw);height:60vh;transform:translateX(-50%);opacity:.08;animation:none;
+  background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 560' fill='none' stroke='%23d4a93c' stroke-width='1.4'><path d='M500 30 L60 540 L640 540 Z M500 30 L940 470 L640 540'/><path stroke-width='.8' d='M388 160 H536 M276 290 H571 M163 420 H607 M536 160 L630 160 M571 290 L760 290 M607 420 L890 420'/><path stroke-width='.6' stroke-dasharray='4 8' d='M500 30 L500 540'/></svg>") center bottom/contain no-repeat;
+  -webkit-mask:linear-gradient(to top,transparent 0%,#000 22%);mask:linear-gradient(to top,transparent 0%,#000 22%)}
+html[data-theme="pyramide"] #ovOver{background:radial-gradient(circle at 50% 30%,color-mix(in srgb,var(--flash-color,#d4a93c) 14%,#070605) 0%,#050505 72%)}
+
+/* ---------- Panneaux et cartes : noir mat, equerres d'or ---------- */
+html[data-theme="pyramide"] .panel,html[data-theme="pyramide"] .crate-panel{background:var(--corners),var(--slab);border:1px solid rgba(255,244,214,.08);box-shadow:0 30px 80px -40px #000}
+html[data-theme="pyramide"] .overlay:not(.hidden) .panel{animation:panelIn .7s var(--ease-out) both}
+html[data-theme="pyramide"] .panel input{background:#050505;border-color:rgba(255,244,214,.16)}
+html[data-theme="pyramide"] .panel input:focus{border-color:var(--g);box-shadow:0 0 0 1px var(--g)}
+html[data-theme="pyramide"] #ovChoosing .wide-panel > div:first-child > div:last-child > div:first-child{background:transparent!important;border-color:var(--hair)!important}
+html[data-theme="pyramide"] #pilotName{font-family:var(--display)!important;font-weight:400!important;letter-spacing:.04em}
+html[data-theme="pyramide"] .section-label{color:var(--g);letter-spacing:.36em;text-shadow:none}
+html[data-theme="pyramide"] .section-label::after{background:linear-gradient(90deg,var(--hair),transparent);box-shadow:none}
+
+/* Cartes de voiture */
+html[data-theme="pyramide"] .car-card{background:var(--corners),var(--slab);border-color:rgba(255,244,214,.08)}
+html[data-theme="pyramide"] .car-card .name{font-family:var(--display);font-weight:400;font-size:23px;letter-spacing:.02em}
+html[data-theme="pyramide"] .car-card .score-mult{color:var(--g);background:transparent;border-color:rgba(var(--g-rgb),.5)}
+html[data-theme="pyramide"] .car-card:not(.locked):hover{border-color:var(--hair);box-shadow:8px 8px 0 rgba(var(--g-rgb),.12)}
+html[data-theme="pyramide"] .car-card.selected{outline:1px solid var(--g);animation:none;box-shadow:inset 0 0 0 1px var(--g),8px 8px 0 rgba(var(--g-rgb),.16)}
+html[data-theme="pyramide"] .ga-tilting{box-shadow:0 0 0 1px rgba(var(--g-rgb),.6),10px 10px 0 rgba(var(--g-rgb),.14)!important}
+
+/* Cartes de route : la couleur de la route reste sur l'icone, le cadre passe a l'or */
+html[data-theme="pyramide"] .route-card{background:var(--slab);border-color:rgba(255,244,214,.08);box-shadow:none}
+html[data-theme="pyramide"] .route-card::before{opacity:.08}
+html[data-theme="pyramide"] .route-card:hover{border-color:var(--hair)}
+html[data-theme="pyramide"] .route-card.active{border-color:var(--g);box-shadow:inset 3px 0 0 var(--g),6px 6px 0 rgba(var(--g-rgb),.14)}
+html[data-theme="pyramide"] .route-card.active::before{opacity:.16}
+html[data-theme="pyramide"] .route-name{font-family:var(--display);font-weight:400;font-size:19px;letter-spacing:.03em}
+html[data-theme="pyramide"] .route-diff .dots i.on{box-shadow:none}
+html[data-theme="pyramide"] .route-check{background:var(--g)}
+
+/* Defi du jour (or) et Tirage du jour (creme au lieu du violet) : plus de neon qui tourne */
+html[data-theme="pyramide"] .daily-card{--dc:#d4a93c;--dc-2:#8d6a1c;--dc-rgb:212,169,60;background:var(--corners),radial-gradient(120% 140% at 0% 0%,rgba(var(--dc-rgb),.12),transparent 55%),var(--slab);border-color:rgba(var(--dc-rgb),.3);box-shadow:none}
+html[data-theme="pyramide"] .daily-card.draw-card{--dc:#efe9dc;--dc-2:#a49d8c;--dc-rgb:239,233,220}
+html[data-theme="pyramide"] .daily-card:hover{box-shadow:8px 8px 0 rgba(var(--dc-rgb),.12)}
+html[data-theme="pyramide"] .daily-card::after{content:none}
+html[data-theme="pyramide"] .dc-tag,html[data-theme="pyramide"] .crate-title{animation:none;text-shadow:none}
+html[data-theme="pyramide"] .dc-name{font-family:var(--display);font-weight:400;letter-spacing:.02em;text-shadow:none}
+html[data-theme="pyramide"] .dc-ring{filter:none}
+html[data-theme="pyramide"] .dc-ring span,html[data-theme="pyramide"] .dc-chip.streak,html[data-theme="pyramide"] .draw-odds span{text-shadow:none;box-shadow:none}
+html[data-theme="pyramide"] .dc-bar i{box-shadow:none}
+html[data-theme="pyramide"] .daily-card:not(.done):not(.locked) .daily-cta{animation:none}
+html[data-theme="pyramide"] .draw-crate,html[data-theme="pyramide"] .draw-crate::after{box-shadow:none;border-color:var(--hair)}
+html[data-theme="pyramide"] .daily-card:not(.done):not(.selected):not(.locked) .daily-cta{color:#0a0804;background:var(--foil);background-size:200% 100%;box-shadow:3px 3px 0 rgba(0,0,0,.6);letter-spacing:.14em}
+html[data-theme="pyramide"] .draw-card:not(.done):not(.selected):not(.locked) .daily-cta{background:linear-gradient(180deg,#fff,#efe9dc 55%,#b9b1a0)}
+html[data-theme="pyramide"] .draw-crate{background:linear-gradient(160deg,#1a1710,#070605)}
+html[data-theme="pyramide"] .panel h2{font-family:var(--display);font-weight:400;letter-spacing:.02em;font-size:30px!important}
+
+/* Caisse du pilote */
+html[data-theme="pyramide"] .crate-kicker{color:var(--g);text-shadow:none;letter-spacing:.4em}
+html[data-theme="pyramide"] .crate-title{font-family:var(--display);font-weight:400;letter-spacing:.02em;background:var(--foil);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:pyrFoil 9s linear infinite}
+html[data-theme="pyramide"] .reel{border-color:var(--hair);box-shadow:inset 0 0 40px rgba(0,0,0,.7)}
+html[data-theme="pyramide"] .reel-marker{background:var(--g);box-shadow:none;animation:none}
+
+/* ---------- Boutons ---------- */
+/* Gros bouton : lingot d'or qui s'enfonce (tranche en or fonce au lieu du bleu) */
+html[data-theme="pyramide"] .btn-go,html[data-theme="pyramide"] #btnStart.btn-go.ready{font-family:var(--display);font-weight:400;font-size:24px;letter-spacing:.12em;color:#0a0804;
+  background:var(--foil);background-size:200% 100%;animation:none;
+  box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 6px 0 var(--g-deep),0 18px 36px -16px rgba(var(--g-rgb),.55)}
+html[data-theme="pyramide"] #btnStart.btn-go.ready{animation:pyrFoil 6s linear infinite}
+html[data-theme="pyramide"] .btn-go:hover{background-position:100% 50%}
+html[data-theme="pyramide"] .btn-go:active{box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 1px 0 var(--g-deep),0 8px 18px -12px rgba(var(--g-rgb),.5)}
+html[data-theme="pyramide"] .btn-go:disabled{background:#1a1813;color:#5d574a;box-shadow:0 4px 0 #0e0d0a;filter:none}
+html[data-theme="pyramide"] .btn-go .go-arrow{background:#0a0804;color:var(--g)}
+html[data-theme="pyramide"] .btn-go .go-glow{opacity:.35}
+/* Boutons secondaires : contour fin, or au survol */
+html[data-theme="pyramide"] .btn-side{background:transparent;border-color:rgba(255,244,214,.22);color:var(--cream);letter-spacing:.14em;box-shadow:0 4px 0 #000}
+html[data-theme="pyramide"] .btn-side:hover{border-color:var(--g);color:var(--g-light);background:rgba(var(--g-rgb),.06)}
+html[data-theme="pyramide"] .btn-side.mode-gf.on,html[data-theme="pyramide"] .btn-side.mode-rp.on{border-color:var(--g);background:rgba(var(--g-rgb),.14);color:var(--g-light);box-shadow:inset 0 -3px 0 var(--g),0 4px 0 #000}
+html[data-theme="pyramide"] .action-dock{background:var(--corners),rgba(6,6,5,.97);border-color:rgba(255,244,214,.08);box-shadow:0 -10px 40px -20px #000}
+html[data-theme="pyramide"] .dock-label{color:var(--g);letter-spacing:.34em}
+html[data-theme="pyramide"] .dock-sel b{font-family:var(--display);font-weight:400;font-size:24px;letter-spacing:.02em}
+html[data-theme="pyramide"] .btn{letter-spacing:.14em}
+html[data-theme="pyramide"] .btn-primary{background:var(--foil);background-size:200% 100%;color:#0a0804;box-shadow:4px 4px 0 rgba(var(--g-rgb),.28)}
+html[data-theme="pyramide"] .btn-ghost{border-color:rgba(255,244,214,.28)}
+html[data-theme="pyramide"] .btn-ghost:hover{border-color:var(--g);color:var(--g-light)}
+html[data-theme="pyramide"] .tab{background:transparent;border-color:var(--hair)}
+html[data-theme="pyramide"] .tab.active{background:var(--g);border-color:var(--g);color:#0a0804}
+
+/* ---------- HUD de course ---------- */
+html[data-theme="pyramide"] .hud-stats{background:rgba(5,5,5,.86);border-color:var(--hair)}
+html[data-theme="pyramide"] .hud-stats .cell + .cell{border-left-color:rgba(255,244,214,.08)}
+html[data-theme="pyramide"] .hud-stats .l{color:#8f8877;letter-spacing:.24em}
+html[data-theme="pyramide"] .hud-stats .cell.primary .l{color:var(--g)}
+html[data-theme="pyramide"] .hud-stats .v{font-family:var(--display);font-weight:400;letter-spacing:.02em}
+html[data-theme="pyramide"] .hud-stats .v.accent,html[data-theme="pyramide"] .hud-stats .cell.primary .v.accent{color:var(--g-light);text-shadow:0 2px 0 #000}
+html[data-theme="pyramide"] .hud-stats .v.accent.bump{text-shadow:0 2px 0 #000,0 0 18px rgba(var(--g-rgb),.7)}
+html[data-theme="pyramide"] #stage:has(.speed-fx.boost) .hud-stats{animation:none;border-color:var(--g);box-shadow:inset 0 -2px 0 var(--g)}
+html[data-theme="pyramide"] #stage:has(.speed-fx.boost) #hudSpeed{color:#fff1c1;text-shadow:0 2px 0 #000}
+html[data-theme="pyramide"] .icon-btn,html[data-theme="pyramide"] .btn-lane{background:rgba(5,5,5,.8);border-color:var(--hair)}
+html[data-theme="pyramide"] .icon-btn:hover,html[data-theme="pyramide"] .icon-btn.active{border-color:var(--g);background:rgba(var(--g-rgb),.16)}
+html[data-theme="pyramide"] .btn-lane:active{background:rgba(var(--g-rgb),.25)}
+html[data-theme="pyramide"] .btn-boost{border-color:var(--g);background:rgba(var(--g-rgb),.14);color:var(--g-light);letter-spacing:.16em}
+html[data-theme="pyramide"] .btn-boost:active,html[data-theme="pyramide"] .btn-boost.on{background:var(--g);color:#0a0804;box-shadow:none}
+html[data-theme="pyramide"] .boost-bar{background:rgba(255,244,214,.08);border-color:var(--hair)}
+html[data-theme="pyramide"] .boost-fill{background:var(--foil);background-size:200% 100%}
+html[data-theme="pyramide"] .boost-bar.full{box-shadow:0 0 0 1px var(--g)}
+html[data-theme="pyramide"] .boost-bar.on .boost-fill{background:linear-gradient(90deg,#d4a93c,#fff1c1)}
+html[data-theme="pyramide"] .cam-label,html[data-theme="pyramide"] .kbd-hint{color:#8f8877}
+html[data-theme="pyramide"] .music-panel,html[data-theme="pyramide"] .music-list{background:rgba(5,5,5,.96);border-color:var(--hair)}
+html[data-theme="pyramide"] .music-list-item.active{color:var(--g-light)}
+html[data-theme="pyramide"] .draft-badge{background:rgba(5,5,5,.86);border-color:var(--hair);color:var(--g-light)}
+html[data-theme="pyramide"] .draft-badge.show{box-shadow:none}
+html[data-theme="pyramide"] .multiplier-badge{background:var(--foil);background-size:200% 100%;color:#0a0804;box-shadow:4px 4px 0 rgba(0,0,0,.6)}
+html[data-theme="pyramide"] .multiplier-badge.show{animation:none}
+html[data-theme="pyramide"] .record-flash{font-family:var(--display);font-weight:400;background:var(--foil);background-size:200% 100%;box-shadow:6px 6px 0 rgba(0,0,0,.6)}
+html[data-theme="pyramide"] .journey-chip,html[data-theme="pyramide"] .alert-chip{background:rgba(5,5,5,.88);border-color:var(--hair)}
+
+/* Vitesse et nitro : rayons blanc casse, halo dore (au lieu du cyan) */
+html[data-theme="pyramide"] .speed-fx::before{background:repeating-conic-gradient(from 0deg at 50% 50%,rgba(255,241,193,.12) 0deg .6deg,transparent .6deg 5deg)}
+html[data-theme="pyramide"] .speed-fx::after{box-shadow:inset 0 0 120px 10px rgba(var(--g-rgb),.32)}
+html[data-theme="pyramide"] .ga-ring{box-shadow:0 0 18px var(--c)}
+html[data-theme="pyramide"] .ga-shard{background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(var(--g-rgb),.4))}
+html[data-theme="pyramide"] .ga-burst{background:repeating-conic-gradient(rgba(var(--g-rgb),.2) 0 5deg,transparent 5deg 15deg)}
+
+/* Compte a rebours et annonces : lettres d'affiche, ombre dure */
+html[data-theme="pyramide"] .countdown span{font-family:var(--display);font-weight:400;color:#f5f1e8;text-shadow:0 8px 0 rgba(0,0,0,.55)}
+html[data-theme="pyramide"] .countdown span.go{background:var(--foil);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 8px 0 rgba(0,0,0,.55))}
+html[data-theme="pyramide"] .popup{text-shadow:0 2px 0 #000,0 0 10px rgba(0,0,0,.8)}
+html[data-theme="pyramide"] .popup.big{font-family:var(--display);font-weight:400;letter-spacing:.03em}
+html[data-theme="pyramide"] .pop-stack .popup.big.long{font-family:'Saira Condensed',sans-serif;font-weight:700;background:rgba(5,5,5,.9);border-color:var(--hair);box-shadow:inset 3px 0 0 currentColor}
+
+/* ---------- Fin de partie ---------- */
+html[data-theme="pyramide"] .over-stat-label{color:var(--g);letter-spacing:.32em}
+html[data-theme="pyramide"] .over-stat-value,html[data-theme="pyramide"] #ovOver .over-stat-value{font-family:var(--display);font-weight:400;text-shadow:none}
+html[data-theme="pyramide"] #overScore{color:#f5f1e8!important}
+html[data-theme="pyramide"] #overCredits{color:var(--g)!important}
+html[data-theme="pyramide"] #ovRecordBadge{background:var(--foil)!important;background-size:200% 100%!important;color:#0a0804!important;animation:none!important;box-shadow:4px 4px 0 rgba(0,0,0,.6)}
+html[data-theme="pyramide"] .over-panel{background:var(--corners),var(--slab);border-color:rgba(255,244,214,.08)}
+html[data-theme="pyramide"] .over-panel-title{color:var(--g);letter-spacing:.24em}
+html[data-theme="pyramide"] .over-panel.over-daily{border-color:var(--hair)}
+
+/* ---------- Classement : metal brut ---------- */
+html[data-theme="pyramide"] .leaderboard-row .rank{color:#8f8877}
+html[data-theme="pyramide"] .leaderboard-row .score{color:var(--g-light)}
+html[data-theme="pyramide"] .leaderboard-row .you{background:var(--g)}
+html[data-theme="pyramide"] .leaderboard-row.me{outline-color:var(--g)}
+html[data-theme="pyramide"] .leaderboard-row.top3{animation:none;background:linear-gradient(90deg,rgba(var(--neon-rgb),.1),transparent 60%);border-color:rgba(var(--neon-rgb),.4);box-shadow:inset 4px 0 0 rgb(var(--neon-rgb))}
+html[data-theme="pyramide"] .leaderboard-row.top3 .rank,html[data-theme="pyramide"] .leaderboard-row.top3 .name{text-shadow:none}
+html[data-theme="pyramide"] .leaderboard-row.top3 .score{color:rgb(var(--neon-rgb));text-shadow:none}
+
+/* ---------- Barres de defilement ---------- */
+html[data-theme="pyramide"] :is(.car-grid,.overlay,#fullBoard,.music-list){scrollbar-color:rgba(var(--g-rgb),.4) transparent}
+html[data-theme="pyramide"] :is(.car-grid,.overlay,#fullBoard)::-webkit-scrollbar-thumb{background:rgba(var(--g-rgb),.35)}
+
+/* =====================================================================
+   GO FAST : bordereau de livraison noir et or, chrono en lettres d'affiche
+   ===================================================================== */
+html[data-theme="pyramide"] .gf-hud{padding:0 0 10px;overflow:hidden;background:rgba(5,5,5,.94);border:1px solid rgba(var(--g-rgb),.55);box-shadow:6px 6px 0 rgba(0,0,0,.55),inset 0 3px 0 var(--g)}
+html[data-theme="pyramide"] .gf-top{padding:9px 14px 0}
+html[data-theme="pyramide"] .gf-tag{font-family:var(--display);font-weight:400;font-size:14px;letter-spacing:.16em;color:#0a0804;background:var(--foil);background-size:200% 100%;padding:4px 10px 3px;text-shadow:none}
+html[data-theme="pyramide"] .gf-top > b{font-family:var(--display);font-weight:400;font-size:18px;letter-spacing:.06em;color:var(--g-light)}
+html[data-theme="pyramide"] .gf-time{font-family:var(--display);font-weight:400;font-size:30px;letter-spacing:.02em;color:#f5f1e8}
+html[data-theme="pyramide"] .gf-stars{text-shadow:none}
+html[data-theme="pyramide"] .gf-earn{font-family:var(--display);font-weight:400;font-size:20px;letter-spacing:.02em;text-shadow:none;background:var(--foil);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent}
+html[data-theme="pyramide"] .gf-sub{padding:0 14px;color:#cfc8b8;letter-spacing:.06em;text-transform:uppercase;font-size:11px}
+html[data-theme="pyramide"] .gf-sub b{color:var(--g)}
+html[data-theme="pyramide"] .gf-bar{margin:9px 14px 0;height:4px;background:rgba(255,244,214,.08)}
+html[data-theme="pyramide"] .gf-bar i{background:var(--foil);background-size:200% 100%;box-shadow:none}
+/* Pression : le cadre vire au rouge, le chrono aussi (sans halo) */
+html[data-theme="pyramide"] .gf-hud.hurry{border-color:#ff5a3d;animation:none;box-shadow:6px 6px 0 rgba(0,0,0,.55),inset 0 3px 0 #ff5a3d}
+html[data-theme="pyramide"] .gf-hud.hurry .gf-time{color:#ff5a3d;text-shadow:none;animation:gfBlink .5s steps(1,end) infinite}
+@keyframes gfBlink{50%{opacity:.35}}
+@media (max-width:640px){ html[data-theme="pyramide"] .gf-time{font-size:24px} }
+
+@media (prefers-reduced-motion:reduce){
+  html[data-theme="pyramide"] :is(.pyr-over,#ovLoading .pyr-title,.crate-title,#btnStart.btn-go.ready,.gf-hud.hurry .gf-time){animation:none}
+}

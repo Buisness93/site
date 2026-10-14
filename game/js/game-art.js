@@ -9,13 +9,17 @@
   const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
   const mobile = !finePointer || innerWidth < 760;
 
+  // Theme Pyramide (noir & or) : les effets passent du cyan/rose neon a l'or et au blanc casse
+  const pyr = doc.documentElement.getAttribute('data-theme') === 'pyramide';
+  const COOL = pyr ? '#d4a93c' : '#8fd0ff', NITRO = pyr ? '#fff1c1' : '#5fe1ff', PINK = pyr ? '#d4a93c' : '#ff5ad1', TAP = pyr ? '#fff1c1' : '#bfe6ff';
+
   function el(tag, cls, parent){ const e = doc.createElement(tag); if(cls) e.className = cls; (parent || doc.body).appendChild(e); return e; }
   function later(fn, ms){ return setTimeout(fn, ms); }
 
   // ---------- Onde de choc + etincelles (DOM, ephemeres) ----------
   function ring(x, y, color, size, cls){
     const r = el('div', 'ga-ring' + (cls ? ' ' + cls : ''));
-    r.style.cssText = 'left:' + x + 'px;top:' + y + 'px;--c:' + (color || '#8fd0ff') + ';--s:' + (size || 260) + 'px';
+    r.style.cssText = 'left:' + x + 'px;top:' + y + 'px;--c:' + (color || COOL) + ';--s:' + (size || 260) + 'px';
     later(()=>r.remove(), 900);
   }
   function sparks(x, y, color, n, dist){
@@ -64,7 +68,7 @@
         const tail = Math.max(prev, s.d - (18 + spd * 70 + (boost ? 90 : 0)) * life);
         const ca = Math.cos(s.a), sa = Math.sin(s.a);
         g.globalAlpha = Math.min(0.9, life * (0.25 + spd * 0.5) * (boost ? 1.5 : 1));
-        g.strokeStyle = boost ? (s.hue > 0.5 ? '#9ff3ff' : '#ffffff') : (s.hue > 0.7 ? '#ffe9b0' : '#dfeaff');
+        g.strokeStyle = pyr ? (boost ? (s.hue > 0.5 ? '#f4dfa0' : '#ffffff') : (s.hue > 0.6 ? '#d4a93c' : '#efe9dc')) : boost ? (s.hue > 0.5 ? '#9ff3ff' : '#ffffff') : (s.hue > 0.7 ? '#ffe9b0' : '#dfeaff');
         g.lineWidth = s.w * (0.6 + life);
         g.beginPath(); g.moveTo(cx + ca * tail, cy + sa * tail * 0.62); g.lineTo(cx + ca * s.d, cy + sa * s.d * 0.62); g.stroke();
       }
@@ -76,7 +80,7 @@
     new MutationObserver(()=>{
       const b = speedFx.classList.contains('boost');
       if(b && !wasBoost){
-        ring(innerWidth / 2, innerHeight * 0.46, '#5fe1ff', Math.max(innerWidth, innerHeight) * 0.9, 'boost');
+        ring(innerWidth / 2, innerHeight * 0.46, NITRO, Math.max(innerWidth, innerHeight) * 0.9, 'boost');
         const st = $('stage'); if(st){ st.classList.remove('ga-punch'); void st.offsetWidth; st.classList.add('ga-punch'); }
       }
       wasBoost = b;
@@ -94,7 +98,7 @@
       sparks(x, y, '#ffe066', 36, Math.min(innerWidth, innerHeight) * 0.45);
       const b = el('div', 'ga-burst'); later(()=>b.remove(), 1000);
     } else {
-      ring(x, y, '#8fd0ff', 420);
+      ring(x, y, COOL, 420);
     }
   }).observe(cd, { childList:true });
 
@@ -143,7 +147,7 @@
     let was = false;
     new MutationObserver(()=>{
       const on = mult.classList.contains('show');
-      if(on && !was) requestAnimationFrame(()=>{ const [x, y] = center(mult); ring(x, y, '#ff5ad1', 340); sparks(x, y, '#ff9500', 20, 90); });
+      if(on && !was) requestAnimationFrame(()=>{ const [x, y] = center(mult); ring(x, y, PINK, 340); sparks(x, y, '#ff9500', 20, 90); });
       was = on;
     }).observe(mult, { attributes:true, attributeFilter:['class'] });
   }
@@ -179,7 +183,7 @@
   doc.addEventListener('pointerdown', (e)=>{
     const b = e.target.closest && e.target.closest('.btn-go,.btn-side,.btn,.route-card,.car-card:not(.locked),.tab');
     if(!b) return;
-    sparks(e.clientX, e.clientY, b.classList.contains('btn-go') ? '#bfe6ff' : '#ffe066', b.classList.contains('btn-go') ? 22 : 10, b.classList.contains('btn-go') ? 90 : 50);
-    if(b.classList.contains('btn-go')) ring(e.clientX, e.clientY, '#8fd0ff', 260);
+    sparks(e.clientX, e.clientY, b.classList.contains('btn-go') ? TAP : '#ffe066', b.classList.contains('btn-go') ? 22 : 10, b.classList.contains('btn-go') ? 90 : 50);
+    if(b.classList.contains('btn-go')) ring(e.clientX, e.clientY, COOL, 260);
   }, { passive:true });
 })();

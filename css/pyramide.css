@@ -1,0 +1,192 @@
+/* =====================================================================
+   Theme Pyramide — DA rap street-luxe : noir mat, or massif, coupes carrees,
+   typo d'affiche. Ici on coupe le neon/synthwave de fx.css au profit d'un
+   rendu sobre et lourd : feuille d'or, filets fins, ombres dures, pyramide.
+   Tout est scope sur html[data-theme="pyramide"] : les autres themes ne bougent pas.
+   ===================================================================== */
+html[data-theme="pyramide"]{
+  --display:'Anton','Saira Condensed',sans-serif;
+  --foil:linear-gradient(105deg,#7a5a17 0%,#d4a93c 16%,#fff1c1 30%,#d4a93c 44%,#8d6a1c 60%,#e9c867 78%,#7a5a17 100%);
+  --hairline:rgba(var(--accent-rgb),.22);
+  /* Equerres dorees aux 4 coins des cartes (calques de fond, sans pseudo-elements) */
+  --corners:
+    linear-gradient(var(--accent),var(--accent)) left top/16px 1px no-repeat,
+    linear-gradient(var(--accent),var(--accent)) left top/1px 16px no-repeat,
+    linear-gradient(var(--accent),var(--accent)) right top/16px 1px no-repeat,
+    linear-gradient(var(--accent),var(--accent)) right top/1px 16px no-repeat,
+    linear-gradient(var(--accent),var(--accent)) left bottom/16px 1px no-repeat,
+    linear-gradient(var(--accent),var(--accent)) left bottom/1px 16px no-repeat,
+    linear-gradient(var(--accent),var(--accent)) right bottom/16px 1px no-repeat,
+    linear-gradient(var(--accent),var(--accent)) right bottom/1px 16px no-repeat;
+  --card-bg:linear-gradient(180deg,#100e0a,#070605);
+}
+@keyframes pyrFoil{from{background-position:0% 50%}to{background-position:-250% 50%}}
+@keyframes pyrRise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+
+/* ---------- Coupes carrees partout (sauf ce qui doit rester rond : pieces, vinyle, medailles) ---------- */
+html[data-theme="pyramide"] body *:not(.coin):not(.coin-i):not(.cf):not(.disc):not(.medal):not(.fx-ripple):not(.fx-spark):not(.chips button){border-radius:0!important}
+
+/* ---------- Typo d'affiche ---------- */
+html[data-theme="pyramide"] h1,html[data-theme="pyramide"] h2,
+html[data-theme="pyramide"] .h1,html[data-theme="pyramide"] .h2,
+html[data-theme="pyramide"] .hero-text h1,html[data-theme="pyramide"] .cta-band h2{font-family:var(--display);font-weight:400;letter-spacing:.01em;line-height:.9}
+html[data-theme="pyramide"] .hero-text h1{font-size:clamp(46px,8.6vw,132px);line-height:.86}
+html[data-theme="pyramide"] .h1{font-size:clamp(40px,7vw,80px)}
+html[data-theme="pyramide"] .h2{font-size:clamp(36px,5.6vw,66px)}
+html[data-theme="pyramide"] h3{letter-spacing:.04em}
+html[data-theme="pyramide"] .kpi .v,html[data-theme="pyramide"] .numbers .nv,html[data-theme="pyramide"] .podium .ps,
+html[data-theme="pyramide"] .board-top1 .sc,html[data-theme="pyramide"] .board-top1 .who,html[data-theme="pyramide"] .hero-spec .price,
+html[data-theme="pyramide"] .fx-step .num,html[data-theme="pyramide"] .teaser-card .tc-num,html[data-theme="pyramide"] .podium .base{font-family:var(--display);font-weight:400;letter-spacing:.01em}
+html[data-theme="pyramide"] .lead,html[data-theme="pyramide"] .hero-text p{color:var(--text-2);font-weight:300}
+html[data-theme="pyramide"] .eyebrow{letter-spacing:.42em;color:var(--accent-light);text-shadow:none}
+/* Le tiret de l'eyebrow devient un petit triangle d'or */
+html[data-theme="pyramide"] .eyebrow span.dash{width:11px;height:10px;background:var(--accent);clip-path:polygon(50% 0,100% 100%,0 100%);box-shadow:none;animation:pyrRise .8s .5s var(--ease-out) both}
+html[data-theme="pyramide"] .sec-title .num{color:var(--accent);letter-spacing:.4em}
+
+/* Feuille d'or (remplace le degrade irise qui coule) */
+html[data-theme="pyramide"] .grad-text,html[data-theme="pyramide"] .hero-text .grad,
+html[data-theme="pyramide"] main .h1 .grad-text,html[data-theme="pyramide"] main .h2 .grad-text{
+  background-image:var(--foil);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:none;text-shadow:none;animation:pyrFoil 9s linear infinite}
+
+/* ---------- Coupe-neon : plus de lueurs, plus de gresillement ---------- */
+html[data-theme="pyramide"] main .h1,html[data-theme="pyramide"] main .h2,html[data-theme="pyramide"] .brand-name,
+html[data-theme="pyramide"] .kpi .v,html[data-theme="pyramide"] .leaderboard-row .score,html[data-theme="pyramide"] .podium .ps,
+html[data-theme="pyramide"] .nav-links a.active,html[data-theme="pyramide"] .fx-decode.art-in,
+html[data-theme="pyramide"] .leaderboard-row.top3 .rank,html[data-theme="pyramide"] .leaderboard-row.top3 .name,html[data-theme="pyramide"] .leaderboard-row.top3 .score,
+html[data-theme="pyramide"] .board-top1 .who,html[data-theme="pyramide"] .board-top1 .sc{text-shadow:none}
+html[data-theme="pyramide"] main > .container > .h1{animation:fxIntro .9s .58s var(--ease-out) both}
+html[data-theme="pyramide"] .brand-name{animation:none;letter-spacing:.3em}
+html[data-theme="pyramide"] .brand-logo,html[data-theme="pyramide"] .brand:hover .brand-logo,html[data-theme="pyramide"] .footer-brand .dg-logo{filter:none}
+
+/* ---------- Fond : projecteur d'en haut, grain argentique, pyramide monumentale ---------- */
+html[data-theme="pyramide"] .fx-aurora{inset:0;animation:none;opacity:1;background:radial-gradient(55% 45% at 50% -8%,rgba(var(--accent-rgb),.13),transparent 72%),radial-gradient(40% 30% at 50% 108%,rgba(var(--accent-rgb),.06),transparent 70%)}
+html[data-theme="pyramide"] .fx-grain{opacity:.07}
+html[data-theme="pyramide"] .fx-grid{left:50%;right:auto;width:min(1240px,140vw);height:64vh;transform:translateX(-50%);opacity:.085;overflow:visible;
+  background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 560' fill='none' stroke='%23d4a93c' stroke-width='1.4'><path d='M500 30 L60 540 L640 540 Z M500 30 L940 470 L640 540'/><path stroke-width='.8' d='M388 160 H536 M276 290 H571 M163 420 H607 M536 160 L630 160 M571 290 L760 290 M607 420 L890 420'/><path stroke-width='.6' stroke-dasharray='4 8' d='M500 30 L500 540'/></svg>") center bottom/contain no-repeat;
+  -webkit-mask:linear-gradient(to top,transparent 0%,#000 22%);mask:linear-gradient(to top,transparent 0%,#000 22%)}
+html[data-theme="pyramide"] .fx-grid::before,html[data-theme="pyramide"] .fx-grid::after{content:none}
+html[data-theme="pyramide"] .fx-streaks i{background:linear-gradient(90deg,transparent,rgba(var(--accent-rgb),.7),#fff3d0)!important}
+
+/* ---------- Rideau de page : nom en lettres d'or ---------- */
+html[data-theme="pyramide"] .fx-curtain b{font-family:var(--display);font-weight:400;font-size:26px;background:var(--foil);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent}
+html[data-theme="pyramide"] .fx-curtain b i{color:inherit}
+html[data-theme="pyramide"] .fx-curtain-logo .dg-logo{filter:drop-shadow(0 0 24px rgba(var(--accent-rgb),.35))}
+
+/* ---------- Curseur : cadre carre + point d'or ---------- */
+html[data-theme="pyramide"] .fx-cursor{border-color:rgba(var(--accent-rgb),.7)}
+html[data-theme="pyramide"] .fx-cursor.hover{background:transparent;border-width:2px}
+html[data-theme="pyramide"] .fx-cursor-dot{background:var(--accent);box-shadow:none}
+
+/* ---------- Barre de navigation ---------- */
+html[data-theme="pyramide"] .navbar{background:rgba(5,5,5,.96);border-bottom:1px solid var(--hairline)}
+html[data-theme="pyramide"] .navbar::after{height:1px;opacity:1;animation:none;box-shadow:none;background:linear-gradient(90deg,transparent,var(--accent) 30%,#fff1c1 50%,var(--accent) 70%,transparent)}
+html[data-theme="pyramide"] .nav-links{background:transparent;border-color:transparent}
+html[data-theme="pyramide"] .nav-links a{font-weight:600;letter-spacing:.22em}
+html[data-theme="pyramide"] .nav-links a.active{color:var(--accent-light)}
+html[data-theme="pyramide"] .nav-pill{background:transparent;box-shadow:inset 0 -2px 0 var(--accent)}
+html[data-theme="pyramide"] .nav-pill::after{content:none}
+html[data-theme="pyramide"] .nav-icon{background:transparent;border-color:var(--hairline)}
+html[data-theme="pyramide"] .nav-money{border-color:var(--hairline);background:transparent}
+html[data-theme="pyramide"] .nav-cta{background:var(--foil);background-size:200% 100%;color:#0a0804!important;box-shadow:3px 3px 0 rgba(var(--accent-rgb),.28)}
+html[data-theme="pyramide"] .nav-cta:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 rgba(var(--accent-rgb),.35)}
+html[data-theme="pyramide"] .theme-menu{background:#070605;border-color:var(--hairline)}
+@media (max-width:900px){
+  html[data-theme="pyramide"] .nav-links{background:rgba(5,5,5,.98);border-color:var(--hairline)}
+  html[data-theme="pyramide"] .nav-links a.active{background:rgba(var(--accent-rgb),.1);box-shadow:inset 3px 0 0 var(--accent)}
+}
+
+/* ---------- Boutons : lingot d'or, ombre dure ---------- */
+html[data-theme="pyramide"] .btn{letter-spacing:.16em}
+html[data-theme="pyramide"] .btn-primary:not(:disabled){background:var(--foil);background-size:200% 100%;background-position:0% 50%;color:#0a0804!important;border-color:transparent;box-shadow:4px 4px 0 rgba(var(--accent-rgb),.28);animation:none}
+html[data-theme="pyramide"] .btn-primary:not(:disabled):hover{transform:translate(-2px,-2px);background-position:100% 50%;box-shadow:6px 6px 0 rgba(var(--accent-rgb),.38)}
+html[data-theme="pyramide"] .btn-primary:not(:disabled):active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(var(--accent-rgb),.38)}
+html[data-theme="pyramide"] .btn-ghost{background:transparent;border-color:rgba(var(--line-rgb),.3);box-shadow:none}
+html[data-theme="pyramide"] .btn-ghost:hover{border-color:var(--accent);color:var(--accent-light);background:rgba(var(--accent-rgb),.06);box-shadow:none}
+html[data-theme="pyramide"] .btn-soft{background:transparent;border-color:rgba(var(--accent-rgb),.45);color:var(--accent-light)}
+html[data-theme="pyramide"] .btn-soft:hover,html[data-theme="pyramide"] .btn-danger:hover{box-shadow:none}
+html[data-theme="pyramide"] .seg{background:transparent;border-color:var(--hairline)}
+html[data-theme="pyramide"] .seg button.on{background:var(--accent);color:var(--on-accent);box-shadow:none}
+html[data-theme="pyramide"] .seg button.on .ct{background:rgba(0,0,0,.2);color:var(--on-accent)}
+
+/* ---------- Cartes : noir mat, filet d'or, equerres aux coins ---------- */
+html[data-theme="pyramide"] .card,html[data-theme="pyramide"] .fx-step,html[data-theme="pyramide"] .teaser-card,
+html[data-theme="pyramide"] .board-highlight,html[data-theme="pyramide"] .kpi,html[data-theme="pyramide"] .numbers,
+html[data-theme="pyramide"] .hero-spec,html[data-theme="pyramide"] .fx-toast{background:var(--corners),var(--card-bg);border:1px solid rgba(var(--line-rgb),.07);box-shadow:none}
+html[data-theme="pyramide"] main .card:not(.now):not(.fx-tilt):hover{animation:none;background:var(--corners),var(--card-bg);border-color:var(--hairline);box-shadow:none}
+html[data-theme="pyramide"] .fx-tilt:hover,html[data-theme="pyramide"] .kpi:hover{border-color:var(--hairline);box-shadow:8px 8px 0 rgba(var(--accent-rgb),.12)}
+html[data-theme="pyramide"] main .card:not(.fx-tilt)::after,html[data-theme="pyramide"] .fx-tilt::after{background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(var(--accent-rgb),.08),transparent 45%)}
+html[data-theme="pyramide"] .kpi::before{background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+html[data-theme="pyramide"] .card-title{color:var(--accent-light);letter-spacing:.3em}
+html[data-theme="pyramide"] .card-title .ic,html[data-theme="pyramide"] .fx-step .ico,html[data-theme="pyramide"] .hero-chip .ci,html[data-theme="pyramide"] .empty .ei{background:transparent;border:1px solid rgba(var(--accent-rgb),.45);color:var(--accent);box-shadow:none}
+html[data-theme="pyramide"] .fx-step .num,html[data-theme="pyramide"] .teaser-card .tc-num{-webkit-text-stroke:1px rgba(var(--accent-rgb),.4)}
+html[data-theme="pyramide"] .iris-border::before{background:linear-gradient(140deg,var(--accent),rgba(var(--line-rgb),.04) 30%,rgba(var(--line-rgb),.04) 70%,rgba(var(--accent-rgb),.5))}
+html[data-theme="pyramide"] .divider{background:linear-gradient(90deg,transparent,var(--hairline),transparent)}
+
+/* ---------- Accueil ---------- */
+html[data-theme="pyramide"] .hero-fade{background:radial-gradient(80% 62% at 50% 44%,transparent 24%,rgba(5,5,5,.9) 80%,var(--bg) 92%)}
+html[data-theme="pyramide"] .hero-chip{background:rgba(5,5,5,.85);border-color:var(--hairline)}
+html[data-theme="pyramide"] .hero-hint{font-family:'Saira Condensed',sans-serif;color:var(--accent)}
+html[data-theme="pyramide"] .fx-scroll-cue{border-color:var(--hairline)}
+html[data-theme="pyramide"] .hs-dots button.on::after,html[data-theme="pyramide"] .hs-dots button.done{background:var(--accent)}
+html[data-theme="pyramide"] .board-highlight{border-color:var(--hairline)}
+html[data-theme="pyramide"] .board-top1{background:linear-gradient(90deg,rgba(var(--accent-rgb),.12),transparent);border:1px solid rgba(var(--accent-rgb),.5);box-shadow:inset 4px 0 0 var(--accent);animation:none}
+html[data-theme="pyramide"] .board-top1 .crown{filter:none}
+html[data-theme="pyramide"] .board-top1 .sc{background:var(--foil);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent}
+html[data-theme="pyramide"] .cta-band{border-color:var(--hairline);background:radial-gradient(70% 120% at 50% 0%,rgba(var(--accent-rgb),.16),transparent 65%),#070605}
+/* Le quadrillage du bandeau devient un motif de pyramides en filigrane */
+html[data-theme="pyramide"] .cta-band::after{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='52'><path d='M30 4 L56 48 H4 Z' fill='none' stroke='%23d4a93c' stroke-opacity='.12'/></svg>");background-size:60px 52px}
+
+/* Bandeau de marques : lettres creuses dorees, separateurs triangles */
+html[data-theme="pyramide"] .fx-marquee{border-color:var(--hairline);border-bottom:1px solid var(--hairline)}
+html[data-theme="pyramide"] .fx-marquee span{font-family:var(--display);font-weight:400;letter-spacing:.04em;color:transparent;-webkit-text-stroke:1px rgba(var(--accent-rgb),.55)}
+html[data-theme="pyramide"] .fx-marquee span:hover{color:var(--accent);-webkit-text-stroke-color:transparent;text-shadow:none}
+html[data-theme="pyramide"] .fx-marquee span.dot{font-size:0;-webkit-text-stroke:0}
+html[data-theme="pyramide"] .fx-marquee span.dot::before{content:'';display:inline-block;width:12px;height:11px;background:var(--accent);clip-path:polygon(50% 0,100% 100%,0 100%)}
+
+/* ---------- Classement : metal brut, sans neon ---------- */
+html[data-theme="pyramide"] .leaderboard-row{border-color:rgba(var(--line-rgb),.07)}
+html[data-theme="pyramide"] .leaderboard-row:not(.top3):hover{box-shadow:inset 3px 0 0 var(--accent)}
+html[data-theme="pyramide"] .leaderboard-row.top3{animation:none;background:linear-gradient(90deg,rgba(var(--neon-rgb),.1),transparent 60%);border-color:rgba(var(--neon-rgb),.4);box-shadow:inset 4px 0 0 rgb(var(--neon-rgb))}
+html[data-theme="pyramide"] .leaderboard-row.top3 .score{color:rgb(var(--neon-rgb))}
+html[data-theme="pyramide"] .leaderboard-row .score{color:var(--accent-light)}
+html[data-theme="pyramide"] .leaderboard-row .you{background:var(--accent)}
+html[data-theme="pyramide"] .leaderboard-row.me{border-color:var(--accent)!important}
+html[data-theme="pyramide"] .podium .pod{background:linear-gradient(180deg,rgba(var(--neon-rgb),.1),transparent 70%);box-shadow:none}
+html[data-theme="pyramide"] .podium .pod.p1::before{content:none}
+html[data-theme="pyramide"] .podium .ps{color:rgb(var(--neon-rgb))}
+html[data-theme="pyramide"] .podium .medal{box-shadow:0 0 0 2px #050505,0 0 0 3px rgba(var(--neon-rgb),.6)}
+html[data-theme="pyramide"] .badge.unlocked{background:var(--card-bg);border-color:var(--hairline)}
+html[data-theme="pyramide"] .badge.unlocked .icon{filter:none}
+
+/* ---------- Formulaires, barres, pastilles ---------- */
+html[data-theme="pyramide"] .field input,html[data-theme="pyramide"] .field textarea,html[data-theme="pyramide"] .field select,html[data-theme="pyramide"] .input{background:#070605;border-color:rgba(var(--line-rgb),.14)}
+html[data-theme="pyramide"] .field input:focus,html[data-theme="pyramide"] .field textarea:focus,html[data-theme="pyramide"] .field select:focus,html[data-theme="pyramide"] .input:focus{transform:none;border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+html[data-theme="pyramide"] .field:focus-within label{color:var(--accent)}
+html[data-theme="pyramide"] .progress{background:rgba(var(--line-rgb),.06);box-shadow:none}
+html[data-theme="pyramide"] .progress > i{background:var(--foil);background-size:200% 100%;box-shadow:none}
+html[data-theme="pyramide"] .pill{border-width:1px}
+html[data-theme="pyramide"] .pill .dot{box-shadow:none}
+html[data-theme="pyramide"] input[type="range"]::-webkit-slider-thumb{border-radius:0;background:var(--accent);box-shadow:0 0 0 3px #050505,0 0 0 4px var(--accent)}
+html[data-theme="pyramide"] input[type="range"]::-moz-range-thumb{border-radius:0;background:var(--accent);box-shadow:0 0 0 3px #050505,0 0 0 4px var(--accent)}
+html[data-theme="pyramide"] ::-webkit-scrollbar-thumb{background:rgba(var(--accent-rgb),.3);border-radius:0}
+html[data-theme="pyramide"] ::-webkit-scrollbar-thumb:hover{background:var(--accent);box-shadow:none}
+html[data-theme="pyramide"] ::selection{background:var(--accent);color:#0a0804}
+
+/* ---------- Pied de page ---------- */
+html[data-theme="pyramide"] .footer{border-top-color:var(--hairline)}
+html[data-theme="pyramide"] .footer::before{background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+html[data-theme="pyramide"] .footer-brand .fb{font-family:var(--display);font-weight:400;letter-spacing:.12em;font-size:24px}
+html[data-theme="pyramide"] .footer-col h4{color:var(--accent);letter-spacing:.32em}
+
+/* ---------- Casino : tapis noir et or a la place des bleus nuit ---------- */
+html[data-theme="pyramide"] .t-cell,html[data-theme="pyramide"] .kc{background:linear-gradient(180deg,#1a1710,#0c0b08);box-shadow:inset 0 -3px 0 rgba(0,0,0,.5),inset 0 0 0 1px rgba(var(--accent-rgb),.14)}
+html[data-theme="pyramide"] .reels{background:linear-gradient(180deg,#14120d,#070605)}
+html[data-theme="pyramide"] .reel{background:linear-gradient(180deg,#050505,#15130e 50%,#050505)}
+html[data-theme="pyramide"] .hilo-btn,html[data-theme="pyramide"] .bac-zone{border-color:var(--hairline)}
+
+/* ---------- Mode leger et animations reduites ---------- */
+html[data-theme="pyramide"].fx-lite .grad-text,html[data-theme="pyramide"].fx-lite .hero-text .grad{animation:none}
+@media (prefers-reduced-motion:reduce){
+  html[data-theme="pyramide"] .grad-text,html[data-theme="pyramide"] .hero-text .grad,html[data-theme="pyramide"] .eyebrow span.dash{animation:none}
+}

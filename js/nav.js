@@ -3,6 +3,7 @@
 // et, en bas, <footer class="footer" id="site-footer"></footer> (rempli ici).
 (function(){
   const THEMES = [
+    { id:'pyramide', label:'Pyramide', sub:'Noir mat & or massif', ring:'conic-gradient(from 200deg,#efe9dc,#d4a93c,#6e4f12,#f4dfa0,#efe9dc)' },
     { id:'obsidian', label:'Obsidian', sub:'Violet irisé', ring:'conic-gradient(from 200deg,#5ee7ff,#8b7cff,#3b2f8f,#d6d0ff,#5ee7ff)' },
     { id:'saphir', label:'Saphir', sub:'Bleu nuit & or', ring:'conic-gradient(from 200deg,#e9c46a,#4a86ff,#173a8c,#c4d8ff,#e9c46a)' },
     { id:'emeraude', label:'Émeraude', sub:'Jade & champagne', ring:'conic-gradient(from 200deg,#e6c887,#1fbf7a,#0b5236,#9ff5cf,#e6c887)' },
@@ -12,7 +13,7 @@
 
   function getTheme(){
     try { const t = localStorage.getItem('dg_theme'); if(THEMES.some(x=>x.id===t)) return t; } catch(e){}
-    return 'obsidian';
+    return 'pyramide';
   }
   function setTheme(t){
     const prev = document.documentElement.getAttribute('data-theme');

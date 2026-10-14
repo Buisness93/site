@@ -60,6 +60,18 @@
   --card-1:rgba(10,16,34,.94); --card-2:rgba(4,7,17,.94);
   --good:#4ee39a; --bad:#ff5a5a; --gold:#e9c46a;
 }
+[data-theme="pyramide"]{
+  /* Pyramide : DA rap street-luxe — noir mat, or massif, blanc casse, coupes carrees */
+  --bg:#050505; --bg-rgb:5,5,5; --bg2:#0d0c0a;
+  --accent:#d4a93c; --accent-rgb:212,169,60; --accent-deep:#6e4f12; --accent-light:#f4dfa0; --accent-soft:#e2bf63; --accent-pale:#dcb24a;
+  --accent-2:#efe9dc; --accent-2-rgb:239,233,220;
+  --on-accent:#0a0804;
+  --btn-grad:linear-gradient(120deg,#f6e3a6 0%,#d4a93c 48%,#9c7420 100%);
+  --grad-text:linear-gradient(100deg,#fff 0%,#f4dfa0 34%,#d4a93c 62%,#9c7420 100%);
+  --text-1:#f5f1e8; --text-2:#cfc8b8; --text-3:#8f8877; --text-4:#555044; --line-rgb:255,244,214;
+  --card-1:rgba(18,16,12,.95); --card-2:rgba(6,6,5,.95);
+  --good:#4ee39a; --bad:#ff5a5a; --gold:#d4a93c;
+}
 :root{
   --line:rgba(var(--line-rgb),.08); --line-2:rgba(var(--line-rgb),.14);
   --glass:rgba(var(--line-rgb),.04); --glass-2:rgba(var(--line-rgb),.07);
