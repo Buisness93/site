@@ -425,6 +425,8 @@
 <script>
 (function(){
   const $ = (id)=>document.getElementById(id);
+  // Theme Pyramide (noir & or) : les plateaux dessines en canvas suivent la DA
+  const pyr = ()=>document.documentElement.getAttribute('data-theme') === 'pyramide';
   const esc = (s)=>String(s == null ? '' : s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const fmt = (n)=>Math.round(n).toLocaleString('fr-FR');
   const shortNum = (v)=>v >= 1e6 ? +(v / 1e6).toFixed(v % 1e6 ? 1 : 0) + 'M' : v >= 1000 ? +(v / 1000).toFixed(v % 1000 ? 1 : 0) + 'k' : v;
@@ -488,6 +490,8 @@
     try { localStorage.setItem('dg_casino_game', g); } catch(e){}
   }
   document.querySelectorAll('#czTabs [data-g]').forEach(b=>b.addEventListener('click', ()=>openGame(b.getAttribute('data-g'))));
+  // Changement de theme (js/nav.js) : on redessine le plateau en cours
+  addEventListener('dg:theme', ()=>setTimeout(()=>{ if(game === 'plinko') drawPlinko(); if(game === 'wheel') drawWheel(); if(game === 'roulette') drawRoulette(); }, 0));
 
   $('btnPlay').addEventListener('click', async ()=>{
     if(busy) return;
@@ -546,9 +550,9 @@
     const grad = cg.createLinearGradient(0, H, W, 0); grad.addColorStop(0, acc); grad.addColorStop(1, dead ? '#ff5a5a' : acc2);
     cg.beginPath(); cg.moveTo(X(0), Y(1));
     for(let k = 1; k <= 60; k++){ const tt = t * k / 60; cg.lineTo(X(tt), Y(Math.exp(0.12 * tt))); }
-    cg.lineWidth = 4; cg.strokeStyle = grad; cg.shadowColor = dead ? '#ff5a5a' : acc; cg.shadowBlur = 18; cg.stroke(); cg.shadowBlur = 0;
+    cg.lineWidth = 4; cg.strokeStyle = grad; cg.shadowColor = dead ? '#ff5a5a' : acc; cg.shadowBlur = pyr() ? 6 : 18; cg.stroke(); cg.shadowBlur = 0;
     cg.lineTo(X(t), H - pad); cg.lineTo(X(0), H - pad); cg.closePath();
-    const fill = cg.createLinearGradient(0, 0, 0, H); fill.addColorStop(0, dead ? 'rgba(255,90,90,.22)' : 'rgba(139,124,255,.22)'); fill.addColorStop(1, 'transparent');
+    const fill = cg.createLinearGradient(0, 0, 0, H); fill.addColorStop(0, dead ? 'rgba(255,90,90,.22)' : 'rgba(' + (css.getPropertyValue('--accent-rgb').trim() || '139,124,255') + ',.22)'); fill.addColorStop(1, 'transparent');
     cg.fillStyle = fill; cg.fill();
     // voiture au bout de la courbe
     const x = X(t), y = Y(m);
@@ -724,13 +728,13 @@
   const ROWS = 12, PW = 560, PH = 470, GAP = 38, TOPY = 34;
   function pegX(row, i){ return PW / 2 + (i - row / 2) * GAP; }
   function slotX(i){ return PW / 2 + (i - ROWS / 2) * GAP; }
-  function slotColor(m){ return m >= 10 ? '#ff3b6b' : m >= 3 ? '#ff7a3d' : m >= 1.4 ? '#ffb43d' : m >= 1 ? '#ffd84d' : '#8fd0ff'; }
+  function slotColor(m){ if(pyr()) return m >= 10 ? '#fff1c1' : m >= 3 ? '#f4dfa0' : m >= 1.4 ? '#d4a93c' : m >= 1 ? '#9c7420' : '#4a4436'; return m >= 10 ? '#ff3b6b' : m >= 3 ? '#ff7a3d' : m >= 1.4 ? '#ffb43d' : m >= 1 ? '#ffd84d' : '#8fd0ff'; }
   function drawPlinko(){
     pg.clearRect(0, 0, PW, PH);
     for(let r = 0; r < ROWS; r++){
       for(let i = 0; i <= r + 2; i++){
         const x = pegX(r + 2, i), y = TOPY + r * 33;
-        pg.beginPath(); pg.arc(x, y, 4, 0, Math.PI * 2); pg.fillStyle = 'rgba(255,255,255,.75)'; pg.shadowColor = '#fff'; pg.shadowBlur = 6; pg.fill(); pg.shadowBlur = 0;
+        pg.beginPath(); pg.arc(x, y, 4, 0, Math.PI * 2); pg.fillStyle = pyr() ? 'rgba(212,169,60,.8)' : 'rgba(255,255,255,.75)'; pg.shadowColor = '#fff'; pg.shadowBlur = pyr() ? 0 : 6; pg.fill(); pg.shadowBlur = 0;
       }
     }
     const table = PL[risk], y = TOPY + ROWS * 33 + 6;
@@ -738,13 +742,13 @@
       const x = slotX(i), w = GAP - 4, hit = i === plHit;
       pg.fillStyle = slotColor(m);
       pg.globalAlpha = hit ? 1 : 0.85;
-      pg.shadowColor = slotColor(m); pg.shadowBlur = hit ? 24 : 0;
+      pg.shadowColor = slotColor(m); pg.shadowBlur = hit ? (pyr() ? 10 : 24) : 0;
       roundRect(x - w / 2, y + (hit ? 4 : 0), w, 26, 6); pg.fill();
       pg.shadowBlur = 0; pg.globalAlpha = 1;
-      pg.fillStyle = '#10121a'; pg.font = '800 11px Saira, sans-serif'; pg.textAlign = 'center'; pg.textBaseline = 'middle';
+      pg.fillStyle = pyr() && m < 1 ? '#cfc8b8' : '#10121a'; pg.font = '800 11px Saira, sans-serif'; pg.textAlign = 'center'; pg.textBaseline = 'middle';
       pg.fillText(m + '×', x, y + 13 + (hit ? 4 : 0));
     });
-    if(plBall){ pg.beginPath(); pg.arc(plBall.x, plBall.y, 7, 0, Math.PI * 2); pg.fillStyle = '#ffe066'; pg.shadowColor = '#ffcc00'; pg.shadowBlur = 18; pg.fill(); pg.shadowBlur = 0; }
+    if(plBall){ pg.beginPath(); pg.arc(plBall.x, plBall.y, 7, 0, Math.PI * 2); pg.fillStyle = pyr() ? '#fff1c1' : '#ffe066'; pg.shadowColor = pyr() ? '#d4a93c' : '#ffcc00'; pg.shadowBlur = pyr() ? 10 : 18; pg.fill(); pg.shadowBlur = 0; }
   }
   function roundRect(x, y, w, h, r){ pg.beginPath(); pg.moveTo(x + r, y); pg.arcTo(x + w, y, x + w, y + h, r); pg.arcTo(x + w, y + h, x, y + h, r); pg.arcTo(x, y + h, x, y, r); pg.arcTo(x, y, x + w, y, r); pg.closePath(); }
   document.querySelectorAll('#plinkoRisk button').forEach(b=>b.addEventListener('click', ()=>{
@@ -845,7 +849,7 @@
     high:[0,0,0,0,0,0,0,0,0,9.9, 0,0,0,0,0,0,0,0,0,9.9],
   };
   let wheelRisk = 'medium', wheelRot = 0;
-  function wheelColor(m){ return m === 0 ? '#2a2d3d' : m >= 9 ? '#ff3b6b' : m >= 3 ? '#ff7a3d' : m >= 2 ? '#ffb43d' : m >= 1.5 ? '#8b7cff' : '#5ee7ff'; }
+  function wheelColor(m){ if(pyr()) return m === 0 ? '#14120e' : m >= 9 ? '#fff1c1' : m >= 3 ? '#f4dfa0' : m >= 2 ? '#d4a93c' : m >= 1.5 ? '#b08a2e' : '#8d6a1c'; return m === 0 ? '#2a2d3d' : m >= 9 ? '#ff3b6b' : m >= 3 ? '#ff7a3d' : m >= 2 ? '#ffb43d' : m >= 1.5 ? '#8b7cff' : '#5ee7ff'; }
   // dessine une roue de segments (labels + couleurs) ; segment 0 centre sous le pointeur
   function drawSegWheel(cv, segs){
     const g = cv.getContext('2d'), R = cv.width / 2, n = segs.length, a = Math.PI * 2 / n;
@@ -860,10 +864,10 @@
       g.fillStyle = sg.text || '#fff'; g.font = '900 ' + (n > 30 ? 20 : 26) + 'px "Saira Condensed", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText(sg.label, 0, 0); g.restore();
     });
-    g.beginPath(); g.arc(0, 0, R - 8, 0, Math.PI * 2); g.lineWidth = 8; g.strokeStyle = 'rgba(255,255,255,.15)'; g.stroke();
+    g.beginPath(); g.arc(0, 0, R - 8, 0, Math.PI * 2); g.lineWidth = 8; g.strokeStyle = pyr() ? 'rgba(212,169,60,.55)' : 'rgba(255,255,255,.15)'; g.stroke();
     g.beginPath(); g.arc(0, 0, R * 0.32, 0, Math.PI * 2);
-    const hub = g.createRadialGradient(0, 0, 4, 0, 0, R * 0.32); hub.addColorStop(0, '#2b2f45'); hub.addColorStop(1, '#0d0e16');
-    g.fillStyle = hub; g.fill(); g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.2)'; g.stroke();
+    const hub = g.createRadialGradient(0, 0, 4, 0, 0, R * 0.32); hub.addColorStop(0, pyr() ? '#1a1710' : '#2b2f45'); hub.addColorStop(1, pyr() ? '#050505' : '#0d0e16');
+    g.fillStyle = hub; g.fill(); g.lineWidth = 4; g.strokeStyle = pyr() ? '#d4a93c' : 'rgba(255,255,255,.2)'; g.stroke();
     g.restore();
   }
   function drawWheel(){ drawSegWheel($('wheelCv'), WHEEL[wheelRisk].map(m=>({ label:m ? m + '×' : '0', color:wheelColor(m), text:m ? '#0b0c10' : '#8a8f98' }))); }
@@ -933,7 +937,7 @@
   $('rlClear').addEventListener('click', ()=>{ if(busy) return; rlBets = {}; paintRl(); document.querySelectorAll('#rlTable .win').forEach(c=>c.classList.remove('win')); });
   buildRlTable();
   function drawRoulette(){
-    drawSegWheel($('rlCv'), RL_ORDER.map(n=>({ label:String(n), color:n === 0 ? '#14a35a' : RL_RED.indexOf(n) !== -1 ? '#c8183a' : '#1b1d27' })));
+    drawSegWheel($('rlCv'), RL_ORDER.map(n=>({ label:String(n), color:n === 0 ? '#14a35a' : RL_RED.indexOf(n) !== -1 ? '#c8183a' : pyr() ? '#0a0a0a' : '#1b1d27', text:pyr() && n !== 0 && RL_RED.indexOf(n) === -1 ? '#f4dfa0' : null })));
   }
   async function playRoulette(){
     const total = rlTotal();

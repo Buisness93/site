@@ -24,7 +24,7 @@ html[data-theme="pyramide"]{
 @keyframes pyrRise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 
 /* ---------- Coupes carrees partout (sauf ce qui doit rester rond : pieces, vinyle, medailles) ---------- */
-html[data-theme="pyramide"] body *:not(.coin):not(.coin-i):not(.cf):not(.disc):not(.medal):not(.fx-ripple):not(.fx-spark):not(.chips button){border-radius:0!important}
+html[data-theme="pyramide"] body *:not(.coin):not(.coin-i):not(.cf):not(.disc):not(.medal):not(.fx-ripple):not(.fx-spark):not(.chips button):not(.pcard){border-radius:0!important}
 
 /* ---------- Typo d'affiche ---------- */
 html[data-theme="pyramide"] h1,html[data-theme="pyramide"] h2,
@@ -179,11 +179,97 @@ html[data-theme="pyramide"] .footer::before{background:linear-gradient(90deg,tra
 html[data-theme="pyramide"] .footer-brand .fb{font-family:var(--display);font-weight:400;letter-spacing:.12em;font-size:24px}
 html[data-theme="pyramide"] .footer-col h4{color:var(--accent);letter-spacing:.32em}
 
-/* ---------- Casino : tapis noir et or a la place des bleus nuit ---------- */
-html[data-theme="pyramide"] .t-cell,html[data-theme="pyramide"] .kc{background:linear-gradient(180deg,#1a1710,#0c0b08);box-shadow:inset 0 -3px 0 rgba(0,0,0,.5),inset 0 0 0 1px rgba(var(--accent-rgb),.14)}
-html[data-theme="pyramide"] .reels{background:linear-gradient(180deg,#14120d,#070605)}
+/* ---------- Casino : salle de jeu noir et or (les couleurs qui portent le jeu restent :
+   gain vert, perte rouge, rouge/noir/vert de la roulette, cartes blanches) ---------- */
+@keyframes pyrGold{50%{box-shadow:0 0 0 1px var(--accent),0 0 0 6px rgba(var(--accent-rgb),.12)}}
+html[data-theme="pyramide"] .cz-bal{border-color:var(--hairline);background:var(--corners),var(--card-bg);box-shadow:none;font-family:var(--display);font-weight:400;font-size:30px;letter-spacing:.02em}
+html[data-theme="pyramide"] .cz-bal .coin{box-shadow:none}
+html[data-theme="pyramide"] .cz-bal small{color:var(--accent);letter-spacing:.3em}
+html[data-theme="pyramide"] .cz-note{background:transparent;border-color:var(--hairline)}
+html[data-theme="pyramide"] .cz-game{background:var(--corners),var(--card-bg);border-color:rgba(var(--line-rgb),.08)}
+html[data-theme="pyramide"] .cz-side{background:rgba(0,0,0,.35);border-right-color:var(--hairline)}
+html[data-theme="pyramide"] .bet-row button{background:transparent;border-color:var(--hairline)}
+html[data-theme="pyramide"] .bet-row button:hover{border-color:var(--accent);color:var(--accent-light)}
+html[data-theme="pyramide"] .toggle2{background:transparent;border-color:var(--hairline)}
+html[data-theme="pyramide"] .toggle2 button.on{background:var(--accent);color:#0a0804;box-shadow:none}
+html[data-theme="pyramide"] .cz-msg.win,html[data-theme="pyramide"] .dice-roll.win,html[data-theme="pyramide"] .dice-roll.lose,html[data-theme="pyramide"] .limbo-num.win,html[data-theme="pyramide"] .limbo-num.lose,html[data-theme="pyramide"] .crash-mult.boom,html[data-theme="pyramide"] .crash-mult.cash,html[data-theme="pyramide"] .bj-out.win,html[data-theme="pyramide"] .hilo-mult{text-shadow:none}
+html[data-theme="pyramide"] .crash-mult,html[data-theme="pyramide"] .dice-roll,html[data-theme="pyramide"] .limbo-num,html[data-theme="pyramide"] .bj-out,html[data-theme="pyramide"] .coin-res,html[data-theme="pyramide"] .hilo-mult,html[data-theme="pyramide"] .wheel-res{font-family:var(--display);font-weight:400;letter-spacing:.02em}
+html[data-theme="pyramide"] .crash-mult,html[data-theme="pyramide"] .limbo-num{color:var(--accent-light);text-shadow:0 6px 0 rgba(0,0,0,.6)}
+html[data-theme="pyramide"] .crash-mult.boom{color:#ff5a5a}
+html[data-theme="pyramide"] .crash-mult.cash,html[data-theme="pyramide"] .limbo-num.win{color:var(--good)}
+html[data-theme="pyramide"] .limbo-num.lose{color:#ff6b6b}
+html[data-theme="pyramide"] .crash-hist span{background:transparent}
+html[data-theme="pyramide"] .limbo-tgt{color:var(--accent);letter-spacing:.3em}
+
+/* Mines : dalles noires a filet d'or */
+html[data-theme="pyramide"] .tile .f{background:linear-gradient(180deg,#17140e,#0a0907);box-shadow:inset 0 -4px 0 rgba(0,0,0,.6),inset 0 0 0 1px rgba(var(--accent-rgb),.18)}
+html[data-theme="pyramide"] .tile:hover:not(:disabled) .f{background:linear-gradient(180deg,#221d13,#0e0c09);box-shadow:inset 0 -4px 0 rgba(0,0,0,.6),inset 0 0 0 1px var(--accent)}
+html[data-theme="pyramide"] .tile .b{background:radial-gradient(circle,#1a1710,#050505)}
+html[data-theme="pyramide"] .tile.mine .b{background:radial-gradient(circle,#5c0a17,#170606)}
+html[data-theme="pyramide"] .tile.open.gem .b{box-shadow:inset 0 0 0 1px var(--accent)}
+html[data-theme="pyramide"] .gem-ico{filter:none}
+
+/* Dice, roue */
+html[data-theme="pyramide"] .dice-mark{background:var(--accent);color:#0a0804}
+html[data-theme="pyramide"] .dice-mark::after{border-top-color:var(--accent)}
+html[data-theme="pyramide"] .dice-track{box-shadow:none}
+html[data-theme="pyramide"] .wheel-ptr{border-top-color:var(--accent);filter:drop-shadow(0 3px 0 #000)}
+
+/* Pile ou face : revers argent creme au lieu du bleu */
+html[data-theme="pyramide"] .coin3d .cf{box-shadow:inset 0 0 0 8px rgba(255,255,255,.25),inset 0 -10px 20px rgba(0,0,0,.25),0 20px 40px -18px rgba(0,0,0,.9)}
+html[data-theme="pyramide"] .coin3d .cf.back{background:radial-gradient(circle at 35% 30%,#ffffff,#efe9dc 45%,#8f8877 100%);color:#2a241a}
+
+/* Roulette : tapis noir, numeros noirs en or, jetons de casino de luxe */
+html[data-theme="pyramide"] .rl-cell{background:#0c0b08;box-shadow:inset 0 0 0 1px rgba(var(--accent-rgb),.16)}
+html[data-theme="pyramide"] .rl-cell:hover{box-shadow:inset 0 0 0 1px var(--accent)}
+html[data-theme="pyramide"] .rl-cell.black{background:#050505;color:var(--accent-light)}
+html[data-theme="pyramide"] .rl-cell.red{background:linear-gradient(180deg,#b3142f,#7a0d1f)}
+html[data-theme="pyramide"] .rl-cell.win{box-shadow:0 0 0 2px var(--accent),0 0 0 5px rgba(var(--accent-rgb),.25)}
+html[data-theme="pyramide"] .rl-chip{background:var(--accent);color:#0a0804;box-shadow:0 0 0 2px #050505,0 4px 10px rgba(0,0,0,.5)}
+html[data-theme="pyramide"] .chips button{border-color:rgba(0,0,0,.35);color:#0a0804}
+html[data-theme="pyramide"] .chips button:nth-child(1){background:#efe9dc!important}
+html[data-theme="pyramide"] .chips button:nth-child(2){background:#b9b1a0!important}
+html[data-theme="pyramide"] .chips button:nth-child(3){background:#d4a93c!important}
+html[data-theme="pyramide"] .chips button:nth-child(4){background:#8d6a1c!important;color:#fff;border-color:rgba(255,255,255,.4)}
+html[data-theme="pyramide"] .chips button:nth-child(5){background:#7a0d1f!important;color:#fff;border-color:rgba(255,255,255,.4)}
+html[data-theme="pyramide"] .chips button:nth-child(6){background:#050505!important;color:var(--accent);border-color:var(--accent)}
+html[data-theme="pyramide"] .chips button.on{box-shadow:0 0 0 2px #050505,0 0 0 4px var(--accent)}
+
+/* Cartes : dos noir a losanges d'or, coins de vraie carte conserves */
+html[data-theme="pyramide"] .pcard{border-radius:6px!important}
+html[data-theme="pyramide"] .pcard.back{background:repeating-linear-gradient(45deg,#0a0907 0 7px,rgba(var(--accent-rgb),.55) 7px 8px),repeating-linear-gradient(-45deg,#0a0907 0 7px,rgba(var(--accent-rgb),.55) 7px 8px);background-blend-mode:lighten;box-shadow:0 10px 24px -8px rgba(0,0,0,.7),inset 0 0 0 3px #050505,inset 0 0 0 4px var(--accent)}
+html[data-theme="pyramide"] .hand-lbl{color:var(--accent);letter-spacing:.3em}
+html[data-theme="pyramide"] .hand-lbl b{background:transparent;box-shadow:inset 0 0 0 1px var(--hairline);font-family:var(--display);font-weight:400}
+
+/* Hi-Lo, Tower */
+html[data-theme="pyramide"] .hilo-btn{background:var(--card-bg);border-color:var(--hairline)}
+html[data-theme="pyramide"] .hilo-btn:hover:not(:disabled){border-color:var(--accent);box-shadow:6px 6px 0 rgba(var(--accent-rgb),.14)}
+html[data-theme="pyramide"] .hilo-mult{color:var(--accent-light)}
+html[data-theme="pyramide"] .t-cell,html[data-theme="pyramide"] .t-row.cur .t-cell{background:linear-gradient(180deg,#17140e,#0a0907);box-shadow:inset 0 -3px 0 rgba(0,0,0,.6),inset 0 0 0 1px rgba(var(--accent-rgb),.16)}
+html[data-theme="pyramide"] .t-row.cur .t-cell{box-shadow:inset 0 -3px 0 rgba(0,0,0,.6),inset 0 0 0 1px rgba(var(--accent-rgb),.5)}
+html[data-theme="pyramide"] .t-row.cur .t-cell:hover:not(:disabled){box-shadow:inset 0 -3px 0 rgba(0,0,0,.6),inset 0 0 0 1px var(--accent),4px 4px 0 rgba(var(--accent-rgb),.18)}
+html[data-theme="pyramide"] .t-row.cur .t-m{color:var(--accent)}
+
+/* Slots : cadre en or, rouleaux noirs */
+html[data-theme="pyramide"] .reels{background:linear-gradient(180deg,#14120d,#050505);box-shadow:inset 0 0 0 1px var(--accent),6px 6px 0 rgba(var(--accent-rgb),.12)}
 html[data-theme="pyramide"] .reel{background:linear-gradient(180deg,#050505,#15130e 50%,#050505)}
-html[data-theme="pyramide"] .hilo-btn,html[data-theme="pyramide"] .bac-zone{border-color:var(--hairline)}
+html[data-theme="pyramide"] .reel::after{border-color:rgba(var(--accent-rgb),.6)}
+html[data-theme="pyramide"] .reels.win{animation:pyrGold .9s ease-in-out 2}
+html[data-theme="pyramide"] .slot-pay span,html[data-theme="pyramide"] .keno-pay span{background:transparent;border-color:var(--hairline)}
+
+/* Baccarat, Keno */
+html[data-theme="pyramide"] .bac-zone{border-color:rgba(var(--accent-rgb),.35);background:transparent}
+html[data-theme="pyramide"] .bac-zone:hover{border-color:var(--accent)}
+html[data-theme="pyramide"] .kc{background:linear-gradient(180deg,#17140e,#0a0907);box-shadow:inset 0 -3px 0 rgba(0,0,0,.6),inset 0 0 0 1px rgba(var(--accent-rgb),.14)}
+html[data-theme="pyramide"] .kc.pick{background:var(--accent);color:#0a0804;box-shadow:none}
+html[data-theme="pyramide"] .kc.drawn{background:linear-gradient(180deg,#3a352a,#24201a);color:#f5f1e8}
+
+html[data-theme="pyramide"] .rl-cell.zero{background:linear-gradient(180deg,#14a35a,#0b6b3a)}
+html[data-theme="pyramide"] .kc.hit{background:linear-gradient(180deg,#4ee39a,#1f9a62);color:#04140c;box-shadow:inset 0 0 0 2px var(--accent)}
+html[data-theme="pyramide"] .bac-zone.win{border-color:#4ee39a;box-shadow:inset 0 0 0 1px #4ee39a}
+
+/* Fil des paris */
+html[data-theme="pyramide"] .feed .tbl-row.head{color:var(--accent)}
 
 /* ---------- Mode leger et animations reduites ---------- */
 html[data-theme="pyramide"].fx-lite .grad-text,html[data-theme="pyramide"].fx-lite .hero-text .grad{animation:none}
