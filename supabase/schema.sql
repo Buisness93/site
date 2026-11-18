@@ -726,7 +726,7 @@ as $$
 declare
   v_uid uuid := auth.uid();
   v_days integer := floor(extract(epoch from now()) / 86400)::integer;
-  v_ids text[] := array['citadine','audi-a3','golf-r','audi-a8','supra','m4-widebody','porsche-911','rs6-abt','huracan-performante','gt3-rs','812-competizione','aston-one77','aventador-svj','pagani-huayra-r','huayra-roadster','centenario','huayra-bc','daytona-sp3','apollo-ie','pagani-imola','mclaren-p1','laferrari','gma-t50','aston-valhalla','revuelto','chiron','veyron-ettore','w16-mistral','centodieci','bolide'];
+  v_ids text[] := array['citadine','audi-a3','golf-r','audi-a8','supra','m4-widebody','rs6-abt','huracan-performante','gt3-rs','812-competizione','aston-one77','aventador-svj','pagani-huayra-r','huayra-bc','daytona-sp3','apollo-ie','pagani-imola','mclaren-p1','laferrari','gma-t50','aston-valhalla','revuelto','chiron','veyron-ettore','centodieci','bolide'];
   v_car_id text;
   v_target integer;
   v_reward integer := 400;
@@ -814,9 +814,9 @@ declare
   v_credits integer := 0;
   v_car_id text;
   -- Lot "voiture rare" : sportives/hypercars de 26k a 135k credits.
-  v_jackpot_ids text[] := array['rs6-abt','porsche-911','huracan-performante','gt3-rs','aston-one77',
-                                'huayra-roadster','812-competizione','pagani-huayra-r','aventador-svj','veyron-ettore',
-                                'chiron','centenario','huayra-bc'];
+  v_jackpot_ids text[] := array['rs6-abt','huracan-performante','gt3-rs','aston-one77',
+                                '812-competizione','pagani-huayra-r','aventador-svj','veyron-ettore',
+                                'chiron','huayra-bc'];
 begin
   if v_uid is null then raise exception 'Connecte-toi pour tenter le tirage du jour.'; end if;
   if exists (select 1 from public.daily_draw_claims where user_id = v_uid and draw_day = v_days) then

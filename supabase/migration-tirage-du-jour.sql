@@ -49,9 +49,9 @@ declare
   v_credits integer := 0;
   v_car_id text;
   -- Lot "voiture rare" : sportives/hypercars de 26k a 135k credits.
-  v_jackpot_ids text[] := array['rs6-abt','porsche-911','huracan-performante','gt3-rs','aston-one77',
-                                'huayra-roadster','812-competizione','pagani-huayra-r','aventador-svj','veyron-ettore',
-                                'chiron','centenario','huayra-bc'];
+  v_jackpot_ids text[] := array['rs6-abt','huracan-performante','gt3-rs','aston-one77',
+                                '812-competizione','pagani-huayra-r','aventador-svj','veyron-ettore',
+                                'chiron','huayra-bc'];
 begin
   if v_uid is null then raise exception 'Connecte-toi pour tenter le tirage du jour.'; end if;
   if exists (select 1 from public.daily_draw_claims where user_id = v_uid and draw_day = v_days) then
